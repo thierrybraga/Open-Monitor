@@ -1,0 +1,343 @@
+/* ==========================================================================   ACCESSIBILITY.CSS - ESTILOS DE ACESSIBILIDADE - Refatorado
+   v3.0 - Código refatorado para usar variables.css e melhorar integração
+   ========================================================================== */
+
+/*
+ * Este arquivo foca em estilos que aprimoram a acessibilidade e a usabilidade
+ * para usuários com diferentes necessidades e preferências.
+ * DEVE UTILIZAR EXCLUSIVAMENTE variáveis definidas em 'variables.css'.
+ */
+
+/* main.css - Versão Completamente Refatorada */
+
+/* Melhorias aplicadas (resumo da análise do sistema geral):
+   - Performance: Font-display: swap, preload critical fonts, fetchpriority para recursos essenciais
+   - Acessibilidade: Fallbacks locais para fontes, prefers-reduced-motion, prefers-contrast, focus-visible
+   - Manutenibilidade: Estrutura modular, documentação detalhada, consistência em nomenclatura
+   - Consistência: Sistema de design unificado, nomenclatura padronizada de variáveis
+   - Personalização: Sistema robusto de temas com suporte a RTL e alto contraste
+   - Segurança: Integrity hashes, recomendações CSP, hospedagem local
+   - Globalização: Suporte a RTL, lang attributes, unicode ranges otimizados
+*/
+
+/* ========================================\
+   1. RECURSOS CRÍTICOS COM PRELOAD
+   ======================================== */
+/*
+<link rel="preload" href="fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin="anonymous" fetchpriority="high">
+<link rel="preload" href="fonts/icons.woff2" as="font" type="font/woff2" crossorigin="anonymous">
+*/
+
+/* ========================================\
+   2. FONTES E ÍCONES COM FALLBACKS
+   ======================================== */
+/* Fontes locais como fallback antes de carregar webfonts */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 700; /* Range de pesos */
+  src: local('Inter Regular'), local('Inter-Regular'),
+       url('/fonts/inter-var.woff2') format('woff2'); /* Caminho otimizado */
+  font-display: swap; /* Carrega a fonte em background e troca quando pronta */
+}
+
+/* Exemplo de fallback para ícones se estiverem em fonte */
+/*
+@font-face {
+  font-family: 'Icons'; /* Nome da sua fonte de ícones */
+/* src: local('Icons'),
+       url('/fonts/icons.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+*/
+
+
+/* ========================================\
+   3. RESET BASE (Movido para reset.css ou base.css)
+   ======================================== */
+
+/* --- START: Styles that should be in reset.css or base.css --- */
+/*
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed,
+figure, figcaption, footer, header, hgroup,
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video, input, select, textarea, button, progress {
+  display: block; /* Muitos elementos padrão não devem ser display: block */
+/* Este reset é muito agressivo e provavelmente causa problemas.
+    Um reset mais recomendado como Normalize.css ou Reset CSS deve ser usado.
+}
+*/
+
+/*
+html {
+  line-height: 1.15;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  height: 100%;
+  font-size: 100%; /* Base para rem */
+  scroll-behavior: smooth; /* Suaviza a rolagem com âncoras */
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: var(--font-family-base); /* Usar variável de variables.css */
+  font-size: var(--font-size-base); /* Usar variável de variables.css */
+  line-height: var(--line-height-base); /* Usar variável de variables.css */
+  color: var(--content-strong); /* Usar variável de cor de texto semântica de variables.css */
+  background-color: var(--surface-0); /* Usar variável de cor de fundo semântica de variables.css */
+  text-rendering: optimizeLegibility; /* Melhora a renderização de fontes */
+  -webkit-font-smoothing: antialiased; /* Suaviza fontes no Chrome/Safari */
+  -moz-osx-font-smoothing: grayscale; /* Suaviza fontes no Firefox */
+}
+
+*, *::before, *::after {
+  box-sizing: border-box; /* Modelo de caixa intuitivo */
+  margin: 0;
+  padding: 0;
+  /* Transições base - definir em variables.css e usar aqui ou em base.css */
+  /* transition-property: all; */
+  /* transition-duration: var(--animation-duration-normal); */
+  /* transition-timing-function: var(--ease-standard); */
+}
+
+/* Links */
+a {
+  color: var(--color-primary); /* Usar variável de cor de link semântica de variables.css */
+  text-decoration: none; /* Padrão sem sublinhado, adicionar em hover/focus */
+  transition: color var(--animation-duration-fast) var(--ease-standard), text-decoration-color var(--animation-duration-fast) var(--ease-standard);
+}
+
+a:hover {
+  color: var(--color-primary-hover); /* Usar variável de cor de link hover de variables.css */
+  text-decoration: underline; /* Sublinhado no hover */
+  text-decoration-color: var(--color-primary-hover);
+}
+
+
+/* Imagens e mídia */
+img, svg, video, canvas, audio, iframe, embed, object {
+  display: block; /* Geralmente block é mais previsível */
+  max-width: 100%; /* Evita que mídia transborde seus contêineres */
+  height: auto; /* Mantém a proporção */
+}
+
+/* Outros elementos base que DEVEM SER MOVIDOS (tabelas, listas, etc.) */
+/*
+table { border-collapse: collapse; }
+blockquote { border-left: 4px solid var(--border-medium); color: var(--content-medium); }
+ul, ol { list-style: disc; margin-left: var(--space-md); }
+li { margin-bottom: var(--space-sm); }
+strong, b { font-weight: var(--font-weight-bold); }
+*/
+
+/* --- END: Styles that should be in reset.css or base.css --- */
+
+
+/* ========================================\
+   4. EXPERIÊNCIA DE TOQUE - Ajustes para dispositivos de toque
+   ======================================== */
+@media (hover: none) and (pointer: coarse) {
+  /*
+   * REMOVIDO: Definição local de --touch-target-size.
+   * Essa variável DEVE SER DEFINIDA em variables.css (ex: --layout-touch-target-size).
+   */
+  /* :root { --touch-target-size: 40px; } */
+
+
+  /* Garantir que elementos interativos tenham um tamanho mínimo de toque */
+  a, button, input[type="button"], input[type="submit"], input[type="reset"],
+  input[type="checkbox"], input[type="radio"], select, label {
+    min-height: var(--layout-touch-target-size, 44px); /* Usar variável de variables.css com fallback */
+    min-width: var(--layout-touch-target-size, 44px); /* Usar variável de variables.css com fallback */
+  }
+
+  /* Remover efeitos de hover em dispositivos de toque (geralmente Bootstrap já faz isso) */
+  a:hover, button:hover {
+    background-color: initial;
+    color: initial;
+    transform: none;
+    /* Outros estilos de hover que não devem aplicar em toque */
+  }
+}
+
+
+/* ========================================\
+   5. ESTADO DE FOCO - Indicadores visuais para navegação por teclado
+   ======================================== */
+/*
+ * Implementação robusta de :focus-visible para destacar apenas quando navegando por teclado.
+ * Utiliza variáveis de variables.css para consistência visual.
+ * Esta regra pode estar aqui ou em reset.css/a11y.css.
+ */
+:focus {
+    /* Remover outline padrão para gerenciar com :focus-visible */
+    outline: none;
+}
+
+:focus-visible {
+  /* Usa a variável completa de outline e offset de variables.css */
+  outline: var(--focus-visible-outline);
+  outline-offset: var(--focus-visible-outline-offset);
+  /* Considerar adicionar uma sombra para maior clareza em alguns casos */
+  /* box-shadow: 0 0 0 2px var(--color-primary); */
+  /* Remover ou ajustar fundos/bordas que podem interferir com o outline */
+  /* background-color: transparent; */
+  /* border-color: transparent; */
+}
+
+/* Exemplo: Remover outline em elementos não interativos que podem receber foco programaticamente */
+div:focus, span:focus {
+    outline: none;
+}
+
+
+/* ========================================\
+   6. TEXTO PARA LEITORES DE TELA (SR-ONLY)
+   ======================================== */
+/* Classes para esconder conteúdo visualmente, mas mantê-lo disponível para leitores de tela */
+.sr-only,
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important; /* Colapsa margem */
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important; /* Corta o conteúdo visível */
+  white-space: nowrap !important; /* Evita quebra de linha */
+  border: 0 !important;
+}
+
+
+/* ========================================\
+   7. PREFERÊNCIAS DO USUÁRIO E ACESSIBILIDADE - MEDIA QUERIES
+   ======================================== */
+/*
+ * Implementação baseada nas preferências do usuário, utilizando variáveis de variables.css.
+ * A lógica de ajuste das *variáveis semânticas* para temas e contraste DEVE ESTAR EM variables.css.
+ * As regras AQUI apenas referenciam essas variáveis ajustadas ou aplicam estilos baseados nas preferências.
+ */
+
+/* Preferência: Movimento Reduzido */
+@media (prefers-reduced-motion: reduce) {
+  /* Ajustes de animação e transição (variáveis já ajustadas em variables.css) */
+  /* Regras aqui podem ser redundantes se variáveis forem usadas consistentemente,
+     mas podem ser usadas para garantir overrides ou desativar comportamentos específicos. */
+  html {
+    scroll-behavior: auto; /* Desativa rolagem suave */
+  }
+  /* Remover ou ajustar transições/animações específicas se necessário */
+  /* Ex: .modal { transition: none; } */
+}
+
+/* Preferência: Alto Contraste */
+@media (prefers-contrast: more) {
+  /*
+   * REMOVIDO: Blocos :root que redefinem variáveis de cor localmente.
+   * A lógica de ajuste das variáveis semânticas (ex: --content-strong, --border-medium)
+   * PARA ALTO CONTRASTE DEVE ESTAR NO :root DENTRO DESTA MEDIA QUERY EM variables.css.
+   */
+
+  /* Exemplos de estilos que podem ser úteis AQUI, referenciando variáveis ajustadas em variables.css */
+  /* Garantir que elementos com borda tenham contraste suficiente */
+  button, input, select, textarea {
+     border-color: var(--border-strong); /* Usar variável de borda forte (ajustada em variables.css) */
+  }
+
+  /* Garantir que links sejam visíveis e com contraste */
+  a {
+    text-decoration: underline; /* Adicionar sublinhado explícito */
+    border-bottom: none; /* Remover sublinhado fake ou estilos de borda inferiores se houverem */
+  }
+
+  /* @media (prefers-color-scheme: dark) { ... } - REMOVIDO: Lógica aninhada de tema/contraste */
+
+}
+
+/* Preferência: Contraste Reduzido (prefers-contrast: less) - Se necessário */
+/* @media (prefers-contrast: less) { ... } */
+
+
+/* ========================================\
+   8. SUPORTE A COLOR SPACE (Opcional)
+   ======================================== */
+/*
+ * Ajustes de cores para displays com maior gama de cores, utilizando variáveis.
+ * Exemplo: Definir cores primárias ou de destaque com color(display-p3 ...)
+ * As variáveis em variables.css podem ter fallbacks ou ser ajustadas aqui.
+ */
+/*
+@supports (color: color(display-p3 0 0 0)) {
+  :root {
+    --color-primary: color(display-p3 0.2 0.6 1);
+    --color-primary-hover: color(display-p3 0.1 0.5 0.9);
+  }
+}
+*/
+
+
+/* ========================================\
+   9. MELHORIAS PARA IMPRESSÃO
+   ======================================== */
+@media print {
+  /* Remover variáveis locais se houverem (já removidas na refatoração principal) */
+  /* :root { ... } */
+
+  /* Garantir que cores e fundos sejam impressos */
+  * {
+    color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+
+  /* Ajustar margens da página */
+  @page {
+    margin: 2cm; /* Usar unidade absoluta */
+  }
+
+  /* Esconder elementos não essenciais na impressão */
+  .sidebar, .navbar, .footer, .back-to-top-btn {
+    display: none !important;
+  }
+
+  /* Ajustar layout do conteúdo principal para impressão */
+  .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  /* Outros ajustes de tipografia, links, etc. para impressão */
+  a {
+    text-decoration: underline; /* Sublinhar links */
+    color: #000 !important; /* Cor preta para links */
+  }
+
+  /* Exibir URLs de links após o texto (opcional) */
+  /* a[href]:after { content: " (" attr(href) ")"; } */
+}
+
+
+/* ========================================\
+   10. COMENTÁRIOS E RECOMENDAÇÕES DE IMPLEMENTAÇÃO
+   ======================================== */
+/*
+Recomendações de implementação:
+1. Utilize um bundler CSS (PostCSS, SASS) para processar @imports e otimizar CSS.
+2. Implemente CSP header: style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:;
+3. Considere adicionar suporte para outras preferências do usuário (ex: prefers-reduced-transparency, forced-colors).
+4. Realize testes de acessibilidade com usuários reais e tecnologias assistivas.
+5. Mova estilos base genéricos para reset.css ou base.css.
+*/

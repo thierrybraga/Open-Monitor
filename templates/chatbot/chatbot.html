@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block title %}Chatbot de Segurança - {{ app_name }}{% endblock %}
+{% block og_title %}Chatbot de Segurança - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <h1 class="h2 mb-0">Chatbot de Segurança</h1>
+      <p class="text-muted">Tire suas dúvidas sobre CVEs e vulnerabilidades com nosso assistente de IA</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12 col-lg-8 mx-auto">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center">
+          <h5 class="card-title mb-0">Conversa com SecuriBot</h5>
+          <button class="btn btn-sm btn-outline-secondary" id="clearChatBtn">
+            <i class="bi bi-trash me-1"></i>
+            Limpar conversa
+          </button>
+        </div>
+        <div class="card-body">
+          <!-- Área de mensagens -->
+          <div class="chat-messages p-3 mb-3" id="chatMessages" style="height: 400px; overflow-y: auto;">
+            <!-- Mensagem de boas-vindas do bot -->
+            <div class="chat-message bot-message mb-3">
+              <div class="d-flex">
+                <div class="avatar me-2 flex-shrink-0">
+                  <div class="avatar-icon rounded-circle bg-primary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                    <i class="bi bi-robot text-white"></i>
+                  </div>
+                </div>
+                <div class="message-content">
+                  <div class="message-bubble bg-light p-3 rounded-3">
+                    <p class="mb-0">Olá! Sou o SecuriBot, seu assistente de segurança. Como posso ajudá-lo hoje?</p>
+                    <p class="mb-0 mt-2">Você pode me perguntar sobre:</p>
+                    <ul class="mb-0">
+                      <li>Detalhes sobre CVEs específicas</li>
+                      <li>Recomendações de mitigação</li>
+                      <li>Análise de tendências de vulnerabilidades</li>
+                      <li>Explicações sobre termos técnicos</li>
+                    </ul>
+                  </div>
+                  <div class="message-time small text-muted mt-1">Agora</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Exemplos de sugestões de perguntas rápidas -->
+            <div class="chat-suggestions mb-3">
+              <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-sm btn-outline-primary suggestion-btn">O que é CVE-2023-1234?</button>
+                <button class="btn btn-sm btn-outline-primary suggestion-btn">Como mitigar Log4Shell?</button>
+                <button class="btn btn-sm btn-outline-primary suggestion-btn">Vulnerabilidades recentes em WordPress</button>
+                <button class="btn btn-sm btn-outline-primary suggestion-btn">Definir prioridades de patch</button>
+              </div>
+            </div>
+
+            <!-- As mensagens da conversa serão inseridas aqui via JavaScript -->
+          </div>
+
+          <!-- Área de input -->
+          <form id="chatForm" class="chat-input-area">
+            <div class="input-group">
+              <input
+                type="text"
+                class="form-control"
+                id="chatInput"
+                placeholder="Digite sua pergunta sobre segurança..."
+                aria-label="Mensagem"
+                autocomplete="off"
+              >
+              <button class="btn btn-primary" type="submit">
+                <i class="bi bi-send"></i>
+                <span class="d-none d-md-inline ms-1">Enviar</span>
+              </button>
+            </div>
+            <div class="form-text mt-2">
+              <i class="bi bi-info-circle me-1"></i>
+              As respostas são baseadas em nossa base de dados atualizada de CVEs e práticas recomendadas de segurança.
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Card de recursos adicionais -->
+      <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-transparent border-0">
+          <h5 class="card-title mb-0">Recursos Adicionais</h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <div class="d-flex align-items-center">
+                <div class="flex-shrink-0 me-3">
+                  <div class="icon-shape bg-info bg-opacity-10 text-info rounded-3 p-2">
+                    <i class="bi bi-search"></i>
+                  </div>
+                </div>
+                <div>
+                  <h6 class="mb-1">Pesquisa Avançada</h6>
+                  <p class="text-muted small mb-0">Use nossa <a href="{{ url_for('main.search') }}">busca avançada</a> para encontrar vulnerabilidades específicas.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <div class="d-flex align-items-center">
+                <div class="flex-shrink-0 me-3">
+                  <div class="icon-shape bg-success bg-opacity-10 text-success rounded-3 p-2">
+                    <i class="bi bi-bar-chart"></i>
+                  </div>
+                </div>
+                <div>
+                  <h6 class="mb-1">Analytics</h6>
+                  <p class="text-muted small mb-0">Explore <a href="{{ url_for('main.analytics') }}">análises detalhadas</a> sobre tendências de vulnerabilidades.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const chatForm = document.getElementById('chatForm');
+    const chatInput = document.getElementById('chatInput');
+    const chatMessages = document.getElementById('chatMessages');
+    const clearChatBtn = document.getElementById('clearChatBtn');
+    const suggestionBtns = document.querySelectorAll('.suggestion-btn');
+
+    // Função para adicionar mensagem do usuário
+    function addUserMessage(message) {
+      const messageEl = document.createElement('div');
+      messageEl.className = 'chat-message user-message mb-3';
+      messageEl.innerHTML = `
+        <div class="d-flex justify-content-end">
+          <div class="message-content text-end">
+            <div class="message-bubble bg-primary text-white p-3 rounded-3">
+              <p class="mb-0">${message}</p>
+            </div>
+            <div class="message-time small text-muted mt-1">Agora</div>
+          </div>
+          <div class="avatar ms-2 flex-shrink-0">
+            <div class="avatar-icon rounded-circle bg-light d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+              <i class="bi bi-person"></i>
+            </div>
+          </div>
+        </div>
+      `;
+      chatMessages.appendChild(messageEl);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Função para adicionar mensagem do bot (com efeito de "está digitando")
+    function addBotMessage(message) {
+      // Primeiro adiciona um indicador de "digitando"
+      const typingEl = document.createElement('div');
+      typingEl.className = 'chat-message bot-message mb-3';
+      typingEl.id = 'botTyping';
+      typingEl.innerHTML = `
+        <div class="d-flex">
+          <div class="avatar me-2 flex-shrink-0">
+            <div class="avatar-icon rounded-circle bg-primary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+              <i class="bi bi-robot text-white"></i>
+            </div>
+          </div>
+          <div class="message-content">
+            <div class="message-bubble bg-light p-3 rounded-3">
+              <p class="mb-0">
+                <span class="typing-indicator">
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                </span>
+              </p>
+            </div>
+          </div>
+        </div>
+      `;
+      chatMessages.appendChild(typingEl);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      // Após um breve atraso, substitui o indicador pela mensagem real
+      setTimeout(() => {
+        const messageEl = document.createElement('div');
+        messageEl.className = 'chat-message bot-message mb-3';
+        messageEl.innerHTML = `
+          <div class="d-flex">
+            <div class="avatar me-2 flex-shrink-0">
+              <div class="avatar-icon rounded-circle bg-primary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                <i class="bi bi-robot text-white"></i>
+              </div>
+            </div>
+            <div class="message-content">
+              <div class="message-bubble bg-light p-3 rounded-3">
+                <p class="mb-0">${message}</p>
+              </div>
+              <div class="message-time small text-muted mt-1">Agora</div>
+            </div>
+          </div>
+        `;
+
+        // Remove o indicador e adiciona a mensagem real
+        document.getElementById('botTyping').remove();
+        chatMessages.appendChild(messageEl);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }, 1500); // Simula um tempo de "digitação"
+    }
+
+    // Manipula o envio do formulário
+    chatForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const message = chatInput.value.trim();
+      if (message) {
+        // Adiciona a mensagem do usuário à conversa
+        addUserMessage(message);
+
+        // Limpa o campo de entrada
+        chatInput.value = '';
+
+        // Simula uma resposta do bot (em uma aplicação real, isso seria uma chamada de API)
+        simulateBotResponse(message);
+      }
+    });
+
+    // Manipula cliques nos botões de sugestão
+    suggestionBtns.forEach(btn => {
+      btn.addEventListener('click', function() {
+        const message = this.textContent;
+        chatInput.value = message;
+        // Dispara o evento submit no formulário
+        const event = new Event('submit', {
+          'bubbles': true,
+          'cancelable': true
+        });
+        chatForm.dispatchEvent(event);
+      });
+    });
+
+    // Limpa a conversa
+    clearChatBtn.addEventListener('click', function() {
+      // Mantém apenas a mensagem de boas-vindas e as sugestões
+      while (chatMessages.children.length > 2) {
+        chatMessages.removeChild(chatMessages.lastChild);
+      }
+    });
+
+    // Simula respostas do bot para demonstração
+    function simulateBotResponse(userMessage) {
+      let botResponse = '';
+
+      // Respostas simuladas baseadas em palavras-chave simples
+      if (userMessage.toLowerCase().includes('cve-2023-1234')) {
+        botResponse = 'CVE-2023-1234 é uma vulnerabilidade crítica no Apache Log4j que permite execução remota de código. Foi descoberta em janeiro de 2023 e afeta as versões 2.0 a 2.16.0. Recomendo atualizar para a versão 2.17.1 ou superior imediatamente.';
+      }
+      else if (userMessage.toLowerCase().includes('log4shell')) {
+        botResponse = 'Para mitigar o Log4Shell (CVE-2021-44228), você deve:<br>1. Atualizar para Log4j 2.17.1 ou superior<br>2. Se não for possível atualizar, desativar lookups definindo a propriedade do sistema -Dlog4j2.formatMsgNoLookups=true<br>3. Monitorar tentativas de exploração em seus logs<br>4. Implementar regras WAF para bloquear solicitações maliciosas';
+      }
+      else if (userMessage.toLowerCase().includes('wordpress')) {
+        botResponse = 'Nas últimas semanas, detectamos várias vulnerabilidades em plugins do WordPress:<br>1. XSS em WP Forms (CVE-2023-8742)<br>2. SQL Injection no plugin SEO (CVE-2023-9154)<br>3. Bypass de autenticação no WooCommerce (CVE-2023-5823)<br><br>Recomendo manter todos os plugins atualizados e considerar o uso de um Web Application Firewall.';
+      }
+      else if (userMessage.toLowerCase().includes('prioridade') || userMessage.toLowerCase().includes('patch')) {
+        botResponse = 'Para definir prioridades de patch, considere:<br>1. Severidade da vulnerabilidade (CVSS)<br>2. Exploração ativa na natureza<br>3. Exposição do sistema (internet vs. intranet)<br>4. Dados processados (críticos vs. não críticos)<br>5. Dependências do sistema<br><br>Vulnerabilidades exploráveis remotamente em sistemas expostos à internet que processam dados sensíveis devem ter a maior prioridade.';
+      }
+      else {
+        botResponse = 'Obrigado pela sua pergunta. Para fornecer informações mais precisas sobre "' + userMessage + '", eu precisaria consultar nossa base de dados de CVEs. Você pode tentar perguntar sobre vulnerabilidades específicas, como CVE-2023-1234, ou sobre práticas de mitigação para vulnerabilidades conhecidas como Log4Shell.';
+      }
+
+      // Adiciona a resposta do bot após um breve atraso para simular processamento
+      addBotMessage(botResponse);
+    }
+
+    // Foca no input quando a página carrega
+    chatInput.focus();
+  });
+</script>
+
+<style>
+  /* Estilos para o indicador de digitação */
+  .typing-indicator {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .typing-indicator .dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #aaa;
+    margin-right: 4px;
+    animation: typing 1s infinite ease-in-out;
+  }
+
+  .typing-indicator .dot:nth-child(1) {
+    animation-delay: 0s;
+  }
+
+  .typing-indicator .dot:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .typing-indicator .dot:nth-child(3) {
+    animation-delay: 0.4s;
+    margin-right: 0;
+  }
+
+  @keyframes typing {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+    100% { transform: translateY(0); }
+  }
+</style>
+{% endblock %}

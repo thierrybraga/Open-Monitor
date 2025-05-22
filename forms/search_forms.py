@@ -1,0 +1,2 @@
+class SearchForm:
+    pass

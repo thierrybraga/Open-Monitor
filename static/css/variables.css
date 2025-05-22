@@ -1,0 +1,688 @@
+/* variables.css - Sistema Completo de Variáveis CSS com Mozilla Acorn Design System */
+
+/*
+ * SISTEMA DE DESIGN - VARIÁVEIS GLOBAIS
+ * Versão: 2.3.0 - Refatorado para consolidar cores e refinar estrutura
+ * Última atualização: Abril 2025
+ *
+ * Características:
+ * - 🎨 Design System: Alinhado ao Mozilla Acorn Design System para consistência
+ * - 🌓 Temas: Suporte completo a temas claro/escuro com transições suaves
+ * - ♿ Acessibilidade: WCAG 2.1, alto contraste, modo focado, dislexia
+ * - 📱 Responsividade: Sistema fluid de tipografia e espaçamento
+ * - 🌐 Internacionalização: Suporte a RTL e ajustes por idioma
+ * - 🎭 Modos de uso: Concentração, impressão, economias de dados/bateria
+ * - 🔄 Animações: Sistema completo otimizado para performance
+ * - 🎛️ Personalização: API de customização e temas por usuário
+ * - 🧠 Adaptação contextual: Variáveis dinâmicas baseadas no contexto
+ * - 🔳 Sistema de elevação: Sombras e camadas consistentes
+ */
+
+/* ========================================\
+   📏 UNIDADES BASE E CONFIGURAÇÃO ROOT
+   ======================================== */
+
+:root {
+  /* Tamanho base para cálculos fluid */
+  --base-font-size: 16px;
+  --base-line-height: 1.5;
+
+  /* Duração padrão para transições de tema */
+  --theme-transition-duration: 0.3s;
+  --theme-transition-timing: ease-in-out;
+
+  /* Duração padrão para animações */
+  --animation-duration-faster: 0.1s;
+  --animation-duration-fast: 0.2s;
+  --animation-duration-normal: 0.3s;
+  --animation-duration-slow: 0.5s;
+  --animation-duration-slower: 1s;
+
+  /* Easing functions */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1); /* Usado para a maioria das transições de UI */
+  --ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --ease-accelerate: cubic-bezier(0.4, 0, 1, 1);
+  --ease-linear: linear;
+
+
+/* ========================================\
+   🎨 SISTEMA DE CORES - PALETAS E SEMÂNTICA
+   ======================================== */
+
+  /*
+   * Paletas de Cores Brutas (Base para as variáveis semânticas)
+   * Derivadas para acessibilidade e temas
+   */
+
+  /* Paleta Primária (Ex: Azul) */
+  --primary-50: #e3f2fd;
+  --primary-100: #bbdefb;
+  --primary-200: #90caf9;
+  --primary-300: #64b5f6;
+  --primary-400: #42a5f5;
+  --primary-500: #2196f3; /* Cor primária base */
+  --primary-600: #1e88e5;
+  --primary-700: #1976d2;
+  --primary-800: #1565c0;
+  --primary-900: #0d47a1;
+  --primary-950: #082d61; /* Novo: Tom mais escuro para uso em temas escuros ou contrastes */
+
+  /* Paleta de Sucesso (Ex: Verde) */
+  --success-50: #e8f5e9;
+  --success-100: #c8e6c9;
+  --success-200: #a5d6a7;
+  --success-300: #81c784;
+  --success-400: #66bb6a;
+  --success-500: #4CAF50; /* Cor de sucesso base */
+  --success-600: #43a047;
+  --success-700: #388E3C;
+  --success-800: #2E7D32;
+  --success-900: #1B5E20;
+  --success-950: #0f3311; /* Novo: Tom mais escuro */
+
+  /* Paleta de Erro (Ex: Vermelho) */
+  --error-50: #ffebee;
+  --error-100: #ffcdd2;
+  --error-200: #ef9a9a;
+  --error-300: #e57373;
+  --error-400: #ef5350;
+  --error-500: #F44336; /* Cor de erro base */
+  --error-600: #e53935;
+  --error-700: #d32f2f;
+  --error-800: #c62828;
+  --error-900: #b71c1c;
+  --error-950: #7f0c0c; /* Novo: Tom mais escuro */
+
+   /* Paleta de Alerta (Ex: Amarelo/Laranja) */
+  --alert-50: #fff3e0;
+  --alert-100: #ffe0b2;
+  --alert-200: #ffcc80;
+  --alert-300: #ffb74d;
+  --alert-400: #ffa726;
+  --alert-500: #FF9800; /* Cor de alerta base */
+  --alert-600: #fb8c00;
+  --alert-700: #f57c00;
+  --alert-800: #ef6c00;
+  --alert-900: #e65100;
+  --alert-950: #a33900; /* Novo: Tom mais escuro */
+
+  /* Paleta de Informação (Ex: Ciano/Azul Claro) */
+  --info-50: #e0f7fa;
+  --info-100: #b2ebf2;
+  --info-200: #80deea;
+  --info-300: #4dd0e1;
+  --info-400: #26c6da;
+  --info-500: #00BCD4; /* Cor de informação base */
+  --info-600: #00acc1;
+  --info-700: #0097a7;
+  --info-800: #00838f;
+  --info-900: #006064;
+  --info-950: #003a3d; /* Novo: Tom mais escuro */
+
+  /* Paleta Neutra (Substitui 'gray') */
+  --neutral-0: #FFFFFF; /* Branco */
+  --neutral-50: #F8F9FA; /* Cinza muito claro (frequentemente usado para backgrounds sutis) */
+  --neutral-100: #F1F3F5; /* Cinza mais claro */
+  --neutral-200: #E9ECEF; /* Cinza claro */
+  --neutral-300: #DEE2E6; /* Cinza */
+  --neutral-400: #CED4DA; /* Cinza médio-claro */
+  --neutral-500: #ADB5BD; /* Cinza médio (frequentemente usado para bordas e divisores) */
+  --neutral-600: #6C757D; /* Cinza médio-escuro (frequentemente usado para texto secundário) */
+  --neutral-700: #495057; /* Cinza escuro (frequentemente usado para texto principal) */
+  --neutral-800: #343A40; /* Cinza mais escuro */
+  --neutral-900: #212529; /* Cinza muito escuro (frequentemente usado para backgrounds escuros ou texto forte) */
+  --neutral-1000: #000000; /* Preto */
+
+
+  /*
+   * Variáveis de Cor Semânticas (Usadas na UI, mapeiam para as paletas)
+   * Ajustadas por tema e acessibilidade abaixo
+   */
+
+  /* Cores Principais */
+  --color-primary: var(--primary-500); /* Cor primária principal */
+  --color-primary-hover: var(--primary-600); /* Cor primária no hover */
+  --color-primary-active: var(--primary-700); /* Cor primária no estado ativo */
+  --color-on-primary: var(--neutral-0); /* Cor do texto/ícone sobre a cor primária */
+
+  /* Cores de Feedback/Status */
+  --color-success: var(--success-500); /* Cor para sucesso */
+  --color-on-success: var(--neutral-0); /* Cor do texto/ícone sobre sucesso */
+  --color-error: var(--error-500); /* Cor para erro */
+  --color-on-error: var(--neutral-0); /* Cor do texto/ícone sobre erro */
+  --color-alert: var(--alert-500); /* Cor para alerta/aviso */
+  --color-on-alert: var(--neutral-1000); /* Cor do texto/ícone sobre alerta */
+  --color-info: var(--info-500); /* Cor para informação */
+  --color-on-info: var(--neutral-1000); /* Cor do texto/ícone sobre informação */
+
+
+  /* Cores de Superfície e Background */
+  --surface-0: var(--neutral-0); /* Superfície mais clara (base para background) */
+  --surface-50: var(--neutral-50); /* Superfície levemente colorida/cinza */
+  --surface-100: var(--neutral-100); /* Superfície mais escura que surface-50 */
+  --surface-inverted: var(--neutral-900); /* Superfície para elementos em destaque em temas claros ou backgrounds em temas escuros */
+
+
+  /* Cores de Conteúdo (Texto e Ícones) */
+  --content-strongest: var(--neutral-1000); /* Texto/ícone mais escuro para alto contraste (ex: títulos) */
+  --content-strong: var(--neutral-900); /* Texto/ícone principal (ex: corpo de texto) */
+  --content-medium: var(--neutral-700); /* Texto/ícone secundário (ex: labels, texto auxiliar) */
+  --content-weak: var(--neutral-600); /* Texto/ícone mutado/fraco (ex: placeholders, metadados) */
+  --content-disabled: var(--neutral-500); /* Texto/ícone para estados desabilitados */
+  --content-on-color-primary: var(--color-on-primary); /* Texto/ícone sobre a cor primária */
+  --content-on-color-success: var(--color-on-success); /* Texto/ícone sobre a cor de sucesso */
+   --content-on-color-error: var(--color-on-error); /* Texto/ícone sobre a cor de erro */
+
+
+  /* Cores de Borda e Divisores */
+  --border-light: var(--neutral-200); /* Borda clara */
+  --border-medium: var(--neutral-400); /* Borda média (para divisores, contornos) */
+  --border-strong: var(--neutral-600); /* Borda forte */
+
+
+  /* Cores de UI Interativa (Base para estados) */
+  --ui-bg-hover: rgba(var(--primary-500-rgb), 0.08); /* Background sutil no hover, usando primary-500 com transparência */
+  --ui-bg-active: rgba(var(--primary-500-rgb), 0.15); /* Background sutil no ativo */
+  --ui-bg-selected: rgba(var(--primary-500-rgb), 0.1); /* Background sutil para itens selecionados */
+  --ui-border-interactive: var(--color-primary); /* Borda para elementos interativos em foco/ativo */
+  --ui-text-interactive: var(--color-primary); /* Cor de texto para elementos interativos */
+  --focus-visible-outline: 2px solid var(--color-primary); /* Outline para :focus-visible */
+  --focus-visible-outline-offset: 2px; /* Offset para :focus-visible */
+
+
+  /* Variáveis Semânticas Específicas de Componentes/Layout (Exemplos, podem ser refinadas) */
+  --navbar-bg: var(--surface-0); /* Fundo da navbar */
+  --navbar-text: var(--content-strong); /* Cor do texto/ícones da navbar */
+  --navbar-text-hover: var(--color-primary); /* Cor do texto/ícones da navbar no hover (exemplo) */
+  --sidebar-bg: var(--surface-0); /* Fundo da sidebar */
+  --sidebar-text: var(--content-strong); /* Cor do texto/ícones da sidebar */
+  --sidebar-text-hover: var(--color-primary); /* Cor do texto/ícones da sidebar no hover (exemplo) */
+  --sidebar-hover-bg: var(--ui-bg-hover); /* Fundo no hover dos itens da sidebar */
+  --sidebar-active-bg: var(--ui-bg-active); /* Fundo no estado ativo dos itens da sidebar */
+  --sidebar-active-text: var(--color-primary); /* Cor do texto no estado ativo da sidebar */
+  --sidebar-muted: var(--content-weak); /* Cor para categorias ou texto mutado na sidebar */
+  --footer-bg: var(--surface-0); /* Fundo do footer */
+  --footer-text: var(--content-medium); /* Cor do texto/ícones do footer */
+  --footer-text-hover: var(--color-primary); /* Cor do texto/ícones do footer no hover (exemplo) */
+  --footer-hover-bg: var(--ui-bg-hover); /* Fundo no hover dos itens do footer */
+
+
+/* ========================================\
+   🌓 TEMAS - AJUSTES DE VARIÁVEIS POR TEMA
+   ======================================== */
+
+  /* Valores RGB para cálculos de transparência (usados acima para ui-bg-hover, etc.) */
+  --primary-500-rgb: 33, 150, 243;
+  --neutral-0-rgb: 255, 255, 255;
+  --neutral-1000-rgb: 0, 0, 0;
+
+
+  /* Tema Escuro */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      /* Cores de Superfície e Background */
+      --surface-0: var(--neutral-900); /* Background principal escuro */
+      --surface-50: var(--neutral-800); /* Superfície levemente mais clara que o background */
+      --surface-100: var(--neutral-700); /* Superfície mais clara */
+      --surface-inverted: var(--neutral-0); /* Superfície em destaque em temas escuros */
+
+      /* Cores de Conteúdo (Texto e Ícones) */
+      --content-strongest: var(--neutral-0); /* Texto/ícone mais claro para alto contraste */
+      --content-strong: var(--neutral-50); /* Texto/ícone principal */
+      --content-medium: var(--neutral-300); /* Texto/ícone secundário */
+      --content-weak: var(--neutral-400); /* Texto/ícone mutado/fraco */
+      --content-disabled: var(--neutral-500); /* Texto/ícone para estados desabilitados */
+      /* content-on-color-primary, etc. mantêm os valores definidos na seção de cores principais */
+
+      /* Cores de Borda e Divisores */
+      --border-light: var(--neutral-700); /* Borda clara no tema escuro */
+      --border-medium: var(--neutral-600); /* Borda média */
+      --border-strong: var(--neutral-500); /* Borda forte */
+
+      /* Cores de UI Interativa (Ajustes para tema escuro) */
+       --ui-bg-hover: rgba(var(--primary-200-rgb), 0.08); /* Usar um primary mais claro para hover sutil no escuro */
+       --ui-bg-active: rgba(var(--primary-200-rgb), 0.15); /* Usar um primary mais claro para ativo no escuro */
+       --ui-bg-selected: rgba(var(--primary-200-rgb), 0.1); /* Usar um primary mais claro para selecionado no escuro */
+       --ui-border-interactive: var(--primary-300); /* Usar um primary mais claro para bordas interativas */
+       --ui-text-interactive: var(--primary-300); /* Usar um primary mais claro para texto interativo */
+       --focus-visible-outline: 2px solid var(--primary-300); /* Outline ajustado para tema escuro */
+
+      /* Variáveis Semânticas Específicas de Componentes/Layout (Ajustes para tema escuro) */
+      --navbar-bg: var(--surface-50); /* Fundo da navbar no tema escuro */
+      --navbar-text: var(--content-strong); /* Cor do texto/ícones da navbar no tema escuro */
+      --navbar-text-hover: var(--color-primary); /* Manter color-primary ou ajustar se necessário */
+      --sidebar-bg: var(--surface-50); /* Fundo da sidebar no tema escuro */
+      --sidebar-text: var(--content-strong); /* Cor do texto/ícones da sidebar no tema escuro */
+      --sidebar-text-hover: var(--color-primary); /* Manter color-primary ou ajustar se necessário */
+      --sidebar-hover-bg: var(--ui-bg-hover); /* Usar a variável ui-bg-hover ajustada para o tema */
+      --sidebar-active-bg: var(--ui-bg-active); /* Usar a variável ui-bg-active ajustada para o tema */
+      --sidebar-active-text: var(--color-primary); /* Manter color-primary ou ajustar se necessário */
+      --sidebar-muted: var(--content-medium); /* Cor para categorias ou texto mutado no tema escuro */
+      --footer-bg: var(--surface-50); /* Fundo do footer no tema escuro */
+      --footer-text: var(--content-medium); /* Cor do texto/ícones do footer no tema escuro */
+      --footer-text-hover: var(--color-primary); /* Manter color-primary ou ajustar se necessário */
+      --footer-hover-bg: var(--ui-bg-hover); /* Usar a variável ui-bg-hover ajustada para o tema */
+    }
+  }
+
+  /* Exemplo: Tema Alto Contraste (Dark) */
+  @media (prefers-color-scheme: dark) and (prefers-contrast: more) {
+    :root {
+       --color-primary: var(--primary-200);
+       --color-primary-hover: var(--primary-100);
+       --color-primary-active: var(--primary-50);
+
+       --content-strongest: #ffffff;
+       --content-strong: #ffffff;
+       --content-medium: #cccccc;
+       --content-weak: #aaaaaa;
+
+       --border-medium: #ffffff;
+
+       --surface-0: #000000;
+       --surface-50: #111111;
+       --surface-100: #222222;
+
+       --ui-bg-hover: rgba(var(--primary-200-rgb), 0.15);
+       --ui-bg-active: rgba(var(--primary-200-rgb), 0.25);
+
+       --focus-visible-outline: 2px solid #ffffff;
+    }
+  }
+
+   /* Exemplo: Tema Alto Contraste (Light) */
+  @media (prefers-color-scheme: light) and (prefers-contrast: more) {
+    :root {
+       --color-primary: var(--primary-700);
+       --color-primary-hover: var(--primary-800);
+       --color-primary-active: var(--primary-900);
+
+       --content-strongest: #000000;
+       --content-strong: #000000;
+       --content-medium: #333333;
+       --content-weak: #555555;
+
+       --border-medium: #000000;
+
+       --surface-0: #ffffff;
+       --surface-50: #f8f8f8;
+       --surface-100: #f0f0f0;
+
+        --ui-bg-hover: rgba(var(--primary-700-rgb), 0.08);
+       --ui-bg-active: rgba(var(--primary-700-rgb), 0.15);
+
+       --focus-visible-outline: 2px solid #000000;
+    }
+  }
+
+
+/* ========================================\
+   📏 SISTEMA DE ESPAÇAMENTO
+   ======================================== */
+
+  /*
+   * Escala de Espaçamento (Base para as variáveis semânticas e utilitários)
+   * Pode ser uma escala fixa (rem) ou fluid (clamp)
+   */
+  --space-3xs: 0.125rem; /* 2px */
+  --space-2xs: 0.25rem;  /* 4px */
+  --space-xs: 0.5rem;   /* 8px */
+  --space-sm: 0.75rem;  /* 12px */
+  --space-md: 1rem;     /* 16px */
+  --space-lg: 1.5rem;   /* 24px */
+  --space-xl: 2rem;     /* 32px */
+  --space-2xl: 3rem;    /* 48px */
+  --space-3xl: 4rem;    /* 64px */
+  --space-4xl: 6rem;    /* 96px */
+  --space-5xl: 8rem;    /* 128px - 160px (depende da base) */
+
+  /* Variáveis de Espaçamento Semânticas (Usadas no layout e componentes) */
+  --space-inset-xs: var(--space-xs); /* Padding interno pequeno */
+  --space-inset-sm: var(--space-sm); /* Padding interno médio */
+  --space-inset-md: var(--space-md); /* Padding interno grande */
+
+  --space-stack-xs: var(--space-xs); /* Margem vertical pequena entre elementos */
+  --space-stack-sm: var(--space-sm); /* Margem vertical média */
+  --space-stack-md: var(--space-md); /* Margem vertical grande */
+
+  --space-inline-xs: var(--space-xs); /* Margem horizontal pequena entre elementos */
+  --space-inline-sm: var(--space-sm); /* Margem horizontal média */
+  --space-inline-md: var(--space-md); /* Margem horizontal grande */
+
+  --space-gap-xs: var(--space-xs); /* Espaçamento pequeno em layouts flex/grid */
+  --space-gap-sm: var(--space-sm); /* Espaçamento médio */
+  --space-gap-md: var(--space-md); /* Espaçamento grande */
+
+
+/* ========================================\
+   ✒️ SISTEMA TIPOGRÁFICO
+   ======================================== */
+
+  /* Famílias de Fonte */
+  --font-family-base: 'Inter', sans-serif;
+  --font-family-mono: 'Courier New', monospace; /* Exemplo */
+
+  /* Tamanhos de Fonte (Escala) - Pode ser fixa ou fluid */
+  --font-size-xs: 0.75rem;  /* 12px */
+  --font-size-sm: 0.875rem; /* 14px */
+  --font-size-base: 1rem;     /* 16px */
+  --font-size-md: 1.125rem; /* 18px */
+  --font-size-lg: 1.25rem;  /* 20px */
+  --font-size-xl: 1.5rem;   /* 24px */
+  --font-size-2xl: 2rem;    /* 32px */
+  --font-size-3xl: 2.5rem;  /* 40px */
+  --font-size-4xl: 3rem;    /* 48px */
+  --font-size-5xl: 4rem;    /* 64px */
+
+  /* Pesos de Fonte */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Altura da Linha */
+  --line-height-base: 1.5;
+  --line-height-heading: 1.2;
+  --line-height-compact: 1.3;
+
+  /* Espaçamento de Letras */
+  --letter-spacing-base: 0;
+  --letter-spacing-wide: 0.05em;
+  --letter-spacing-tight: -0.02em;
+
+
+/* ========================================\
+   🖥️ BREAKPOINTS E LAYOUT
+   ======================================== */
+
+  /* Breakpoints Responsivos (Mobile-first, min-width) */
+  --breakpoint-xs: 0;     /* Dispositivos muito pequenos (não usado em min-width) */
+  --breakpoint-sm: 576px; /* Telefones paisagem */
+  --breakpoint-md: 768px; /* Tablets e desktops pequenos */
+  --breakpoint-lg: 992px; /* Desktops */
+  --breakpoint-xl: 1200px; /* Desktops grandes */
+  --breakpoint-xxl: 1400px; /* Desktops extra grandes */
+
+  /* Variáveis de Layout Específicas (Exemplos) */
+  --layout-navbar-height: 60px; /* Altura padrão da navbar */
+  --layout-navbar-height-mobile: 56px; /* Altura da navbar em mobile (exemplo) */
+  --layout-sidebar-width-collapsed: 70px; /* Largura da sidebar colapsada */
+  --layout-sidebar-width-expanded: 250px; /* Largura da sidebar expandida */
+  --container-max-width: 1200px; /* Largura máxima do container principal */
+
+
+/* ========================================\
+   ✨ SOMBRAS E ELEVAÇÃO
+   ======================================== */
+
+  /* Box Shadows (Utilizadas para elevação) */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23);
+  --shadow-xl: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+  --shadow-inset: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-dropdown: var(--shadow-md); /* Sombra para dropdowns/menus */
+
+
+/* ========================================\
+   ⚪ RAIOS DE BORDA
+   ======================================== */
+
+  /* Border Radii */
+  --radius-none: 0;
+  --radius-sm: 0.125rem; /* 2px */
+  --radius-md: 0.25rem;  /* 4px */
+  --radius-lg: 0.5rem;   /* 8px */
+  --radius-xl: 1rem;     /* 16px */
+  --radius-full: 9999px; /* Para círculos */
+
+
+/* ========================================\
+    layering system - z-index
+   ======================================== */
+
+  /* Z-index Scale (Define a ordem de empilhamento) */
+  --z-index-base: 1;
+  --z-index-dropdown: 1000;
+  --z-index-sticky: 1020;
+  --z-index-fixed: 1030;
+  --z-index-navbar: 1040; /* Acima de fixed e sticky */
+  --z-index-sidebar: 1050; /* Acima da navbar */
+  --z-index-modal-backdrop: 1060; /* Fundo do modal */
+  --z-index-modal: 1070; /* Modal */
+  --z-index-popover: 1080; /* Popovers */
+  --z-index-tooltip: 1090; /* Tooltips */
+  --z-index-notification: 1100; /* Notificações/Toasts */
+  --z-index-overlay: 1110; /* Overlays genéricos */
+  --z-index-max: 9999; /* Para elementos que devem estar sempre no topo */
+
+
+/* ========================================\
+   ♿ ACESSIBILIDADE E PREFERÊNCIAS
+   ======================================== */
+
+   /* Variáveis para alto contraste, motion, etc. (usadas em media queries) */
+   /* Exemplo: ajustado na seção de temas */
+
+   /* Cores específicas para acessibilidade, se necessário (ex: outline color) */
+   --a11y-focus-color: var(--color-primary); /* Cor padrão para foco */
+   --a11y-outline-width: 2px; /* Largura padrão do outline */
+
+
+/* ========================================\
+   🧱 COMPONENTES ESPECÍFICOS (Variáveis)
+   ======================================== */
+
+   /* Variáveis que controlam aspectos específicos de componentes (podem ser movidas para components.css se o escopo for apenas local do componente) */
+   /* Exemplos (alguns já definidos acima na seção de cores semânticas específicas de componentes): */
+   --card-border-radius: var(--radius-md);
+   --button-padding-y: var(--space-sm);
+   --button-padding-x: var(--space-md);
+   --button-font-size: var(--font-size-base);
+   --input-border-radius: var(--radius-sm);
+   --input-border-color: var(--border-medium);
+
+
+} /* Fim do :root */
+
+
+/* ========================================\
+   🌓 TEMAS - IMPLEMENTAÇÃO
+   ======================================== */
+
+/* Implementação do tema escuro usando data-theme */
+:root[data-theme="dark"] {
+    /* Repetir os ajustes de variáveis da media query prefers-color-scheme: dark aqui */
+    /* Isso permite que o tema seja alternado via JavaScript, sobrepondo a preferência do sistema */
+      /* Cores de Superfície e Background */
+      --surface-0: var(--neutral-900);
+      --surface-50: var(--neutral-800);
+      --surface-100: var(--neutral-700);
+      --surface-inverted: var(--neutral-0);
+
+      /* Cores de Conteúdo (Texto e Ícones) */
+      --content-strongest: var(--neutral-0);
+      --content-strong: var(--neutral-50);
+      --content-medium: var(--neutral-300);
+      --content-weak: var(--neutral-400);
+      --content-disabled: var(--neutral-500);
+
+      /* Cores de Borda e Divisores */
+      --border-light: var(--neutral-700);
+      --border-medium: var(--neutral-600);
+      --border-strong: var(--neutral-500);
+
+      /* Cores de UI Interativa (Ajustes para tema escuro) */
+       --ui-bg-hover: rgba(var(--primary-200-rgb), 0.08);
+       --ui-bg-active: rgba(var(--primary-200-rgb), 0.15);
+       --ui-bg-selected: rgba(var(--primary-200-rgb), 0.1);
+       --ui-border-interactive: var(--primary-300);
+       --ui-text-interactive: var(--primary-300);
+       --focus-visible-outline: 2px solid var(--primary-300);
+
+
+      /* Variáveis Semânticas Específicas de Componentes/Layout (Ajustes para tema escuro) */
+      --navbar-bg: var(--surface-50);
+      --navbar-text: var(--content-strong);
+      --navbar-text-hover: var(--color-primary);
+      --sidebar-bg: var(--surface-50);
+      --sidebar-text: var(--content-strong);
+      --sidebar-text-hover: var(--color-primary);
+      --sidebar-hover-bg: var(--ui-bg-hover);
+      --sidebar-active-bg: var(--ui-bg-active);
+      --sidebar-active-text: var(--color-primary);
+      --sidebar-muted: var(--content-medium);
+      --footer-bg: var(--surface-50);
+      --footer-text: var(--content-medium);
+      --footer-text-hover: var(--color-primary);
+      --footer-hover-bg: var(--ui-bg-hover);
+
+      /* Exemplo: Ajustes específicos para Alto Contraste (Dark) se data-theme="dark" for usado com prefers-contrast: more */
+      @media (prefers-contrast: more) {
+         --color-primary: var(--primary-200);
+         --color-primary-hover: var(--primary-100);
+         --color-primary-active: var(--primary-50);
+
+         --content-strongest: #ffffff;
+         --content-strong: #ffffff;
+         --content-medium: #cccccc;
+         --content-weak: #aaaaaa;
+
+         --border-medium: #ffffff;
+
+         --surface-0: #000000;
+         --surface-50: #111111;
+         --surface-100: #222222;
+
+         --ui-bg-hover: rgba(var(--primary-200-rgb), 0.15);
+         --ui-bg-active: rgba(var(--primary-200-rgb), 0.25);
+
+         --focus-visible-outline: 2px solid #ffffff;
+      }
+}
+
+/* Implementação do tema claro usando data-theme (opicional, se o padrão for dark) */
+/* Se o padrão no :root for o tema claro, esta seção não é estritamente necessária,
+   a menos que você queira sobrescrever preferências do sistema para um tema claro explícito. */
+/*
+:root[data-theme="light"] {
+    /* Repetir os valores padrão do :root inicial ou fazer ajustes específicos */
+/* }
+*/
+
+
+/* ========================================\
+   ♿ ACESSIBILIDADE E PREFERÊNCIAS - IMPLEMENTAÇÃO
+   ======================================== */
+
+/* Ajustes para movimento reduzido */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --animation-duration-faster: 0s;
+    --animation-duration-fast: 0s;
+    --animation-duration-normal: 0s;
+    --animation-duration-slow: 0s;
+    --animation-duration-slower: 0s;
+    --theme-transition-duration: 0s; /* Remover transição de tema */
+  }
+
+  /* Garantir que quaisquer transições ou animações explícitas também sejam desativadas */
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Ajustes para alto contraste (já incluídos na seção de temas) */
+/* @media (prefers-contrast: more) { ... } */
+
+/* Suporte para modo focado (ex: estilo para :focus-visible usando a variável definida) */
+/* Esta regra deve estar em reset.css ou a11y.css, usando a variável --focus-visible-outline */
+/* Exemplo:
+:focus-visible {
+  outline: var(--focus-visible-outline);
+  outline-offset: var(--focus-visible-outline-offset);
+}
+*/
+
+
+/* ========================================\
+   ✨ SOMBRAS E ELEVAÇÃO - IMPLEMENTAÇÃO
+   ======================================== */
+
+/* As variáveis de sombra são usadas diretamente nos componentes e layouts.
+   Não há implementação global aqui além da definição das variáveis. */
+
+
+/* ========================================\
+   🔄 ANIMAÇÕES - IMPLEMENTAÇÃO
+   ======================================== */
+
+/* Keyframes globais, se houver, podem ser definidos aqui ou em um arquivo de animações */
+
+/* Transições padrão para elementos comuns - Idealmente em reset.css ou base.css */
+/* Exemplo:
+*, *::before, *::after {
+  transition-property: var(--theme-transition-property);
+  transition-duration: var(--theme-transition-duration);
+  transition-timing-function: var(--theme-transition-timing);
+}
+*/
+
+
+/* Classes utilitárias ou reset para desativar transições */
+.no-transitions {
+  transition: none !important;
+}
+
+
+/* ========================================\
+   🌐 INTERNACIONALIZAÇÃO - IMPLEMENTAÇÃO
+   ======================================== */
+
+/* Ajustes para RTL */
+/* Exemplo:
+[dir="rtl"] {
+    --space-inline-xs: var(--space-xs); /* Pode ser necessário redefinir se a escala mudar com a direção */
+    /* Ajustes específicos de margens/padding/posicionamento que dependem da direção */
+/* }
+*/
+
+
+/* Classes para direção */
+.dir-ltr {
+  direction: ltr !important;
+}
+
+.dir-rtl {
+  direction: rtl !important;
+}
+
+/* ========================================\
+   🖼️ FUNDO/IMAGEM E LAYOUT PRINCIPAL
+   ======================================== */
+
+   /* Exemplo de como variáveis de background podem ser usadas no body, se não estiver em base.css */
+   /* body { background-color: var(--surface-0); } */
+
+   /* Variáveis de layout e breakpoints são usadas em layout.css e componentes responsivos */
+
+
+/* ========================================\
+   📦 UTILITÁRIOS DE COR - EXEMPLO
+   ======================================== */
+
+/* Utilitários de cor que deveriam estar em utilities.css, usando as variáveis semânticas */
+/* Exemplo (movido para utilities.css):
+.bg-primary { background-color: var(--color-primary) !important; }
+.text-primary { color: var(--color-primary) !important; }
+.border-primary { border-color: var(--color-primary) !important; }
+*/
+
+/* Remover utilitários de cor específicos de paleta se o uso semântico for preferível */
+/* .bg-neutral-100 { background-color: var(--neutral-100); } */

@@ -1,0 +1,275 @@
+
+/* navbar.css - Estilos personalizados para a navbar - Refatorado para usar variables.css */
+
+/* Estilos gerais da navbar */
+.navbar {
+  padding: var(--space-sm) var(--space-md); /* Usar variáveis de espaçamento de variables.css */
+  box-shadow: var(--shadow-sm); /* Usar variável de sombra de variables.css */
+  background-color: var(--navbar-bg); /* Usar variável de navbar de variables.css */
+  border-bottom: 1px solid var(--border-medium); /* Usar variável de borda de variables.css */
+  min-height: var(--layout-navbar-height); /* Usar variável de layout de variables.css */
+  z-index: var(--z-index-navbar); /* Usar variável de z-index de variables.css */
+  /* Adicionar estilos de layout como position: fixed, top, left, right, display, align-items que estavam em layout.css */
+  position: fixed;
+  top: 0;
+  left: var(--layout-sidebar-width-collapsed); /* Usar variável de layout de variables.css */
+  right: 0;
+  display: flex;
+  align-items: center;
+  transition: left var(--theme-transition-duration); /* Usar variável de transição de tema de variables.css */
+}
+
+/* Estilo para o logo/brand */
+.navbar-brand {
+  font-weight: var(--font-weight-semibold); /* Usar variável de peso de fonte de variables.css/typography.css */
+  color: var(--navbar-text); /* Usar variável de navbar de variables.css */
+  transition: color var(--animation-duration-fast) var(--ease-standard); /* Usar variáveis de transição de variables.css */
+  /* Adicionar font-size, display, align-items, gap, text-decoration de layout.css */
+  font-size: var(--font-size-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs); /* Usar variável de espaçamento de variables.css (ajustado de space-2 para space-xs com base em layout.css) */
+  text-decoration: none;
+}
+
+.navbar-brand:hover {
+  color: var(--navbar-text-hover); /* Considerar variável para cor do texto no hover, se diferente, ou apenas opacity */
+  opacity: 0.85; /* Manter ou criar variável de opacidade */
+}
+
+
+.brand-icon { /* Considerar mover para components.css */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-3xl); /* Usar variável para 32px (aprox) */
+  height: var(--space-3xl); /* Usar variável para 32px (aprox) */
+  /* Remover background-color e color que eram para o ícone antigo ou imagem */
+  /* background-color: var(--color-primary); */
+  /* color: var(--color-on-primary); */
+  border-radius: var(--radius-md); /* Usar variável de raio de variables.css */
+  padding: var(--space-xs); /* Usar variável de espaçamento de variables.css */
+}
+
+
+.brand-icon i { /* Remover esta regra se o ícone f
+.brand-icon i { /* Estilo para o ícone do logo */
+  font-size: var(--font-size-xl); /* Ajustar tamanho da fonte para o ícone 32x32 */
+}
+mg {
+  display: block; /* Para garantir que a imagem se ajuste corretamente */
+  max-height: calc(var(--layout-navbar-height) - (2 * var(--space-sm))); /* Ajustar altura máxima baseada na navbar height e padding */
+  width: auto; /* Manter a proporção da imagem */
+  object-fit: contain; /* Garantir que a imagem caiba sem distorcer */
+}
+
+
+/* Botões */
+.sidebar-toggle { /* Considerar mover para components.css ou layout.css */
+  border-radius: var(--radius-md); /* Usar variável de raio de variables.css */
+  width: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
+  height: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--animation-duration-fast) var(--ease-standard); /* Usar variáveis de transição de variables.css */
+  /* Adicionar background e color de layout.css se não forem utilitários */
+  background: none;
+  border: none;
+  color: var(--navbar-text);
+}
+
+.sidebar-toggle:hover {
+  background-color: var(--ui-bg-hover); /* Usar variável de background de hover de variables.css */
+}
+
+.dark-mode-toggle { /* Considerar mover para components.css ou navbar.css */
+  border-radius: var(--radius-md); /* Usar variável de raio de variables.css */
+  width: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
+  height: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--animation-duration-fast) var(--ease-standard), color var(--animation-duration-fast) var(--ease-standard); /* Usar variáveis de transição de variables.css */
+  /* Adicionar background, border, color, cursor de layout.css */
+  background: none;
+  border: none;
+  color: var(--navbar-text);
+  cursor: pointer;
+}
+
+.dark-mode-toggle:hover {
+  background-color: var(--ui-bg-hover); /* Usar variável de background de hover de variables.css */
+}
+
+/* Estilo para toggle do tema claro/escuro */
+.dark-mode-toggle i { /* Considerar mover para components.css ou navbar.css */
+  font-size: var(--font-size-lg); /* Usar variável de tamanho de fonte/ícone de variables.css/typography.css */
+  /* Adicionar transition de layout.css */
+  transition: transform var(--animation-duration-normal) var(--ease-standard);
+}
+
+/* Avatar do usuário */
+.avatar-button { /* Considerar mover para components.css */
+  display: flex;
+  align-items: center;
+  padding: var(--space-xs) var(--space-sm); /* Usar variáveis de espaçamento de variables.css */
+  border-radius: var(--radius-md); /* Usar variável de raio de variables.css */
+  transition: all var(--animation-duration-fast) var(--ease-standard); /* Usar variáveis de transição de variables.css */
+}
+
+.avatar-button:hover {
+  background-color: var(--ui-bg-hover); /* Usar variável de background de hover de variables.css */
+}
+
+.avatar-image { /* Considerar mover para components.css */
+  width: var(--space-2xl); /* Usar variável de tamanho/espaçamento de variables.css */
+  height: var(--space-2xl); /* Usar variável de tamanho/espaçamento de variables.css */
+  border-radius: var(--radius-full); /* Usar variável de raio de variables.css */
+  object-fit: cover;
+}
+
+.avatar-button i { /* Considerar mover para components.css */
+  font-size: var(--font-size-xl); /* Usar variável de tamanho de fonte/ícone de variables.css/typography.css */
+}
+
+.username { /* Considerar mover para components.css ou typography.css */
+  margin-left: var(--space-xs); /* Usar variável de espaçamento de variables.css */
+  font-weight: var(--font-weight-medium); /* Usar variável de peso de fonte de variables.css/typography.css */
+}
+
+/* Dropdown menu melhorado */
+.dropdown-menu { /* Considerar mover para components.css */
+  border-radius: var(--radius-lg); /* Usar variável de raio de variables.css */
+  border: 1px solid var(--border-medium); /* Usar variável de borda de variables.css */
+  padding: var(--space-sm) 0; /* Usar variável de espaçamento de variables.css */
+  /* Adicionar background-color, color, box-shadow, z-index de variables.css/layout.css/components.css */
+  background-color: var(--surface-100); /* Usar variável de surface de variables.css */
+  color: var(--content-strong); /* Usar variável de conteúdo de variables.css */
+  box-shadow: var(--shadow-dropdown); /* Usar variável de sombra de variables.css */
+  z-index: var(--z-index-dropdown); /* Usar variável de z-index de variables.css */
+}
+
+.dropdown-header { /* Considerar mover para components.css o typography.css */
+  font-weight: var(--font-weight-semibold); /* Usar variável de peso de fonte de variables.css/typography.css */
+  color: var(--color-primary); /* Usar variável de cor primária de variables.css */
+}
+
+.dropdown-item { /* Considerar mover para components.css */
+  padding: var(--space-sm) var(--space-md); /* Usar variáveis de espaçamento de variables.css */
+  display: flex;
+  align-items: center;
+  transition: background-color var(--animation-duration-fast) var(--ease-standard); /* Usar variáveis de transição de variables.css */
+  /* Adicionar color */
+  color: var(--content-medium); /* Usar variável de conteúdo de variables.css */
+}
+
+.dropdown-item:hover {
+  background-color: var(--ui-bg-hover); /* Usar variável de background de hover de variables.css */
+}
+
+.dropdown-item i { /* Considerar mover para components.css */
+  width: var(--space-md); /* Usar variável de tamanho/espaçamento de variables.css */
+  text-align: center;
+}
+
+/* Botão de refresh e última sincronização */
+.refresh-button { /* Considerar mover para components.css */\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  padding: var(--space-xs); /* Ajustado para botão apenas com ícone */\n  border-radius: var(--radius-md); /* Usar variável de raio de variables.css */\n  transition: all var(--animation-duration-normal) var(--ease-standard); /* Usar variáveis de transição de variables.css */\n  /* Adicionar background, border, color */\n  background: transparent;\n  border: 1px solid var(--border-medium);\n  color: var(--content-medium);\n}}
+
+.refresh-button:hover {
+     background-color: var(--ui-bg-hover);
+}
+
+.refresh-button i { /* Considerar mover para components.css */
+  font-size: var(--font-size-md); /* Usar variável de tamanho de fonte/ícone de variables.css/typography.css */
+}
+
+/* Animação de rotação para o ícone de refresh */
+@keyframes spin { /* Manter keyframes aqui */
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.refresh-button.refreshing i { /* Manter aqui se for animação específica */
+  animation: spin var(--animation-duration-normal) var(--ease-linear) infinite; /* Usar variáveis de animação de variables.css */
+}
+
+.refresh-text { /* Considerar mover para typography.css */
+  font-weight: var(--font-weight-medium); /* Usar variável de peso de fonte de variables.css/typography.css */
+}
+
+.last-sync { /* Considerar mover para components.css ou utilities.css */
+  font-size: var(--font-size-sm); /* Usar variável de tamanho de fonte de variables.css/typography.css */
+  padding: 0 var(--space-sm); /* Usar variável de espaçamento de variables.css */
+  color: var(--content-weak); /* Usar variável de cor de texto fraca/secundária de variables.css */
+  border-right: 1px solid var(--border-medium); /* Usar variável de borda de variables.css */
+  margin-right: var(--space-xs); /* Usar variável de espaçamento de variables.css */
+}
+
+.last-sync-label { /* Considerar mover para typography.css */
+  font-size: var(--font-size-xs); /* Usar variável de tamanho de fonte de variables.css/typography.css */
+}
+
+.last-sync-time { /* Considerar mover para typography.css */
+  font-weight: var(--font-weight-semibold); /* Usar variável de peso de fonte de variables.css/typography.css */
+}
+
+/* Notificação de sincronização */
+.sync-notification { /* Considerar mover para components.css ou notifications.css */
+  position: fixed;
+  bottom: var(--space-md); /* Usar variável de espaçamento de variables.css */
+  right: var(--space-md); /* Usar variável de espaçamento de variables.css */
+  background-color: var(--color-success); /* Usar variável de cor de sucesso de variables.css */
+  color: var(--color-on-success); /* Considerar variável para cor do texto em background de sucesso */
+  padding: var(--space-sm) var(--space-md); /* Usar variáveis de espaçamento de variables.css */
+  border-radius: var(--radius-md); /* Usar variável de raio de variables.css */
+  display: flex;
+  align-items: center;
+  font-size: var(--font-size-sm); /* Usar variável de tamanho de fonte de variables.css/typography.css */
+  box-shadow: var(--shadow-md); /* Usar variável de sombra de variables.css */
+  transform: translateY(var(--space-3xl)); /* Usar variável de espaçamento de variables.css */
+  opacity: 0;
+  transition: transform var(--animation-duration-normal) var(--ease-standard), opacity var(--animation-duration-normal) var(--ease-standard); /* Usar variáveis de transição de variables.css */
+  z-index: var(--z-index-notification); /* Usar variável de z-index de variables.css */
+}
+
+.sync-notification.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.sync-notification i { /* Considerar mover para components.css ou notifications.css */
+  margin-right: var(--space-xs); /* Usar variável de espaçamento de variables.css */
+  font-size: var(--font-size-md); /* Usar variável de tamanho de fonte/ícone de variables.css/typography.css */
+}
+
+/* Ajustes responsivos */
+@media (max-width: var(--breakpoint-md)) { /* Usar variável de breakpoint de variables.css */
+  .navbar {
+    padding: var(--space-xs) var(--space-sm); /* Usar variáveis de espaçamento de variables.css */
+    /* Remover left e transition de left se a sidebar for sempre escondida em mobile */
+    left: 0;
+    transition: none;
+  }
+
+  .navbar.expanded { /* Regra para quando a sidebar *não* está colapsada em mobile */
+       left: 0;
+  }
+
+  .refresh-button { /* Considerar mover para components.css */
+    width: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
+    height: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
+    padding: 0;
+  }
+
+  .refresh-text { /* Considerar mover para utilities.css */
+    display: none;
+  }
+}
+
+/* Classe de utilidade para ícones de botão - MOVER PARA UTILITIES.CSS */
+/* .btn-icon { ... } */
+
+/* Estilos para modo escuro (ativados quando a classe .dark-mode é adicionada ao body) - REMOVIDOS. A lógica de tema é tratada em variables.css */
+/* body.dark-mode .navbar { ... } */
+/* body.dark-mode .dark-mode-icon { ... } */

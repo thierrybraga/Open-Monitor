@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Registrar Conta{% endblock %}
+
+{% block content %}
+<div class="auth-container mx-auto max-w-md p-6 bg-white rounded-xl shadow-lg">
+  <h2 class="text-2xl font-semibold mb-4 text-center">Registrar Conta</h2>
+
+  {# Flash globais #}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="mb-4">
+        {% for category, msg in messages %}
+          <div class="alert alert-{{ category }} mb-2">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <form method="post" action="{{ url_for('auth.register', next=request.args.get('next')) }}">
+    {{ form.hidden_tag() }}
+    {% if request.args.get('next') %}
+      <input type="hidden" name="next" value="{{ request.args.get('next') }}">
+    {% endif %}
+
+    <div class="mb-4">
+      {{ form.username.label(class="block text-sm font-medium mb-1") }}
+      {{ form.username(class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300",
+                       aria-describedby="username-error") }}
+      {% if form.username.errors %}
+        <p id="username-error" class="text-danger text-sm mt-1">{{ form.username.errors[0] }}</p>
+      {% endif %}
+    </div>
+
+    <div class="mb-4">
+      {{ form.email.label(class="block text-sm font-medium mb-1") }}
+      {{ form.email(class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300",
+                    aria-describedby="email-error") }}
+      {% if form.email.errors %}
+        <p id="email-error" class="text-danger text-sm mt-1">{{ form.email.errors[0] }}</p>
+      {% endif %}
+    </div>
+
+    <div class="mb-4">
+      {{ form.password.label(class="block text-sm font-medium mb-1") }}
+      {{ form.password(class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300",
+                        aria-describedby="password-error") }}
+      {% if form.password.errors %}
+        <p id="password-error" class="text-danger text-sm mt-1">{{ form.password.errors[0] }}</p>
+      {% endif %}
+    </div>
+
+    <div class="mb-6">
+      {{ form.confirm_password.label(class="block text-sm font-medium mb-1") }}
+      {{ form.confirm_password(class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300",
+                                aria-describedby="confirm-error") }}
+      {% if form.confirm_password.errors %}
+        <p id="confirm-error" class="text-danger text-sm mt-1">{{ form.confirm_password.errors[0] }}</p>
+      {% endif %}
+    </div>
+
+    <button type="submit"
+            class="w-full py-2 px-4 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 transition">
+      Registrar
+    </button>
+  </form>
+
+  <p class="mt-4 text-center text-sm text-gray-600">
+    Já possui conta?
+    <a href="{{ url_for('auth.login', next=request.args.get('next')) }}"
+       class="text-blue-600 hover:underline">Entrar</a>
+  </p>
+</div>
+{% endblock %}

@@ -1,0 +1,251 @@
+/* footer.css - Estilos personalizados para o footer - Refatorado para usar variables.css */
+
+/* Estilos gerais do footer */
+.footer {
+  background-color: var(--footer-bg); /* Usar variável de footer de variables.css */
+  border-top: 1px solid var(--border-medium); /* Usar variável de borda de variables.css */
+  padding: var(--space-sm) 0; /* Usar variável de espaçamento de variables.css */
+  margin-top: auto;
+  font-size: var(--font-size-sm); /* Usar variável de tamanho de fonte de variables.css/typography.css */
+  line-height: var(--line-height-base); /* Usar variável de altura de linha de variables.css/typography.css */
+}
+
+/* Estilos para darkmode - REMOVIDOS. A lógica de tema é tratada em variables.css */
+/* body.dark-mode .footer { ... } */
+
+/* Marca e logo */
+.footer-logo-icon {
+  font-size: var(--font-size-2xl); /* Usar variável de tamanho de fonte/ícone de variables.css/typography.css */
+  color: var(--color-primary); /* Usar variável de cor primária de variables.css */
+  margin-right: var(--space-sm); /* Usar variável de espaçamento de variables.css */
+}
+
+.footer-brand-name {
+  font-weight: var(--font-weight-semibold); /* Usar variável de peso de fonte de variables.css/typography.css */
+  font-size: var(--font-size-lg); /* Usar variável de tamanho de fonte de variables.css/typography.css */
+  color: var(--color-primary); /* Usar variável de cor primária de variables.css */
+}
+
+.copyright-text {
+  color: var(--content-weak); /* Usar variável de cor de texto fraca/secundária de variables.css */
+  font-size: var(--font-size-xs); /* Usar variável de tamanho de fonte de variables.css/typography.css */
+}
+
+/* Títulos de seção */
+.footer-section-title {
+  font-size: var(--font-size-sm); /* Usar variável de tamanho de fonte de variables.css/typography.css */
+  font-weight: var(--font-weight-semibold); /* Usar variável de peso de fonte de variables.css/typography.css */
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide); /* Usar variável de espaçamento de letras de variables.css/typography.css */
+  margin-bottom: var(--space-md); /* Usar variável de espaçamento de variables.css */
+  color: var(--content-weak); /* Usar variável de cor de texto fraca/secundária de variables.css */
+}
+
+/* Links do footer */
+.footer-links { /* Considerar mover para utilities.css ou base.css se for reset de lista */
+  margin: 0;
+  padding: 0;
+}
+
+.footer-link,
+.social-link {
+  color: var(--content-medium); /* Usar variável de cor de texto normal de variables.css */
+  text-decoration: none;
+  font-weight: var(--font-weight-medium); /* Usar variável de peso de fonte de variables.css/typography.css */
+  transition: all var(--animation-duration-fast) var(--ease-standard); /* Usar variáveis de transição de variables.css */
+  display: inline-flex;
+  align-items: center;
+}
+
+.footer-link:hover,
+.social-link:hover {
+  color: var(--color-primary); /* Usar variável de cor primária de variables.css */
+  transform: translateY(-2px); /* Manter ou criar variável de efeito */
+}
+
+.policy-link {
+  font-size: var(--font-size-xs); /* Usar variável de tamanho de fonte de variables.css/typography.css (ou criar uma específica se necessário) */
+  padding: var(--space-xs) 0; /* Usar variáveis de espaçamento de variables.css */
+}
+
+.policy-link i {
+  font-size: var(--font-size-sm); /* Usar variável de tamanho de fonte/ícone de variables.css/typography.css */
+}
+
+/* Links de redes sociais */
+.social-link {
+  width: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
+  height: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
+  border-radius: var(--radius-full); /* Usar variável de raio de variables.css */
+  background-color: var(--surface-0); /* Usar variável de surface de variables.css */
+  border: 1px solid var(--border-medium); /* Usar variável de borda de variables.css */
+  transition: all var(--animation-duration-normal) var(--ease-standard); /* Usar variáveis de transição de variables.css */
+  justify-content: center;
+}
+
+.social-link i {
+  font-size: var(--font-size-md); /* Usar variável de tamanho de fonte/ícone de variables.css/typography.css */
+}
+
+.social-link:hover {
+  transform: translateY(-3px); /* Manter ou criar variável de efeito */
+  box-shadow: var(--shadow-md); /* Usar variável de sombra de variables.css */
+}
+
+/* Personalização para redes sociais específicas - Manter cores hardcoded ou usar variáveis de marca */
+.facebook-link:hover {
+  background-color: #1877f2;
+  color: white; /* Considerar variável de cor de texto em background escuro */
+  border-color: #1877f2;
+}
+
+.twitter-link:hover,
+.x-link:hover {
+  background-color: #1da1f2;
+  color: white; /* Considerar variável de cor de texto em background escuro */
+  border-color: #1da1f2;
+}
+
+.instagram-link:hover {
+  background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+  color: white; /* Considerar variável de cor de texto em background escuro */
+  border-color: #bc1888;
+}
+
+.linkedin-link:hover {
+  background-color: #0a66c2;
+  color: white; /* Considerar variável de cor de texto em background escuro */
+  border-color: #0a66c2;
+}
+
+.github-link:hover {
+  background-color: #24292e;
+  color: white; /* Considerar variável de cor de texto em background escuro */
+  border-color: #24292e;
+}
+
+.youtube-link:hover {
+  background-color: #ff0000;
+  color: white; /* Considerar variável de cor de texto em background escuro */
+  border-color: #ff0000;
+}
+
+/* Linha divisória */
+.border-footer { /* Considerar usar uma classe utilitária ou mover para layout */
+  border-color: var(--border-medium); /* Usar variável de borda de variables.css */
+  opacity: 0.5; /* Manter ou criar variável */
+}
+
+/* Informações adicionais */
+.footer-additional-info {
+  color: var(--content-weak); /* Usar variável de cor de texto fraca/secundária de variables.css */
+}
+
+.version-info {
+  color: var(--content-weak); /* Usar variável de cor de texto fraca/secundária de variables.css */
+  background-color: var(--surface-0); /* Usar variável de surface de variables.css */
+  padding: var(--space-xs) var(--space-sm); /* Usar variáveis de espaçamento de variables.css */
+  border-radius: var(--radius-sm); /* Usar variável de raio de variables.css */
+  font-family: var(--font-family-mono); /* Usar variável de fonte mono de variables.css/typography.css */
+  font-size: var(--font-size-xs); /* Usar variável de tamanho de fonte de variables.css/typography.css */
+}
+
+/* Botão de voltar ao topo */
+.back-to-top-btn {
+  position: fixed;
+  bottom: var(--space-md); /* Usar variável de espaçamento de variables.css */
+  right: var(--space-md); /* Usar variável de espaçamento de variables.css */
+  width: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
+  height: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
+  border-radius: var(--radius-full); /* Usar variável de raio de variables.css */
+  background-color: var(--color-primary); /* Usar variável de cor primária de variables.css */
+  color: white; /* Considerar variável de cor de texto em background primário */
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-md); /* Usar variável de sombra de variables.css */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(var(--space-sm)); /* Usar variável de espaçamento de variables.css */
+  transition: all var(--animation-duration-normal) var(--ease-standard); /* Usar variáveis de transição de variables.css */
+  z-index: var(--z-index-fixed); /* Usar variável de z-index de variables.css */
+}
+
+.back-to-top-btn.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.back-to-top-btn:hover {
+  background-color: var(--color-primary-hover); /* Usar variável de cor primária hover de variables.css */
+  transform: translateY(calc(-1 * var(--space-xs))); /* Usar variável de espaçamento de variables.css */
+}
+
+.back-to-top-btn:active {
+  transform: translateY(0);
+}
+
+.back-to-top-btn i {
+  font-size: var(--font-size-xl); /* Usar variável de tamanho de fonte/ícone de variables.css/typography.css */
+}
+
+/* Animação para os links */
+@keyframes pulse { /* Manter keyframes aqui */
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05); /* Manter ou criar variável de escala */
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.link-hover { /* Classe de utilidade para animação */
+  animation: pulse var(--animation-duration-normal) var(--ease-standard); /* Usar variáveis de animação de variables.css */
+}
+
+/* Ajustes responsivos */
+@media (max-width: var(--breakpoint-md)) { /* Usar variável de breakpoint de variables.css */
+  .footer {
+    text-align: center;
+    padding: var(--space-sm) 0; /* Usar variável de espaçamento de variables.css */
+  }
+
+  .footer nav { /* Considerar mover para layout ou utilities */
+    flex-wrap: wrap; /* Permite quebra em telas pequenas */
+    justify-content: center;
+    gap: var(--space-sm); /* Usar variável de espaçamento de variables.css */
+  }
+
+  .footer .social-link {
+    width: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
+    height: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
+  }
+
+  .footer .social-link i {
+    font-size: var(--font-size-sm); /* Usar variável de tamanho de fonte/ícone de variables.css/typography.css */
+  }
+
+  .footer-brand, /* Considerar mover para layout ou utilities */
+  .footer-nav,
+  .footer-social {
+    margin-bottom: var(--space-sm); /* Usar variável de espaçamento de variables.css */
+  }
+
+  .footer-section-title {
+    margin-bottom: var(--space-sm); /* Usar variável de espaçamento de variables.css */
+  }
+
+  .footer-additional-info { /* Considerar mover para layout ou utilities */
+    flex-direction: column;
+  }
+
+  .version-info {
+    margin-top: var(--space-sm); /* Usar variável de espaçamento de variables.css */
+  }
+}

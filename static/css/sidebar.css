@@ -1,0 +1,240 @@
+/**
+ * Estilos para a sidebar - Refatorado para usar variables.css
+ */
+
+/* Estilos básicos da sidebar */
+.sidebar {
+  width: var(--layout-sidebar-width-expanded); /* Usar variável de layout de variables.css */
+  transition: all var(--theme-transition-duration) var(--ease-standard); /* Usar variáveis de transição de variables.css */
+  height: 100vh; /* Manter se for um requisito específico do layout */
+  position: sticky; /* Manter */
+  top: 0; /* Manter ou usar variável de layout/espaçamento */
+  overflow-y: auto;
+  background-color: var(--sidebar-bg); /* Usar variável de sidebar de variables.css */
+  border-right: 1px solid var(--border-medium); /* Usar variável de borda de variables.css */
+  /* z-index pode ser movido para layout.css se for parte da estrutura geral */
+}
+
+/* Estado colapsado da sidebar */
+.sidebar.collapsed {
+  width: var(--layout-sidebar-width-collapsed); /* Usar variável de layout de variables.css */
+}
+
+/* Efeito hover para expandir quando colapsada */
+/* Considerar se este hover-to-expand é a UX desejada ou se deve ser apenas um toggle */
+.sidebar.collapsed:hover {
+  width: var(--layout-sidebar-width-expanded); /* Usar variável de layout de variables.css */
+}
+
+/* Esconde elementos quando a sidebar está colapsada */
+.sidebar.collapsed .sidebar-label,
+.sidebar.collapsed .sidebar-title,
+.sidebar.collapsed .sidebar-category,
+.sidebar.collapsed .user-info {
+  opacity: 0;
+  white-space: nowrap;
+  transition: opacity var(--animation-duration-fast) var(--ease-standard); /* Usar variáveis de animação de variables.css */
+}
+
+/* Mostra elementos quando o mouse passa sobre a sidebar colapsada */
+.sidebar.collapsed:hover .sidebar-label,
+.sidebar.collapsed:hover .sidebar-title,
+.sidebar.collapsed:hover .sidebar-category,
+.sidebar.collapsed:hover .user-avatar, /* Adicionado avatar aqui também para consistência com sidebar-label */
+.sidebar.collapsed:hover .user-info {
+  opacity: 1;
+  /* display: inline-block; - Pode não ser necessário se o display original já é adequado */
+  /* Adicionar transição para suavizar o aparecimento */
+  transition-delay: var(--animation-duration-faster); /* Pequeno delay para hover */
+  transition-duration: var(--animation-duration-normal);
+  transition-timing-function: var(--ease-standard);
+}
+
+/* Esconder elementos quando a sidebar está colapsada - ajustes para elementos que não devem aparecer */
+.sidebar.collapsed .user-avatar {
+    /* opacity: 0; - Já tratado acima, mas pode precisar de ajustes específicos */
+}
+
+
+/* Estilo dos links da sidebar */
+.sidebar-item { /* Adicionar classe para o item da lista, melhora a estrutura semântica */
+    margin: var(--space-sm) 0; /* Usar variável de espaçamento de variables.css */
+}
+
+.sidebar-link {
+  color: var(--sidebar-text); /* Usar variável de sidebar de variables.css */
+  text-decoration: none;
+  transition: all var(--animation-duration-fast) var(--ease-standard); /* Usar variáveis de animação de variables.css */
+  /* Padding e gap devem vir do HTML/classes utilitárias se possível,
+     ou definir aqui usando variáveis de espaçamento de variables.css */
+  /* Ex: padding: var(--space-sm) var(--space-md); gap: var(--space-md); */
+  height: var(--space-4xl); /* Usar variável de tamanho/espaçamento se links tiverem altura fixa */
+  display: flex; /* Garantir flex para alinhar ícone e texto */
+  align-items: center; /* Alinhar verticalmente */
+  gap: var(--space-md); /* Espaçamento entre ícone e texto */
+  padding: var(--space-sm) var(--space-md); /* Espaçamento interno */
+  border-radius: var(--radius-md); /* Raio das bordas do link */
+}
+
+/* Efeito hover nos links */
+.sidebar-link:hover {
+  background-color: var(--sidebar-hover-bg); /* Usar variável de sidebar de variables.css */
+  color: var(--sidebar-text-hover); /* Considerar variável para cor do texto no hover, se diferente */
+}
+
+/* Estado ativo dos links */
+.sidebar-link.active {
+  background-color: var(--sidebar-active-bg); /* Usar variável de sidebar de variables.css */
+  color: var(--sidebar-active-text); /* Usar variável de sidebar de variables.css */
+  font-weight: var(--font-weight-semibold); /* Usar variável de peso de fonte de variables.css/typography.css */
+  /* Adicionar indicador visual de ativo, como border-left, se não estiver no HTML */
+  /* Ex: border-left: 3px solid var(--color-primary); padding-left: calc(var(--space-md) - 3px); */
+}
+
+/* Estilos para ícones dos links */
+.sidebar-link .bi { /* Ou outra classe de ícone */
+    font-size: var(--font-size-xl); /* Usar variável de tamanho de fonte de variables.css/typography.css */
+    flex-shrink: 0; /* Previne que o ícone diminua */
+    color: var(--sidebar-icon-color); /* Considerar variável para cor dos ícones, se diferente do texto */
+}
+
+.sidebar-link.active .bi {
+    color: var(--sidebar-icon-color-active); /* Considerar variável para cor dos ícones ativos */
+}
+
+
+/* Avatar do usuário */
+.user-avatar {
+  width: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
+  height: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
+  border-radius: var(--radius-full); /* Usar variável de raio de variables.css */
+  /* background-color e color para avatar padrão/placeholder */
+  background-color: var(--ui-bg-subtle); /* Exemplo: cor de fundo sutil */
+  color: var(--content-weak); /* Exemplo: cor de texto fraca */
+  display: flex; /* Para centralizar ícone/imagem */
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0; /* Previne que o avatar diminua */
+}
+
+.user-avatar .bi {
+    font-size: var(--font-size-lg); /* Tamanho do ícone dentro do avatar */
+}
+
+
+/* Estilo da categoria */
+.sidebar-category {
+    font-size: var(--font-size-sm); /* Usar variável de tamanho de fonte de variables.css/typography.css */
+    text-transform: uppercase;
+    padding: 0 var(--space-md); /* Usar variável de espaçamento de variables.css */
+    margin-top: var(--space-md); /* Usar variável de espaçamento de variables.css */
+    margin-bottom: var(--space-sm); /* Usar variável de espaçamento de variables.css */
+    color: var(--sidebar-muted); /* Usar variável para texto mutado/categoria de sidebar de variables.css */
+    font-weight: var(--font-weight-medium); /* Peso da fonte da categoria */
+}
+
+/* Estilo das informações do usuário (nome/email) */
+.user-info {
+    /* Pode ter estilos para o container geral e para os textos internos (small, text-muted, fw-medium)
+       utilizando variáveis de tipografia e cor de variables.css */
+}
+
+
+/* Estilo do rodapé da sidebar (onde fica o user-avatar) */
+.sidebar-footer {
+    margin-top: auto; /* Para fixar no rodapé */
+    padding: var(--space-md); /* Usar variável de espaçamento de variables.css */
+    border-top: 1px solid var(--border-medium); /* Usar variável de borda de variables.css */
+    /* Outros estilos de layout como display flex, align-items devem estar no HTML */
+}
+
+
+/* Responsividade para dispositivos móveis */
+/* Usar variável de breakpoint de variables.css */
+@media (max-width: var(--breakpoint-md)) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    z-index: var(--z-index-sidebar); /* Usar variável de z-index de variables.css */
+    transform: translateX(-100%); /* Estado inicial escondido em mobile */
+    /* transition: transform var(--theme-transition-duration) var(--ease-standard); - Já definido na regra .sidebar principal */
+    box-shadow: var(--shadow-lg); /* Adicionar sombra quando expandido em mobile */
+    width: var(--layout-sidebar-width-expanded); /* Largura expandida em mobile, usar variável de layout */
+  }
+
+  .sidebar.collapsed { /* Classe para esconder em mobile */
+     transform: translateX(-100%);
+  }
+
+  /* Remover hover-to-expand em mobile se a navegação for baseada em toggle */
+  .sidebar.collapsed:hover {
+    width: var(--layout-sidebar-width-collapsed); /* Manter largura colapsada em hover em mobile */
+  }
+
+   /* Resetar transição e visibilidade dos elementos em mobile,
+      pois o estado colapsado é escondido, não apenas estreito.
+      Isso pode exigir lógica JS para alternar classes */
+  .sidebar:not(.collapsed) .sidebar-label,
+  .sidebar:not(.collapsed) .sidebar-title,
+  .sidebar:not(.collapsed) .sidebar-category,
+  .sidebar:not(.collapsed) .user-info,
+  .sidebar:not(.collapsed) .user-avatar {
+       opacity: 1;
+       transition: none; /* Remover transição de opacidade em mobile */
+       display: block; /* Ou o display original */
+  }
+
+  .sidebar.collapsed .sidebar-label,
+  .sidebar.collapsed .sidebar-title,
+  .sidebar.collapsed .sidebar-category,
+  .sidebar.collapsed .user-info,
+   .sidebar.collapsed .user-avatar {
+      opacity: 0;
+      display: none; /* Esconder completamente em mobile quando colapsado */
+   }
+
+   /* Remover tooltip para estado colapsado em mobile, pois a sidebar é escondida */
+   .sidebar:not(.expanded) .sidebar-nav a::after {
+       display: none;
+   }
+}
+
+/* Ajustes para modo escuro - REMOVIDOS. A lógica de tema é tratada em variables.css */
+/* @media (prefers-color-scheme: dark) { ... } */
+
+/* Estilos para links específicos mencionados em sidebar.html que não estavam aqui */
+.sidebar-link.d-flex { /* Já está no HTML, garantir que o CSS respeite isso */ }
+.sidebar-link.align-items-center { /* Já está no HTML */ }
+.sidebar-link.gap-3 { /* Já está no HTML, usa --space-md em variables.css */ }
+.sidebar-link.rounded { /* Já está no HTML, usa --radius-md em variables.css */ }
+.sidebar-link.px-3 { /* Já está no HTML, usa --space-md em variables.css */ }
+.sidebar-link.py-2 { /* Já está no HTML, usa --space-sm em variables.css */ }
+
+/* Exemplo de uso de classes utilitárias do HTML que devem mapear para variáveis */
+/* .flex-shrink-0 { flex-shrink: 0; } - Deve vir de utilities.css */
+/* .py-3 { padding-top: var(--space-md); padding-bottom: var(--space-md); } - Deve vir de utilities.css */
+/* .mb-3 { margin-bottom: var(--space-md); } - Deve vir de utilities.css */
+/* .px-3 { padding-left: var(--space-md); padding-right: var(--space-md); } - Deve vir de utilities.css */
+/* .d-flex { display: flex; } - Deve vir de utilities.css */
+/* .align-items-center { align-items: center; } - Deve vir de utilities.css */
+/* .ms-auto { margin-left: auto; } - Deve vir de utilities.css */
+/* .d-md-none { display: none; } @media (min-width: breakpoint-md) { .d-md-none { display: none; } } - Deve vir de utilities.css */
+/* .small { font-size: var(--font-size-sm); } - Deve vir de typography.css ou utilities.css */
+/* .text-uppercase { text-transform: uppercase; } - Deve vir de utilities.css */
+/* .mt-3 { margin-top: var(--space-md); } - Deve vir de utilities.css */
+/* .mb-2 { margin-bottom: var(--space-sm); } - Deve vir de utilities.css */
+/* .text-muted { color: var(--text-muted); } - Deve vir de utilities.css */
+/* .list-unstyled { list-style: none; padding-left: 0; } - Deve vir de utilities.css */
+/* .mb-0 { margin-bottom: 0; } - Deve vir de utilities.css */
+/* .px-1 { padding-left: var(--space-xs); padding-right: var(--space-xs); } - Deve vir de utilities.css */
+/* .mt-auto { margin-top: auto; } - Deve vir de utilities.css */
+/* .py-3 { padding-top: var(--space-md); padding-bottom: var(--space-md); } - Deve vir de utilities.css */
+/* .border-top { border-top: 1px solid var(--border-color); } - Deve vir de utilities.css (usar border-medium de variables.css) */
+/* .mt-4 { margin-top: var(--space-md); } - Deve vir de utilities.css (conflito com space-md, verificar escala) */
+/* .text-decoration-none { text-decoration: none; } - Deve vir de utilities.css */
+/* .gap-2 { gap: var(--space-sm); } - Deve vir de utilities.css */
+/* .rounded-circle { border-radius: 50%; } - Deve vir de utilities.css */
+/* .bg-light { background-color: var(--bg-muted); } - Deve vir de utilities.css */
+/* .justify-content-center { justify-content: center; } - Deve vir de utilities.css */
+/* .fw-medium { font-weight: var(--font-weight-medium); } - Deve vir de typography.css */
+/* .ms-auto { margin-left: auto; } - Deve vir de utilities.css */

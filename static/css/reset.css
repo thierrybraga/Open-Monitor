@@ -1,0 +1,165 @@
+/* ==========================================================================\
+   RESET.CSS - Reset CSS Mínimo e Base para UI/UX Harmoniosa
+   v3.0 - Refatorado para alinhar com variables.css e modularidade
+   ========================================================================== */
+
+/*
+ * Este arquivo fornece uma base consistente em todos os navegadores
+ * neutralizando estilos padrão problemáticos.
+ * Ele define estilos base MÍNIMOS e deve depender de 'variables.css' para tokens de design.
+ * Estilos mais abrangentes para elementos base e componentes devem estar em 'base.css',
+ * 'typography.css', 'components.css', etc.
+ */
+
+/* --------------------------------------
+   Reset Universal Básico
+   -------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box; /* Garante que padding e border estão incluídos na dimensão */
+  margin: 0; /* Remove margem padrão */
+  padding: 0; /* Remove padding padrão */
+}
+
+/* --------------------------------------
+   HTML e Body Base Mínimo
+   -------------------------------------- */
+html {
+  line-height: var(--base-line-height, 1.5); /* Usa variável de variables.css com fallback */
+  -webkit-text-size-adjust: 100%; /* Previne ajuste de tamanho de texto em mobile */
+  -webkit-tap-highlight-color: transparent; /* Remove highlight em toque */
+  height: 100%; /* Garante que html ocupe a altura total */
+  font-size: var(--base-font-size, 16px); /* Base para rem, usa variável de variables.css */
+  /* scroll-behavior: smooth; - Movido para base.css se desejado, ou pode ser controlado por preferência de movimento reduzido */
+}
+
+body {
+  margin: 0; /* Garante ausência de margem padrão */
+  min-height: 100%; /* Garante que body ocupe no mínimo a altura total */
+  /* Fontes, cores de texto e fundo base devem vir de variables.css e ser aplicados em base.css ou no body global */
+  /* Exemplo: font-family: var(--font-family-base); color: var(--content-strong); background-color: var(--surface-0); */
+}
+
+/* --------------------------------------
+   Acessibilidade Mínima e Preferências
+   -------------------------------------- */
+
+/* Foco visível - Garante um indicador claro para navegação por teclado */
+/* Utiliza variáveis de variables.css */
+:focus {
+    /* Remover outline padrão para gerenciar com :focus-visible */
+    outline: none;
+}
+
+:focus-visible {
+  /* Usa a variável completa de outline e offset de variables.css */
+  outline: var(--focus-visible-outline);
+  outline-offset: var(--focus-visible-outline-offset);
+}
+
+
+/* Texto para leitores de tela (SR-ONLY) */
+.sr-only,
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important; /* Colapsa margem */
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important; /* Corta o conteúdo visível */
+  white-space: nowrap !important; /* Evita quebra de linha */
+  border: 0 !important;
+}
+
+/* Preferência: Movimento Reduzido - Ajusta comportamento de rolagem (variáveis de animação em variables.css) */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto; /* Desativa rolagem suave */
+  }
+  /* Regras para desativar transições/animações globais usando variáveis de variables.css
+     Essas regras podem estar aqui ou ser aplicadas nos elementos que usam variáveis de transição */
+   *, *::before, *::after {
+     animation-duration: 0.01ms !important;
+     animation-iteration-count: 1 !important;
+     transition-duration: 0.01ms !important;
+     scroll-behavior: auto !important;
+   }
+}
+
+
+/* --------------------------------------
+   Elementos Base - Estilos MÍNIMOS (Mais estilos devem ir para base.css ou typography.css)
+   -------------------------------------- */
+
+/* Imagens e Mídia Responsiva */
+img, svg, video, canvas, audio, iframe, embed, object {
+  display: block; /* Geralmente block é mais previsível */
+  max-width: 100%; /* Evita que mídia transborde seus contêineres */
+  height: auto; /* Mantém a proporção */
+}
+
+/* Formulários base - Mais estilos em base.css ou components.css */
+button,
+input,
+optgroup,
+select,
+textarea {
+  font-family: inherit; /* Herda a fonte do body */
+  font-size: 100%; /* Reseta tamanho em alguns elementos */
+  line-height: inherit; /* Herda a altura da linha */
+  margin: 0; /* Remove margem padrão */
+}
+
+button, select {
+  text-transform: none; /* Reseta transformação de texto */
+}
+
+button,
+[type="button"],
+[type="reset"],
+[type="submit"] {
+  -webkit-appearance: button; /* Estilo de botão consistente em WebKit */
+}
+
+/* Remover estilo de focus em Firefox para consistência com outline */
+button::-moz-focus-inner,
+[type="button"]::-moz-focus-inner,
+[type="reset"]::-moz-focus-inner,
+[type="submit"]::-moz-focus-inner {
+  border-style: none;
+  padding: 0;
+}
+
+/* Ajustar aparência de campos de formulário */
+textarea {
+  resize: vertical; /* Permite redimensionar apenas verticalmente */
+}
+
+/* Outros elementos base que DEVEM IR PARA BASE.CSS ou TYPOGRAPHY.CSS */
+/*
+a { color: inherit; text-decoration: none; }
+table { border-collapse: collapse; }
+ul, ol { list-style: none; } /* Remover marcadores padrão */
+/* blockquote { /* Estilos específicos */ }
+/* etc. */
+
+
+/* --------------------------------------
+   REMOVIDO: Variáveis Locais e Estilos Duplicados
+   -------------------------------------- */
+/*
+ * O bloco :root local foi removido. Todas as variáveis devem estar em variables.css.
+ * Variáveis movidas/consolidadas:
+ * --touch-target-size -> var(--layout-touch-target-size) (Definir em variables.css)
+ * --space-paragraph -> var(--space-md) ou variável semântica em variables.css
+ * Defaults de focus outline -> var(--focus-visible-outline), var(--focus-visible-outline-offset)
+ */
+/*
+ * Estilos base para muitos elementos (h1-h6, p, listas, tabelas, formulários completos, etc.)
+ * foram removidos pois pertencem a typography.css, base.css ou components.css.
+ */
+/*
+ * Lógica de tema e alto contraste para variáveis foi removida pois pertence a variables.css.
+ */

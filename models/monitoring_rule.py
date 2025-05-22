@@ -1,0 +1,2 @@
+class MonitoringRule:
+    pass

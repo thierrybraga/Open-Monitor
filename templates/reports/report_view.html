@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}Visualizar Relatório{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Visualizar Relatório</h1>
+
+    {% if report %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title">{{ report.title }}</h5>
+                <small class="text-muted">Gerado em: {{ report.generated_at.strftime('%d/%m/%Y %H:%M') }}</small>
+            </div>
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Descrição</h6>
+                <p class="card-text">{{ report.description }}</p>
+
+                <h6 class="card-subtitle mt-4 mb-2 text-muted">Conteúdo</h6>
+                <div class="border p-3 rounded bg-light">
+                    {{ report.content | safe }}
+                </div>
+
+                <div class="mt-4 d-flex gap-2">
+                    <a href="{{ url_for('reports.download_report', report_id=report.id) }}" class="btn btn-success">
+                        Baixar PDF
+                    </a>
+                    <a href="{{ url_for('reports.index') }}" class="btn btn-secondary">
+                        Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-warning" role="alert">
+            Relatório não encontrado.
+        </div>
+        <a href="{{ url_for('reports.index') }}" class="btn btn-secondary">Voltar</a>
+    {% endif %}
+</div>
+{% endblock %}

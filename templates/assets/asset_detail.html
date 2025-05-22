@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalhes do Ativo{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Detalhes do Ativo</h1>
+
+    {% if asset %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title">{{ asset.name }}</h5>
+                <small class="text-muted">Cadastrado em: {{ asset.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+            </div>
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Informações Gerais</h6>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><strong>Tipo:</strong> {{ asset.type }}</li>
+                    <li class="list-group-item"><strong>Endereço IP:</strong> {{ asset.ip_address }}</li>
+                    <li class="list-group-item"><strong>Localização:</strong> {{ asset.location }}</li>
+                    <li class="list-group-item"><strong>Responsável:</strong> {{ asset.owner }}</li>
+                    <li class="list-group-item"><strong>Status:</strong> {{ asset.status }}</li>
+                </ul>
+
+                {% if asset.description %}
+                <h6 class="card-subtitle mt-4 mb-2 text-muted">Descrição</h6>
+                <p class="card-text">{{ asset.description }}</p>
+                {% endif %}
+
+                <div class="mt-4 d-flex gap-2">
+                    <a href="{{ url_for('assets.edit_asset', asset_id=asset.id) }}" class="btn btn-primary">
+                        Editar
+                    </a>
+                    <a href="{{ url_for('assets.index') }}" class="btn btn-secondary">
+                        Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-warning" role="alert">
+            Ativo não encontrado.
+        </div>
+        <a href="{{ url_for('assets.index') }}" class="btn btn-secondary">Voltar</a>
+    {% endif %}
+</div>
+{% endblock %}

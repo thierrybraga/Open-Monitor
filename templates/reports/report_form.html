@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block title %}Gerar Relatório de Vulnerabilidades{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Gerar Relatório de Vulnerabilidades</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" novalidate>
+        {{ form.csrf_token }}
+
+        <div class="mb-3">
+            <label for="start_date" class="form-label">Data Inicial</label>
+            {{ form.start_date(class="form-control", id="start_date") }}
+            {% for error in form.start_date.errors %}
+                <div class="text-danger">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            <label for="end_date" class="form-label">Data Final</label>
+            {{ form.end_date(class="form-control", id="end_date") }}
+            {% for error in form.end_date.errors %}
+                <div class="text-danger">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            <label for="severity" class="form-label">Severidade</label>
+            {{ form.severity(class="form-select", id="severity") }}
+            {% for error in form.severity.errors %}
+                <div class="text-danger">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <a href="{{ url_for('report.list_reports') }}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Gerar Relatório</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

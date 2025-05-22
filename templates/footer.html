@@ -1,0 +1,25 @@
+{# templates/footer.html #}
+<footer class="footer flex-shrink-0"> {# flex-shrink-0 para não encolher #}
+  <div class="container-fluid">
+    <div class="row align-items-center">
+      <div class="col-12 col-md-6 order-md-1 text-center text-md-start">
+        <span class="small">© {{ current_year }} <strong>{{ app_name }}</strong></span>
+      </div>
+      <div class="col-12 col-md-6 order-md-2 text-center text-md-end">
+        <nav class="d-flex align-items-center justify-content-center justify-content-md-end gap-3" aria-label="Footer links">
+          {% for name, url in social_links.items() %}
+            <a href="{{ url }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="footer-link"
+               aria-label="{{ name | capitalize }}"
+               title="{{ name | capitalize }}">
+              <i class="bi bi-{{ name }}"></i>
+            </a>
+          {% endfor %}
+        </nav>
+      </div>
+    </div>
+  </div>
+</footer>
+

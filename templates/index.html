@@ -1,0 +1,251 @@
+{% extends 'base.html' %}
+{% import 'macros.html' as macros %}
+
+{#
+   Template para a página inicial, exibindo um dashboard de vulnerabilidades.
+   Requer no contexto:
+   - critical_count: Número de vulnerabilidades críticas.
+   - high_count: Número de vulnerabilidades altas.
+   - medium_count: Número de vulnerabilidades médias.
+   - total_count: Número total de vulnerabilidades.
+   - page: Página atual (para paginação).
+   - total_pages: Número total de páginas.
+   - current_args: Argumentos da URL (excluindo 'page') para url_for.
+   - vulnerabilities: Lista de objetos de vulnerabilidade.
+   - social_links: Links de redes sociais (esperado por base.html).
+#}
+
+{% block content %}
+<div class="container my-4">
+  <h1 class="mb-4 text-center">Dashboard de Vulnerabilidades</h1>
+
+  {# Seção de Resumo #}
+  <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 mb-4">
+    {# Card de Vulnerabilidades Críticas #}
+    <div class="col">
+      <div class="card text-white bg-danger h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Críticas</h5>
+            <i class="bi bi-fire fs-3" aria-hidden="true"></i>
+          </div>
+          <p class="card-text h2">{{ critical_count | default(0) }}</p>
+          <p class="card-text"><small>Vulnerabilidades com severidade CRÍTICA.</small></p>
+        </div>
+        <div class="card-footer">
+          <div class="dropdown">
+            <button class="btn btn-light btn-sm dropdown-toggle" type="button" id="dropdownReportsCritical" data-bs-toggle="dropdown" aria-expanded="false">
+              Relatórios
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="dropdownReportsCritical">
+              <li><a class="dropdown-item" href="{{ url_for('main.reports', period='weekly') }}">Semanal</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('main.reports', period='monthly') }}">Mensal</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('main.reports', period='quarterly') }}">Trimestral</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Card de Vulnerabilidades Altas #}
+    <div class="col">
+      <div class="card text-white bg-warning h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Altas</h5>
+            <i class="bi bi-exclamation-triangle fs-3" aria-hidden="true"></i>
+          </div>
+          <p class="card-text h2">{{ high_count | default(0) }}</p>
+          <p class="card-text"><small>Vulnerabilidades com severidade ALTA.</small></p>
+        </div>
+        <div class="card-footer">
+          <div class="dropdown">
+            <button class="btn btn-light btn-sm dropdown-toggle" type="button" id="dropdownReportsHigh" data-bs-toggle="dropdown" aria-expanded="false">
+              Relatórios
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="dropdownReportsHigh">
+              <li><a class="dropdown-item" href="{{ url_for('main.reports', period='weekly') }}">Semanal</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('main.reports', period='monthly') }}">Mensal</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('main.reports', period='quarterly') }}">Trimestral</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Card de Vulnerabilidades Médias #}
+    <div class="col">
+      <div class="card text-white bg-info h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Médias</h5>
+            <i class="bi bi-info-circle fs-3" aria-hidden="true"></i>
+          </div>
+          <p class="card-text h2">{{ medium_count | default(0) }}</p>
+          <p class="card-text"><small>Vulnerabilidades com severidade MÉDIA.</small></p>
+        </div>
+        <div class="card-footer">
+          <div class="dropdown">
+            <button class="btn btn-light btn-sm dropdown-toggle" type="button" id="dropdownReportsMedium" data-bs-toggle="dropdown" aria-expanded="false">
+              Relatórios
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="dropdownReportsMedium">
+              <li><a class="dropdown-item" href="{{ url_for('main.reports', period='weekly') }}">Semanal</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('main.reports', period='monthly') }}">Mensal</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('main.reports', period='quarterly') }}">Trimestral</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Card de Total de Vulnerabilidades #}
+    <div class="col">
+      <div class="card text-white bg-secondary h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Total</h5>
+            <i class="bi bi-list fs-3" aria-hidden="true"></i>
+          </div>
+          <p class="card-text h2">{{ total_count | default(0) }}</p>
+          <p class="card-text"><small>Total de vulnerabilidades registradas.</small></p>
+        </div>
+        <div class="card-footer">
+          <div class="dropdown">
+            <button class="btn btn-light btn-sm dropdown-toggle" type="button" id="dropdownReportsTotal" data-bs-toggle="dropdown" aria-expanded="false">
+              Relatórios
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="dropdownReportsTotal">
+              <li><a class="dropdown-item" href="{{ url_for('main.reports', period='weekly') }}">Semanal</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('main.reports', period='monthly') }}">Mensal</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('main.reports', period='quarterly') }}">Trimestral</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Seção de Lista de Vulnerabilidades Recentes #}
+  <h2 class="mb-3">Vulnerabilidades Recentes</h2>
+  <div class="table-responsive">
+    <table class="table table-striped table-hover align-middle">
+      <thead>
+        <tr>
+          <th scope="col">CVE ID</th>
+          <th scope="col">Severidade</th>
+          <th scope="col">Descrição</th>
+          <th scope="col">Data Publicação</th>
+          <th scope="col">CVSS Score</th>
+          <th scope="col">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if not vulnerabilities %}
+          <tr>
+            <td colspan="6" class="text-center">Nenhuma vulnerabilidade encontrada.</td>
+          </tr>
+        {% else %}
+          {% for vuln in vulnerabilities %}
+            <tr>
+              <td>
+                <a href="{{ url_for('main.vulnerability_details', cve_id=vuln.cve_id) }}" class="text-decoration-none">
+                  {{ vuln.cve_id }}
+                </a>
+              </td>
+              <td>{{ macros.severity_badge(vuln.base_severity) }}</td>
+              <td>{{ vuln.description | default('Sem descrição.') | truncate(150, True) | safe }}</td>
+              <td>{{ vuln.published_date | default('N/A') | datetimeformat('%Y-%m-%d') }}</td>
+              <td>{{ vuln.cvss_score | default('N/A') }}</td>
+              <td>
+                <div class="btn-group" role="group" aria-label="Ações da vulnerabilidade">
+                  <button type="button" class="btn btn-sm btn-outline-primary view-details-btn"
+                          data-cve-id="{{ vuln.cve_id }}"
+                          data-bs-toggle="modal" data-bs-target="#vulnerabilityModal"
+                          title="Ver detalhes" aria-label="Ver detalhes">
+                    <i class="bi bi-eye" aria-hidden="true"></i>
+                  </button>
+                  {{ macros.action_button('check-circle', 'Mitigar', 'btn-success', 'Marcar como mitigado', id='mitigate-btn-' + vuln.cve_id) }}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  {# Seção de Paginação #}
+  {{ macros.pagination(page | default(1), total_pages | default(1), current_args | default({})) }}
+
+  {# Modal de Detalhes da Vulnerabilidade #}
+  <div class="modal fade" id="vulnerabilityModal" tabindex="-1" aria-labelledby="vulnerabilityModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="vulnerabilityModalLabel">Detalhes da Vulnerabilidade: <span id="modal-cve-id"></span></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p><strong>Severidade:</strong> <span id="modal-severity"></span> <span class="badge bg-secondary" id="modal-cvss-score"></span></p>
+          <p><strong>Descrição:</strong> <span id="modal-description"></span></p>
+          <p><strong>Data Publicação:</strong> <span id="modal-published"></span></p>
+          <p><strong>Última Modificação:</strong> <span id="modal-modified"></span></p>
+          <p><strong>Referências:</strong></p>
+          <ul id="modal-references" class="list-unstyled ps-3"></ul>
+        </div>
+        <div class="modal-footer justify-content-between">
+          <div class="d-flex gap-2">
+            {{ macros.action_button('check-circle', 'Marcar como Mitigado', 'btn-success', 'Marcar esta vulnerabilidade como mitigada', id='modal-mark-mitigated-btn') }}
+            {{ macros.action_button('ticket', 'Criar Ticket', 'btn-info', 'Criar um ticket para esta vulnerabilidade', id='modal-create-ticket-btn') }}
+          </div>
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x me-1" aria-hidden="true"></i>Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Toast para Notificações #}
+  <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="toast-header">
+        <i class="bi bi-bell me-2" aria-hidden="true"></i>
+        <strong class="me-auto" id="toast-title">Notificação</strong>
+        <small id="toast-timestamp">Agora</small>
+        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Fechar"></button>
+      </div>
+      <div class="toast-body" id="toast-body">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }} m-0" role="alert">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/controllers/index_controller.js') }}"></script>
+  <script>
+    // Inicializa tooltips do Bootstrap
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(element => {
+      new bootstrap.Tooltip(element);
+    });
+
+    // Exibe toasts automaticamente se houver mensagens flash
+    document.addEventListener('DOMContentLoaded', () => {
+      const toastElement = document.getElementById('liveToast');
+      if (toastElement.querySelector('.alert')) {
+        const toast = new bootstrap.Toast(toastElement);
+        toast.show();
+      }
+    });
+  </script>
+{% endblock %}

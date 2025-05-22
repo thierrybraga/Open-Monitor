@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{# Define o título da página #}
+{% block title %}Em Breve – Nossa Plataforma{% endblock %}
+
+{# Adiciona o link para o seu CSS adicional, se necessário #}
+{% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% endblock %}
+
+{# O conteúdo principal da página #}
+{% block content %}
+  <div class="coming-soon container py-5 text-center">
+    <h1 class="display-4 mb-3">Algo incrível está chegando!</h1>
+    <p class="lead mb-4">
+      Nossa plataforma será lançada em <strong>01 de junho de 2025</strong>.
+      Cadastre-se para receber novidades em primeira mão!
+    </p>
+
+    <form action="{{ url_for('main.coming_soon') }}" method="post" class="wishlist-form mx-auto" style="max-width: 400px;">
+      {{ form.hidden_tag() }}
+      <div class="mb-3 text-start">
+        {{ form.email.label(class="form-label") }}
+        {{ form.email(class="form-control", placeholder="seu@exemplo.com") }}
+      </div>
+      <button type="submit" class="btn btn-primary w-100">Entrar na Lista de Espera</button>
+    </form>
+  </div>
+{% endblock %}
+
+{# Os blocos de navbar, sidebar e footer já vêm do base.html #}

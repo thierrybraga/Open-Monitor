@@ -1,0 +1,65 @@
+{% macro severity_badge(severity) %}
+  <span class="badge severity-badge severity-badge-{{ severity | default('N/A') | lower }}"
+        aria-label="Severidade: {{ severity | default('N/A') | capitalize }}">
+    {{ severity | default('N/A') | capitalize }}
+  </span>
+{% endmacro %}
+
+{% macro action_button(icon, label, classes, tooltip, disabled=false, id='') %}
+  <button type="button"
+          class="btn btn-sm {{ classes }}"
+          {% if id %}id="{{ id }}"{% endif %}
+          data-bs-toggle="tooltip"
+          title="{{ tooltip }}"
+          aria-label="{{ label }}"
+          {% if disabled %}disabled{% endif %}
+          role="button"
+          tabindex="0">
+    <i class="bi bi-{{ icon }} me-1" aria-hidden="true"></i>{{ label }}
+  </button>
+{% endmacro %}
+
+{% macro pagination(page, total_pages, current_args) %}
+  {% if total_pages > 1 %}
+    <nav aria-label="Paginação de vulnerabilidades">
+      <ul class="pagination pagination-sm justify-content-center mb-0">
+        <li class="page-item {{ 'disabled' if page <= 1 else '' }}">
+          <a class="page-link" href="{{ url_for('main.index', page=page-1, **current_args) }}" aria-label="Anterior">
+            <i class="bi bi-chevron-left" aria-hidden="true"></i>
+          </a>
+        </li>
+        {% set max_pages = 5 %}
+        {% set start = (page - max_pages // 2) | max(1) %}
+        {% set end = (start + max_pages - 1) | min(total_pages) %}
+        {% if start > 1 %}
+          <li class="page-item"><a class="page-link" href="{{ url_for('main.index', page=1, **current_args) }}">1</a></li>
+          {% if start > 2 %}
+            <li class="page-item disabled"><span class="page-link">...</span></li>
+          {% endif %}
+        {% endif %}
+        {% for p in range(start, end + 1) %}
+          <li class="page-item {{ 'active' if p == page else '' }}">
+            {% if p == page %}
+              <span class="page-link">{{ p }}</span>
+            {% else %}
+              <a class="page-link" href="{{ url_for('main.index', page=p, **current_args) }}">{{ p }}</a>
+            {% endif %}
+          </li>
+        {% endfor %}
+        {% if end < total_pages %}
+          {% if end < total_pages - 1 %}
+            <li class="page-item disabled"><span class="page-link">...</span></li>
+          {% endif %}
+          <li class="page-item">
+            <a class="page-link" href="{{ url_for('main.index', page=total_pages, **current_args) }}">{{ total_pages }}</a>
+          </li>
+        {% endif %}
+        <li class="page-item {{ 'disabled' if page >= total_pages else '' }}">
+          <a class="page-link" href="{{ url_for('main.index', page=page+1, **current_args) }}" aria-label="Próximo">
+            <i class="bi bi-chevron-right" aria-hidden="true"></i>
+          </a>
+        </li>
+      </ul>
+    </nav>
+  {% endif %}
+{% endmacro %}

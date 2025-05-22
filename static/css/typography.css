@@ -1,0 +1,267 @@
+/* ==========================================================================\
+   TYPOGRAPHY.CSS - SISTEMA TIPOGRÁFICO - Refatorado para usar variables.css
+   v3.0 - Código refatorado, limpo e otimizado para variables.css
+   ========================================================================== */
+
+/*
+ * REMOVIDO: Bloco :root local. Todas as variáveis globais de design devem ser definidas APENAS em variables.css.
+ * As variáveis referenciadas neste arquivo (ex: --font-size-base, --content-strong) devem estar definidas em variables.css.
+ */
+
+/* --------------------------------------------------------------------------
+   1. ESTILOS BASE DE ELEMENTOS TIPOGRÁFICOS
+   -------------------------------------------------------------------------- */
+
+/* NOTA: Muitos dos resets e estilos base globais estavam aqui.
+   Eles DEVERIAM SER MOVIDOS para 'reset.css' ou um arquivo 'base.css'/'foundation.css'.
+   Mantidos aqui em comentários como referência do que mover. */
+
+/* Exemplo de estilos base que DEVEM SER MOVIDOS para reset.css ou base.css: */
+/*
+html {
+  line-height: var(--line-height-base); /* Usar variável de variables.css */
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  height: 100%;
+  font-size: var(--base-font-size); /* Usar variável de variables.css */
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: var(--font-family-base); /* Usar variável de variables.css */
+  font-size: var(--font-size-base); /* Usar variável de variables.css */
+  line-height: var(--line-height-base); /* Usar variável de variables.css */
+  color: var(--content-strong); /* Usar variável de cor de texto semântica de variables.css */
+  background-color: var(--surface-0); /* Usar variável de cor de fundo semântica de variables.css */
+  text-rendering: optimizeSpeed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  /* Remover ou ajustar transições aqui se houver uma regra global em variables.css/base.css */
+  /* transition-property: all; */
+  /* transition-duration: var(--animation-duration-normal); */
+  /* transition-timing-function: var(--ease-standard); */
+}
+
+a {
+  color: var(--color-link); /* Usar variável de cor de link semântica de variables.css */
+  text-decoration: underline;
+  transition: color var(--animation-duration-fast) var(--ease-standard); /* Usar variáveis de transição */
+}
+
+a:hover {
+  color: var(--color-link-hover); /* Usar variável de cor de link hover de variables.css */
+  text-decoration: underline;
+}
+
+/* Foco visível - Deve ser em reset.css ou a11y.css */
+:focus-visible {
+  outline: var(--focus-visible-outline); /* Usar variável de variables.css */
+  outline-offset: var(--focus-visible-outline-offset); /* Usar variável de variables.css */
+}
+
+/* Outros elementos base que DEVEM SER MOVIDOS (tabelas, listas, etc.) */
+/*
+table { border-collapse: collapse; }
+blockquote { border-left: 4px solid var(--border-medium); color: var(--content-medium); } /* Exemplo */
+/* etc. */
+
+*/
+
+
+/* Estilos para Títulos */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-family-base); /* Usar variável de variables.css */
+  color: var(--content-strongest); /* Usar variável de cor mais forte de variables.css */
+  font-weight: var(--font-weight-bold); /* Usar variável de peso bold de variables.css */
+  line-height: var(--line-height-heading); /* Usar variável de altura de linha de heading de variables.css */
+  margin-top: var(--space-lg); /* Exemplo: Espaço acima usando variável de espaçamento */
+  margin-bottom: var(--space-md); /* Exemplo: Espaço abaixo usando variável de espaçamento */
+}
+
+h1 { font-size: var(--font-size-5xl); } /* Usar variáveis de tamanho de fonte de variables.css */
+h2 { font-size: var(--font-size-4xl); }
+h3 { font-size: var(--font-size-3xl); }
+h4 { font-size: var(--font-size-2xl); }
+h5 { font-size: var(--font-size-xl); }
+h6 { font-size: var(--font-size-lg); }
+
+
+/* Estilos para Parágrafos */
+p {
+  font-family: var(--font-family-base); /* Usar variável de variables.css */
+  font-size: var(--font-size-base); /* Usar variável de variables.css */
+  line-height: var(--line-height-base); /* Usar variável de variables.css */
+  color: var(--content-strong); /* Usar variável de cor principal de variables.css */
+  margin-bottom: var(--space-md); /* Exemplo: Espaço abaixo usando variável de espaçamento */
+}
+
+
+/* Estilos para outros elementos tipográficos comuns (Exemplos, se não estiverem em base.css) */
+/*
+ul, ol {
+  margin-bottom: var(--space-md);
+  padding-left: var(--space-lg);
+}
+
+li {
+  margin-bottom: var(--space-sm);
+}
+
+strong, b {
+  font-weight: var(--font-weight-bold);
+}
+
+em, i {
+  font-style: italic;
+}
+
+small {
+  font-size: var(--font-size-sm);
+}
+
+mark {
+  background-color: var(--color-alert-50); /* Usar cor de paleta ou variável semântica */
+  padding: var(--space-2xs);
+  border-radius: var(--radius-sm);
+}
+
+code, pre {
+  font-family: var(--font-family-mono); /* Usar variável de variables.css */
+  font-size: var(--font-size-sm);
+}
+
+code {
+  background-color: var(--neutral-100); /* Usar cor neutra de variables.css */
+  padding: var(--space-3xs) var(--space-2xs);
+  border-radius: var(--radius-sm);
+}
+
+pre {
+  display: block;
+  padding: var(--space-sm);
+  background-color: var(--neutral-100);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  margin-bottom: var(--space-md);
+}
+
+hr {
+  margin: var(--space-xl) 0;
+  border: none;
+  border-top: 1px solid var(--border-medium);
+}
+*/
+
+
+/* --------------------------------------------------------------------------
+   2. CLASSES TIPOGRÁFICAS
+   -------------------------------------------------------------------------- */
+
+/* Classes para tamanhos de fonte (Exemplos - se não estiverem em utilities.css) */
+/*
+.text-xs { font-size: var(--font-size-xs); }
+.text-sm { font-size: var(--font-size-sm); }
+.text-base { font-size: var(--font-size-base); }
+.text-md { font-size: var(--font-size-md); } /* Cuidado com conflito se houver .text-md em utilities */
+.text-lg { font-size: var(--font-size-lg); }
+.text-xl { font-size: var(--font-size-xl); }
+/* etc. */
+
+/* Classes para pesos de fonte (Exemplos - se não estiverem em utilities.css) */
+/*
+.font-regular { font-weight: var(--font-weight-regular); }
+.font-medium { font-weight: var(--font-weight-medium); }
+.font-semibold { font-weight: var(--font-weight-semibold); }
+.font-bold { font-weight: var(--font-weight-bold); }
+*/
+
+/* Classes para alturas de linha (Exemplos - se não estiverem em utilities.css) */
+/*
+.leading-base { line-height: var(--line-height-base); }
+.leading-heading { line-height: var(--line-height-heading); }
+*/
+
+/* Classes para espaçamento de letras (Exemplos - se não estiverem em utilities.css) */
+/*
+.tracking-base { letter-spacing: var(--letter-spacing-base); }
+.tracking-wide { letter-spacing: var(--letter-spacing-wide); }
+*/
+
+/* Classes para cores de texto (Exemplos - se não estiverem em utilities.css) */
+/*
+.text-primary { color: var(--color-primary); } /* Usar variável semântica */
+.text-success { color: var(--color-success); }
+.text-error { color: var(--color-error); }
+.text-alert { color: var(--color-alert); }
+.text-info { color: var(--color-info); }
+.text-strongest { color: var(--content-strongest); }
+.text-strong { color: var(--content-strong); }
+.text-medium { color: var(--content-medium); }
+.text-weak { color: var(--content-weak); } /* Substitui .text-muted se for o mesmo propósito */
+.text-disabled { color: var(--content-disabled); }
+
+/* Classe .lead (Exemplo) */
+.lead {
+  font-size: var(--font-size-lg); /* Exemplo: tamanho maior */
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-base);
+}
+
+
+/* --------------------------------------------------------------------------
+   3. TEMAS E ACESSIBILIDADE - IMPLEMENTAÇÃO (Se não totalmente em variables.css)
+   -------------------------------------------------------------------------- */
+
+/*
+ * REMOVIDO: Lógica de tema e alto contraste que redefinia variáveis locais.
+ * Essa lógica deve estar centralizada em variables.css, ajustando as variáveis semânticas.
+ * Quaisquer estilos tipográficos que precisam ser diferentes por tema devem
+ * referenciar as variáveis semânticas que *são* alteradas em variables.css.
+ */
+
+/* Exemplo de como seria uma regra temática AQUI, referenciando variáveis de variables.css */
+/*
+body.dark-mode h1 {
+    color: var(--content-strongest); /* Já ajustada em variables.css para o tema escuro */
+/* }
+*/
+
+/* Exemplo de como seria uma regra para alto contraste AQUI, referenciando variáveis de variables.css */
+/*
+@media (prefers-contrast: more) {
+   body {
+       color: var(--content-strongest); /* Já ajustada em variables.css para alto contraste */
+/* }
+}
+*/
+
+
+/* Ajustes para movimento reduzido - Deve ser em reset.css ou a11y.css */
+/*
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+*/
+
+/* Suporte a navegação por teclado - Deve ser em reset.css ou a11y.css */
+/*
+body.keyboard-navigation a:focus,
+body.keyboard-navigation button:focus,
+body.keyboard-navigation input:focus,
+body.keyboard-navigation textarea:focus,
+body.keyboard-navigation select:focus {
+  outline: var(--focus-visible-outline);
+  outline-offset: var(--focus-visible-outline-offset);
+}
+*/

@@ -1,0 +1,115 @@
+/* main.css - Sistema de design Open CVE Report
+ * Arquivo principal de estilo com arquitetura CSS escalável
+ * Gerencia a importação de todos os outros arquivos CSS.
+ * Versão: 2.2 - Ordem de importação ajustada e redundâncias removidas
+ * Última atualização: Abril 2025
+ */
+
+/* ==========================================================================\
+   1. Importações Externas - Fontes e Ícones
+   ========================================================================== */
+
+/*
+ * Inter Font Family - Família tipográfica principal do sistema
+ * Carregamento otimizado com font-display: swap para evitar FOIT
+ * Pesos carregados: Regular (400), Medium (500), Semibold (600), Bold (700)
+ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap&font-display=swap');
+
+/*
+ * Biblioteca de Ícones - Utilizamos uma combinação de:
+ * - Bootstrap Icons: Elementos de formulário e complementares
+ * - Remix Icons: Interface principal e ações comuns (Remover se não usado)
+ * Versões específicas para garantir consistência
+ */
+/* Remover se não usado */
+/* @import url('https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.min.css'); */
+@import url('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css');
+
+
+/* ==========================================================================\
+   2. Arquitetura CSS - Ordem de cascata e importação cuidadosamente planejada
+   ========================================================================== */
+
+/*
+ * A ordem de importação é crucial para a cascata e a dependência das variáveis:
+ * Resets/Base -> Variáveis -> Tipografia -> Utilitários -> Layout -> Componentes -> Temas/Acessibilidade
+ */
+
+/* a. Resets e Estilos Base para neutralizar estilos padrão do navegador e definir estilos base globais */
+/* Estes geralmente não dependem de variáveis e devem vir cedo na cascata */
+@import 'reset.css';
+/* Importar base.css se ele contiver estilos base para body, html, links padrão, etc. */
+/* @import 'base.css'; */
+
+
+/* b. Variáveis Globais - O coração do Design System */
+/* DEVE vir antes de qualquer arquivo que use as variáveis */
+@import 'variables.css';
+
+/* c. Sistema Tipográfico - Estilos para texto e classes tipográficas, usando variáveis */
+@import 'typography.css';
+
+/* d. Classes Utilitárias - Utilitários atômicos e de baixo nível, usando variáveis */
+@import 'utilities.css';
+
+/* e. Layout - Estrutura principal da página (grid/flexbox layout, navbar, sidebar, main, footer) */
+/* Este arquivo define as regras de posicionamento e dimensão principais, usando variáveis */
+@import 'layout.css';
+
+/* f. Componentes - Estilos para componentes específicos da UI (botões, cards, formulários, etc.) */
+/* Estes arquivos estilizam os elementos DENTRO da estrutura definida por layout.css, usando variáveis */
+/* Importar components.css se ele for um arquivo agregado para componentes menores */
+/* @import 'components.css'; */
+@import 'navbar.css'; /* Estilos visuais e específicos da Navbar */
+@import 'sidebar.css'; /* Estilos visuais e específicos da Sidebar */
+@import 'footer.css'; /* Estilos visuais e específicos do Footer */
+/* @import 'forms.css'; */ /* Estilos específicos de Formulários (se não estiverem em components.css) */
+/* @import 'buttons.css'; */ /* Estilos específicos de Botões (se não estiverem em components.css ou components.css) */
+/* @import 'cards.css'; */ /* Estilos específicos de Cards (se não estiverem em components.css) */
+
+
+/* g. Temas e Acessibilidade (se a lógica não estiver totalmente em variables.css e reset.css) */
+/* NOTA: A abordagem recomendada é centralizar a lógica de tema (cores, etc.) em variables.css */
+/* e estilos de acessibilidade (foco, etc.) em accessibility.css */
+/* @import 'themes/dark-mode.css' (prefers-color-scheme: dark); */ /* Remover se a lógica for movida para variables.css */
+/* Importar accessibility.css se existir e contiver regras adicionais */
+@import 'accessibility.css';
+
+
+/* h. Utilitários específicos ou overrides (se necessário) */
+/* Devem vir tarde na cascata para sobrescrever estilos anteriores */
+/* @import 'utilities-overrides.css'; */
+
+
+/* ==========================================================================\
+   3. Customizações de terceiros
+   ========================================================================== */
+
+/*
+ * Customizações para componentes de terceiros
+ * Sobrescreve estilos de bibliotecas externas para manter consistência visual
+ * Devem vir APÓS os estilos base e componentes, mas ANTES de utilitários de override se houverem.
+ */
+/* @import 'vendor/datepicker.css'; */
+/* @import 'vendor/charts.css'; */
+
+
+/* ==========================================================================\
+   4. Regras CSS críticas inline (Removido - Referência para inline no HTML)
+   ========================================================================== */
+
+/*
+ * Regras que idealmente estariam INLINE na tag <style> dentro do <head> do documento HTML
+ * para otimização da renderização inicial (como opacity: 1 no body para prevenir FOUC).
+ * Não devem duplicar estilos definidos em outros arquivos CSS importados.
+ */
+/* Conteúdo anterior removido para evitar duplicação */
+
+
+/* ==========================================================================\
+   5. Outras Regras Globais ou de Nível Superior
+   ========================================================================== */
+
+/* Quaisquer outras regras globais que não se encaixem nas categorias acima */
+/* (Geralmente poucas regras deveriam estar aqui se a arquitetura estiver bem definida) */

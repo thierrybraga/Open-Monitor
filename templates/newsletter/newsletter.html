@@ -1,0 +1,270 @@
+{% extends 'base.html' %}
+
+{# Page Title - Uses context from the context processor if defined #}
+{% block title %}{{ page_title if page_title else 'Contact & Notifications' }} - {{ app_name }}{% endblock %}
+
+{# Header Brand - Can be defined in the backend or template #}
+{% block header_brand %}
+  <span class="navbar-brand-text">{{ app_name }} - Contact & Notifications</span>
+{% endblock %}
+
+{# Additional CSS Links - main.css is already imported in base.html #}
+{% block extra_css %}
+  {# Add any specific CSS for this page here if needed #}
+{% endblock %}
+
+{% block content %}
+<main class="container-fluid py-4 fade-in">
+  {# Page Header #}
+  <header class="page-header mb-5">
+    <h1 class="h3 fw-semibold mb-2" id="contact-title">{{ page_title if page_title else 'Contact & Notifications' }}</h1>
+    <p class="text-muted fs-6">Reach out to us and configure your notification preferences for cybersecurity updates.</p>
+  </header>
+
+  <div class="row g-4">
+    {# Main Content Area #}
+    <div class="col-lg-9">
+      {# "About Open CVE Report" Section #}
+      <section class="card shadow-md mb-4 fade-in" aria-labelledby="about-cve-report-heading">
+        <div class="card-header p-4">
+          <h2 class="h5 fw-semibold mb-0" id="about-cve-report-heading">About Open CVE Report</h2>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-4">
+            <div class="col-md-4">
+              <h3 class="h6 fw-semibold d-flex align-items-center"><i class="bi bi-database me-2 text-primary" aria-hidden="true"></i> Data Source</h3>
+              <p class="text-muted fs-6">Leverages public CVE data (e.g., NVD) via API, stored locally for reports and insights.</p>
+            </div>
+            <div class="col-md-4">
+              <h3 class="h6 fw-semibold d-flex align-items-center"><i class="bi bi-arrow-repeat me-2 text-primary" aria-hidden="true"></i> Auto Updates</h3>
+              <p class="text-muted fs-6">Stays current with the latest CVEs for reliable and accurate data (update frequency configurable).</p>
+            </div>
+            <div class="col-md-4">
+              <h3 class="h6 fw-semibold d-flex align-items-center"><i class="bi bi-file-earmark-text me-2 text-primary" aria-hidden="true"></i> AI Reports</h3>
+              <p class="text-muted fs-6">Generates technical reports using AI (e.g., OpenAI) in Markdown, converted to professional PDFs.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {# Contact Information Section #}
+      <section class="card shadow-md mb-4 fade-in" aria-labelledby="get-in-touch-heading">
+        <div class="card-header p-4">
+          <h2 class="h5 fw-semibold mb-0" id="get-in-touch-heading">Get in Touch</h2>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3">
+            {# Email Item #}
+            <div class="col-md-4 d-flex align-items-center gap-3">
+              <i class="bi bi-envelope fs-4 text-primary" aria-hidden="true"></i>
+              <div>
+                <p class="text-muted small mb-0">Email</p>
+                <a href="mailto:contact@opencvereport.com" id="contact-email" class="contact-link fw-medium">contact@opencvereport.com</a>
+                <button class="btn btn-link btn-sm copy-button p-0 ms-1" type="button" onclick="copyToClipboard('contact-email')" aria-label="Copy email" data-bs-toggle="tooltip" data-bs-title="Copy Email">
+                  <i class="bi bi-copy" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+            {# GitHub Item #}
+            <div class="col-md-4 d-flex align-items-center gap-3">
+              <i class="bi bi-github fs-4 text-primary" aria-hidden="true"></i>
+              <div>
+                <p class="text-muted small mb-0">GitHub</p>
+                <a href="https://github.com/opencvereport" target="_blank" rel="noopener noreferrer" class="contact-link fw-medium">github.com/opencvereport</a>
+              </div>
+            </div>
+            {# LinkedIn Item #}
+            <div class="col-md-4 d-flex align-items-center gap-3">
+              <i class="bi bi-linkedin fs-4 text-primary" aria-hidden="true"></i>
+              <div>
+                <p class="text-muted small mb-0">LinkedIn</p>
+                <a href="https://linkedin.com/company/opencvereport" target="_blank" rel="noopener noreferrer" class="contact-link fw-medium">linkedin.com/company/opencvereport</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {# Notification Settings Section #}
+      <section class="card shadow-md fade-in" aria-labelledby="notification-settings-heading">
+        <div class="card-header p-4">
+          <h2 class="h5 fw-semibold mb-0" id="notification-settings-heading">Notification Settings</h2>
+        </div>
+        <div class="card-body p-4">
+          <p class="text-muted mb-4 fs-6">Choose how you want to receive cybersecurity updates. (Note: Telegram, WhatsApp, Phone require additional setup).</p>
+
+          {# The form can be included here or in a separate partial #}
+          {# Added action and method for traditional submission, adjust for AJAX if necessary #}
+          <form id="notification-form" method="POST" action="{{ url_for('main.newsletter') }}" class="needs-validation" novalidate>
+            {# Add CSRF token if using Flask-WTF or similar #}
+            {# {{ form.csrf_token }} #}
+
+            <div class="row g-4">
+              {# Email Column #}
+              <div class="col-md-6">
+                <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                {# The field value should be pre-filled with backend data if it exists #}
+                <input type="email" id="email" name="email" class="form-control" placeholder="your.email@example.com" required aria-describedby="email-feedback" value="{{ user_preferences.email if user_preferences else '' }}">
+                <div class="invalid-feedback" id="email-feedback">Please provide a valid email address.</div>
+                <div class="form-check form-switch mt-2">
+                  {# The 'checked' state should come from backend data #}
+                  <input class="form-check-input" type="checkbox" role="switch" id="emailToggle" name="emailToggle" {% if user_preferences and user_preferences.email_enabled %}checked{% endif %} aria-label="Enable email notifications">
+                  <label class="form-check-label" for="emailToggle">Receive via Email</label>
+                </div>
+              </div>
+
+              {# Telegram Column #}
+              <div class="col-md-6">
+                <label for="telegram" class="form-label">Telegram Handle</label>
+                {# Fields should be disabled and checked state should come from backend #}
+                <input type="text" id="telegram" name="telegram" class="form-control" placeholder="@YourTelegram" disabled aria-describedby="telegram-feedback" value="{{ user_preferences.telegram_handle if user_preferences else '' }}">
+                <div class="invalid-feedback" id="telegram-feedback"></div>
+                <div class="form-check form-switch mt-2">
+                  <input class="form-check-input" type="checkbox" role="switch" id="telegramToggle" name="telegramToggle" {% if user_preferences and user_preferences.telegram_enabled %}checked{% endif %} aria-label="Enable Telegram notifications" disabled>
+                  <label class="form-check-label" for="telegramToggle">Receive via Telegram <span class="badge text-bg-secondary">Soon</span></label>
+                </div>
+              </div>
+
+              {# WhatsApp Column #}
+              <div class="col-md-6">
+                <label for="whatsapp" class="form-label">WhatsApp Number</label>
+                {# Fields should be disabled and checked state should come from backend #}
+                <input type="tel" id="whatsapp" name="whatsapp" class="form-control" placeholder="+1xxxxxxxxxx" disabled aria-describedby="whatsapp-feedback" value="{{ user_preferences.whatsapp_number if user_preferences else '' }}">
+                <div class="invalid-feedback" id="whatsapp-feedback"></div>
+                <div class="form-check form-switch mt-2">
+                  <input class="form-check-input" type="checkbox" role="switch" id="whatsappToggle" name="whatsappToggle" {% if user_preferences and user_preferences.whatsapp_enabled %}checked{% endif %} aria-label="Enable WhatsApp notifications" disabled>
+                  <label class="form-check-label" for="whatsappToggle">Receive via WhatsApp <span class="badge text-bg-secondary">Soon</span></label>
+                </div>
+              </div>
+
+              {# Phone Column #}
+              <div class="col-md-6">
+                <label for="phone" class="form-label">Phone Number (Voice)</label>
+                {# Fields should be disabled and checked state should come from backend #}
+                <input type="tel" id="phone" name="phone" class="form-control" placeholder="+1xxxxxxxxxx" disabled aria-describedby="phone-feedback" value="{{ user_preferences.phone_number if user_preferences else '' }}">
+                <div class="invalid-feedback" id="phone-feedback"></div>
+                <div class="form-check form-switch mt-2">
+                  <input class="form-check-input" type="checkbox" role="switch" id="phoneToggle" name="phoneToggle" {% if user_preferences and user_preferences.phone_enabled %}checked{% endif %} aria-label="Enable phone call notifications" disabled>
+                  <label class="form-check-label" for="phoneToggle">Receive via Phone Call <span class="badge text-bg-secondary">Soon</span></label>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-3 mt-4">
+              <button type="submit" class="btn btn-primary ripple-effect" id="submit-btn">
+                <span class="btn-text">Save Preferences</span>
+                {# Placeholder for spinner during AJAX submission #}
+                <span class="spinner-border spinner-border-sm d-none ms-1" role="status" aria-hidden="true"></span>
+              </button>
+              {# Placeholder for success message after AJAX submission #}
+              <span id="success-message" class="text-success fw-medium d-none" aria-live="polite">Preferences saved!</span>
+            </div>
+          </form>
+
+          {# Saved Preferences Display Section - Visibility controlled by JS based on backend data #}
+          {# Add Jinja logic to display if user_preferences exists and is not empty #}
+          {% if user_preferences %}
+          <div id="saved-preferences" class="card mt-4 bg-light" aria-labelledby="current-settings-heading">
+            <div class="card-header p-4">
+              <h3 class="h6 fw-semibold mb-0" id="current-settings-heading">Current Notification Settings</h3>
+            </div>
+            <div class="card-body p-4">
+              <ul id="preferences-list" class="list-group list-group-flush">
+                 {# Example of how to populate the list with backend data #}
+                 {% if user_preferences.email %}
+                 <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                    Email: <span class="fw-normal">{{ user_preferences.email }}</span>
+                    {% if user_preferences.email_enabled %}
+                    <span class="badge text-bg-success">Enabled</span>
+                    {% else %}
+                    <span class="badge text-bg-warning">Disabled</span>
+                    {% endif %}
+                 </li>
+                 {% endif %}
+                 {# Add similar logic for Telegram, WhatsApp, Phone when implemented #}
+                 {% if user_preferences.telegram_handle %}
+                 <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                    Telegram: <span class="fw-normal">{{ user_preferences.telegram_handle }}</span>
+                    {% if user_preferences.telegram_enabled %}
+                    <span class="badge text-bg-success">Enabled</span>
+                    {% else %}
+                    <span class="badge text-bg-warning">Disabled</span>
+                    {% endif %}
+                 </li>
+                 {% endif %}
+                 {# etc. #}
+              </ul>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+
+    {# Sidebar Actions #}
+    <aside class="col-lg-3">
+      <section class="card shadow-md sticky-top fade-in" aria-labelledby="quick-actions-heading">
+        <div class="card-header p-4">
+          <h2 class="h5 fw-semibold mb-0" id="quick-actions-heading">Quick Actions</h2>
+        </div>
+        <div class="card-body p-4 d-flex flex-column gap-3">
+          {# Assuming there's a 'main.support' route or '/support' is static #}
+          <a href="{{ url_for('main.support') if 'support' in request.endpoints else '/support' }}" class="btn btn-primary w-100 ripple-effect" aria-label="Contact support">
+            <i class="bi bi-headset me-2" aria-hidden="true"></i>Contact Support
+          </a>
+          <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary w-100 ripple-effect" aria-label="Go to dashboard">
+            <i class="bi bi-speedometer2 me-2" aria-hidden="true"></i>Back to Dashboard
+          </a>
+        </div>
+      </section>
+    </aside>
+  </div>
+</main>
+{% endblock %}
+
+{# Additional JavaScript scripts #}
+{% block extra_js %}
+  {# Third-party scripts (IMask, SweetAlert2) #}
+  <script src="https://cdn.jsdelivr.net/npm/imask@7.6.1/dist/imask.min.js" defer nonce="{{ nonce }}"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.12.4/dist/sweetalert2.all.min.js" defer nonce="{{ nonce }}"></script>
+
+  {# Inline scripts (copyToClipboard, tooltips) - Can be moved to a utility JS file #}
+  <script nonce="{{ nonce }}">
+    // Simple copy to clipboard function
+    function copyToClipboard(elementId) {
+      const element = document.getElementById(elementId);
+      if (element) {
+        navigator.clipboard.writeText(element.innerText || element.textContent)
+          .then(() => {
+            const btn = element.nextElementSibling;
+            const originalTitle = btn.getAttribute('data-bs-title') || 'Copy Email';
+            // Check if the tooltip has already been initialized
+            let tooltip = bootstrap.Tooltip.getInstance(btn);
+            if (!tooltip) { // Initialize if it doesn't exist
+                 tooltip = new bootstrap.Tooltip(btn);
+            }
+            btn.setAttribute('data-bs-title', 'Copied!');
+            tooltip.show();
+            setTimeout(() => {
+              tooltip.hide();
+              btn.setAttribute('data-bs-title', originalTitle);
+            }, 1500);
+          })
+          .catch(err => {
+            console.error('Failed to copy text: ', err);
+            // Optionally show an error message
+          });
+      }
+    }
+    // Initialize tooltips - Ensure Bootstrap JS has been loaded
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+          new bootstrap.Tooltip(el);
+        });
+    });
+  </script>
+
+  {# Page-specific newsletter script - SHOULD CONTAIN FORM VALIDATION AND SUBMISSION LOGIC #}
+  {# This file will need to be created or updated #}
+  <script src="{{ url_for('static', filename='js/newsletter.js') }}" defer nonce="{{ nonce }}"></script>
+{% endblock %}
