@@ -1,0 +1,96 @@
+# Robots.txt for Open Monitor Security Platform
+# This file tells search engine crawlers which pages or files they can or can't request from your site.
+
+User-agent: *
+
+# Allow crawling of main content
+Allow: /
+Allow: /vulnerabilities/
+Allow: /search/
+Allow: /dashboard/
+Allow: /reports/
+Allow: /newsletter/
+
+# Disallow sensitive or private areas
+Disallow: /admin/
+Disallow: /api/private/
+Disallow: /auth/
+Disallow: /login/
+Disallow: /logout/
+Disallow: /profile/
+Disallow: /settings/
+Disallow: /config/
+
+# Disallow temporary or cache directories
+Disallow: /tmp/
+Disallow: /cache/
+Disallow: /temp/
+
+# Disallow search result pages with parameters to avoid duplicate content
+Disallow: /search?*
+Disallow: /vulnerabilities?*
+
+# Disallow form submission endpoints
+Disallow: /submit/
+Disallow: /post/
+Disallow: /create/
+Disallow: /update/
+Disallow: /delete/
+
+# Allow specific static resources
+Allow: /static/css/
+Allow: /static/js/
+Allow: /static/img/
+Allow: /static/fonts/
+
+# Disallow other static files that shouldn't be indexed
+Disallow: /static/logs/
+Disallow: /static/backups/
+Disallow: /static/uploads/private/
+
+# Crawl delay to be respectful to server resources
+Crawl-delay: 1
+
+# Sitemap location
+Sitemap: {{ url_for('main.sitemap', _external=True) if url_for('main.sitemap', _external=True) else request.url_root + 'sitemap.xml' }}
+
+# Special rules for specific bots
+User-agent: Googlebot
+Crawl-delay: 1
+Allow: /
+
+User-agent: Bingbot
+Crawl-delay: 2
+Allow: /
+
+# Block aggressive crawlers
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+# Allow security research bots (be careful with this)
+User-agent: SecurityBot
+Allow: /vulnerabilities/
+Disallow: /admin/
+Disallow: /api/private/
+
+# Block AI training crawlers (optional - adjust based on your policy)
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ChatGPT-User
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /

@@ -1,7 +1,7 @@
 # project/models/sync_metadata.py
 
 from sqlalchemy import Column, Integer, String
-from ..extensions.db import db
+from extensions.db import db
 
 class SyncMetadata(db.Model):
     """
@@ -15,11 +15,11 @@ class SyncMetadata(db.Model):
     value = Column(String(255), nullable=True)
 
     # relacionamento com ApiCallLog
-    api_call_logs = db.relationship(
-        'ApiCallLog',
-        back_populates='sync_metadata',
-        cascade='all, delete-orphan'
-    )
+    # api_call_logs = db.relationship(
+    #     'ApiCallLog',
+    #     back_populates='sync_metadata',
+    #     cascade='all, delete-orphan'
+    # )
 
     def __repr__(self):
         return f"<SyncMetadata id={self.id} key={self.key} value={self.value}>"

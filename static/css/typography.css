@@ -76,31 +76,111 @@ blockquote { border-left: 4px solid var(--border-medium); color: var(--content-m
 */
 
 
-/* Estilos para Títulos */
+/* Estilos para Títulos - Hierarquia Tipográfica Melhorada */
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-family-base); /* Usar variável de variables.css */
-  color: var(--content-strongest); /* Usar variável de cor mais forte de variables.css */
-  font-weight: var(--font-weight-bold); /* Usar variável de peso bold de variables.css */
-  line-height: var(--line-height-heading); /* Usar variável de altura de linha de heading de variables.css */
-  margin-top: var(--space-lg); /* Exemplo: Espaço acima usando variável de espaçamento */
-  margin-bottom: var(--space-md); /* Exemplo: Espaço abaixo usando variável de espaçamento */
+  font-family: var(--font-family-base);
+  color: var(--content-strongest);
+  line-height: var(--line-height-heading);
+  margin-top: 0;
+  margin-bottom: var(--space-md);
+  letter-spacing: var(--letter-spacing-tight);
+  text-wrap: balance; /* Melhor quebra de linha para títulos */
 }
 
-h1 { font-size: var(--font-size-5xl); } /* Usar variáveis de tamanho de fonte de variables.css */
-h2 { font-size: var(--font-size-4xl); }
-h3 { font-size: var(--font-size-3xl); }
-h4 { font-size: var(--font-size-2xl); }
-h5 { font-size: var(--font-size-xl); }
-h6 { font-size: var(--font-size-lg); }
+/* Hierarquia de títulos com pesos diferenciados */
+h1 { 
+  font-size: var(--font-size-5xl);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--space-lg);
+  letter-spacing: -0.025em;
+}
+
+h2 { 
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--space-lg);
+}
+
+h3 { 
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-semibold);
+}
+
+h4 { 
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+}
+
+h5 { 
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-medium);
+}
+
+h6 { 
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-medium);
+  color: var(--content-strong);
+}
 
 
-/* Estilos para Parágrafos */
+/* Estilos para Parágrafos - Melhor Legibilidade */
 p {
-  font-family: var(--font-family-base); /* Usar variável de variables.css */
-  font-size: var(--font-size-base); /* Usar variável de variables.css */
-  line-height: var(--line-height-base); /* Usar variável de variables.css */
-  color: var(--content-strong); /* Usar variável de cor principal de variables.css */
-  margin-bottom: var(--space-md); /* Exemplo: Espaço abaixo usando variável de espaçamento */
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+  color: var(--content-strong);
+  margin-bottom: var(--space-md);
+  text-wrap: pretty; /* Melhor quebra de linha para parágrafos */
+  max-width: 65ch; /* Largura ideal para leitura */
+}
+
+/* Parágrafo de destaque */
+p.lead {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-regular);
+  line-height: 1.6;
+  color: var(--content-strong);
+  margin-bottom: var(--space-lg);
+  max-width: 60ch;
+}
+
+/* Texto pequeno */
+small, .text-small {
+  font-size: var(--font-size-sm);
+  color: var(--content-medium);
+  line-height: var(--line-height-compact);
+}
+
+/* Texto de código inline */
+code {
+  font-family: var(--font-family-mono);
+  font-size: 0.875em;
+  background-color: var(--surface-100);
+  color: var(--content-strongest);
+  padding: 0.125rem 0.25rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-medium);
+}
+
+/* Bloco de código */
+pre {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  background-color: var(--surface-100);
+  color: var(--content-strong);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-medium);
+  overflow-x: auto;
+  margin-bottom: var(--space-lg);
+  line-height: 1.5;
+}
+
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
 }
 
 
@@ -163,42 +243,44 @@ hr {
 
 
 /* --------------------------------------------------------------------------
-   2. CLASSES TIPOGRÁFICAS
+   2. CLASSES TIPOGRÁFICAS UTILITÁRIAS
    -------------------------------------------------------------------------- */
 
-/* Classes para tamanhos de fonte (Exemplos - se não estiverem em utilities.css) */
-/*
+/* Classes para tamanhos de fonte */
 .text-xs { font-size: var(--font-size-xs); }
 .text-sm { font-size: var(--font-size-sm); }
 .text-base { font-size: var(--font-size-base); }
-.text-md { font-size: var(--font-size-md); } /* Cuidado com conflito se houver .text-md em utilities */
+.text-md { font-size: var(--font-size-md); }
 .text-lg { font-size: var(--font-size-lg); }
 .text-xl { font-size: var(--font-size-xl); }
-/* etc. */
+.text-2xl { font-size: var(--font-size-2xl); }
+.text-3xl { font-size: var(--font-size-3xl); }
+.text-4xl { font-size: var(--font-size-4xl); }
+.text-5xl { font-size: var(--font-size-5xl); }
 
-/* Classes para pesos de fonte (Exemplos - se não estiverem em utilities.css) */
-/*
+/* Classes para pesos de fonte */
 .font-regular { font-weight: var(--font-weight-regular); }
 .font-medium { font-weight: var(--font-weight-medium); }
 .font-semibold { font-weight: var(--font-weight-semibold); }
 .font-bold { font-weight: var(--font-weight-bold); }
-*/
 
-/* Classes para alturas de linha (Exemplos - se não estiverem em utilities.css) */
-/*
-.leading-base { line-height: var(--line-height-base); }
-.leading-heading { line-height: var(--line-height-heading); }
-*/
+/* Classes para alturas de linha */
+.leading-none { line-height: 1; }
+.leading-tight { line-height: 1.25; }
+.leading-snug { line-height: 1.375; }
+.leading-normal { line-height: var(--line-height-base); }
+.leading-relaxed { line-height: 1.625; }
+.leading-loose { line-height: 2; }
 
-/* Classes para espaçamento de letras (Exemplos - se não estiverem em utilities.css) */
-/*
-.tracking-base { letter-spacing: var(--letter-spacing-base); }
+/* Classes para espaçamento de letras */
+.tracking-tighter { letter-spacing: -0.05em; }
+.tracking-tight { letter-spacing: var(--letter-spacing-tight); }
+.tracking-normal { letter-spacing: var(--letter-spacing-base); }
 .tracking-wide { letter-spacing: var(--letter-spacing-wide); }
-*/
+.tracking-wider { letter-spacing: 0.1em; }
 
-/* Classes para cores de texto (Exemplos - se não estiverem em utilities.css) */
-/*
-.text-primary { color: var(--color-primary); } /* Usar variável semântica */
+/* Classes para cores de texto */
+.text-primary { color: var(--color-primary); }
 .text-success { color: var(--color-success); }
 .text-error { color: var(--color-error); }
 .text-alert { color: var(--color-alert); }
@@ -206,14 +288,65 @@ hr {
 .text-strongest { color: var(--content-strongest); }
 .text-strong { color: var(--content-strong); }
 .text-medium { color: var(--content-medium); }
-.text-weak { color: var(--content-weak); } /* Substitui .text-muted se for o mesmo propósito */
-.text-disabled { color: var(--content-disabled); }
+.text-weak { color: var(--content-weak); }
 
-/* Classe .lead (Exemplo) */
+/* Classes para alinhamento de texto */
+.text-left { text-align: left; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-justify { text-align: justify; }
+
+/* Classes para transformação de texto */
+.text-uppercase { text-transform: uppercase; }
+.text-lowercase { text-transform: lowercase; }
+.text-capitalize { text-transform: capitalize; }
+.text-normal-case { text-transform: none; }
+
+/* Classes para decoração de texto */
+.text-underline { text-decoration: underline; }
+.text-line-through { text-decoration: line-through; }
+.text-no-underline { text-decoration: none; }
+
+/* Classes para quebra de texto */
+.text-wrap { text-wrap: wrap; }
+.text-nowrap { text-wrap: nowrap; }
+.text-balance { text-wrap: balance; }
+.text-pretty { text-wrap: pretty; }
+
+/* Classes para truncar texto */
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-truncate-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.text-truncate-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Classe para texto desabilitado */
+.text-disabled { 
+  color: var(--content-weak);
+  opacity: 0.6;
+}
+
+/* Classe .lead para texto de destaque */
 .lead {
-  font-size: var(--font-size-lg); /* Exemplo: tamanho maior */
+  font-size: var(--font-size-lg);
   font-weight: var(--font-weight-regular);
-  line-height: var(--line-height-base);
+  line-height: 1.6;
+  color: var(--content-strong);
+  margin-bottom: var(--space-lg);
 }
 
 

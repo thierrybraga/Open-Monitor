@@ -22,17 +22,20 @@
     <!-- Main Content -->
     <div class="col-lg-9">
       <!-- Tabs -->
-      <ul class="nav nav-tabs mb-4" id="accountTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile" type="button" role="tab" aria-controls="profile" aria-selected="true">Profile</button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="assets-tab" data-bs-toggle="tab" data-bs-target="#assets" type="button" role="tab" aria-controls="assets" aria-selected="false">Assets</button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="insights-tab" data-bs-toggle="tab" data-bs-target="#insights" type="button" role="tab" aria-controls="insights" aria-selected="false">Security Insights</button>
-        </li>
-      </ul>
+      <ul class="nav nav-tabs" id="account-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile" type="button" role="tab" aria-controls="profile" aria-selected="true">Profile</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="password-tab" data-bs-toggle="tab" data-bs-target="#password" type="button" role="tab" aria-controls="password" aria-selected="false">Change Password</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="assets-tab" data-bs-toggle="tab" data-bs-target="#assets" type="button" role="tab" aria-controls="assets" aria-selected="false">Assets</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#security" type="button" role="tab" aria-controls="security" aria-selected="false">Security Insights</button>
+            </li>
+          </ul>
 
       <!-- Tab Content -->
       <div class="tab-content" id="accountTabContent">
@@ -58,30 +61,146 @@
                 </div>
               </div>
               <!-- Profile Form -->
-              <form id="edit-form" class="row g-4 needs-validation" novalidate>
+              <form method="POST" action="{{ url_for('main.account') }}" class="row g-4 needs-validation" novalidate>
+                {{ profile_form.hidden_tag() }}
+                <input type="hidden" name="form_type" value="profile">
+                
                 <div class="col-md-6">
-                  <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
-                  <input type="text" id="name" class="form-control" value="João Silva" placeholder="Enter your name" required aria-describedby="name-error" />
-                  <div class="invalid-feedback" id="name-error">Please enter your name.</div>
+                  {{ profile_form.first_name.label(class="form-label") }}
+                  {{ profile_form.first_name(class="form-control", placeholder="Enter your first name") }}
+                  {% if profile_form.first_name.errors %}
+                    <div class="invalid-feedback d-block">
+                      {% for error in profile_form.first_name.errors %}
+                        {{ error }}
+                      {% endfor %}
+                    </div>
+                  {% endif %}
                 </div>
+                
                 <div class="col-md-6">
-                  <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
-                  <input type="email" id="email" class="form-control" value="joao.silva@exemplo.com" placeholder="example@domain.com" required aria-describedby="email-error" />
-                  <div class="invalid-feedback" id="email-error">Please enter a valid email.</div>
+                  {{ profile_form.last_name.label(class="form-label") }}
+                  {{ profile_form.last_name(class="form-control", placeholder="Enter your last name") }}
+                  {% if profile_form.last_name.errors %}
+                    <div class="invalid-feedback d-block">
+                      {% for error in profile_form.last_name.errors %}
+                        {{ error }}
+                      {% endfor %}
+                    </div>
+                  {% endif %}
                 </div>
+                
                 <div class="col-md-6">
-                  <label for="phone" class="form-label">Phone <span class="text-danger">*</span></label>
-                  <input type="tel" id="phone" class="form-control" value="+55 31 99726-1000" placeholder="+55 (99) 99999-9999" required aria-describedby="phone-error" />
-                  <div class="invalid-feedback" id="phone-error">Please enter a valid phone number.</div>
+                  {{ profile_form.email.label(class="form-label") }}
+                  {{ profile_form.email(class="form-control", placeholder="example@domain.com") }}
+                  {% if profile_form.email.errors %}
+                    <div class="invalid-feedback d-block">
+                      {% for error in profile_form.email.errors %}
+                        {{ error }}
+                      {% endfor %}
+                    </div>
+                  {% endif %}
                 </div>
+                
                 <div class="col-md-6">
-                  <label for="address" class="form-label">Address <span class="text-danger">*</span></label>
-                  <input type="text" id="address" class="form-control" value="Rua Exemplo, 123, Belo Horizonte - MG" placeholder="Enter your address" required aria-describedby="address-error" />
-                  <div class="invalid-feedback" id="address-error">Please enter your address.</div>
+                  {{ profile_form.phone.label(class="form-label") }}
+                  {{ profile_form.phone(class="form-control", placeholder="+55 (99) 99999-9999") }}
+                  {% if profile_form.phone.errors %}
+                    <div class="invalid-feedback d-block">
+                      {% for error in profile_form.phone.errors %}
+                        {{ error }}
+                      {% endfor %}
+                    </div>
+                  {% endif %}
                 </div>
+                
+                <div class="col-12">
+                  {{ profile_form.address.label(class="form-label") }}
+                  {{ profile_form.address(class="form-control", placeholder="Enter your address") }}
+                  {% if profile_form.address.errors %}
+                    <div class="invalid-feedback d-block">
+                      {% for error in profile_form.address.errors %}
+                        {{ error }}
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
+                
+                <div class="col-12">
+                  {{ profile_form.bio.label(class="form-label") }}
+                  {{ profile_form.bio(class="form-control", rows="3", placeholder="Tell us about yourself...") }}
+                  {% if profile_form.bio.errors %}
+                    <div class="invalid-feedback d-block">
+                      {% for error in profile_form.bio.errors %}
+                        {{ error }}
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
+                
                 <div class="col-12 d-flex gap-3">
-                  <button type="submit" class="btn btn-primary ripple-effect" id="save-btn">Save Changes</button>
+                  {{ profile_form.submit(class="btn btn-primary ripple-effect") }}
                   <button type="button" class="btn btn-outline-secondary ripple-effect" id="reset-btn">Reset</button>
+                </div>
+              </form>
+            </div>
+          </article>
+        </div>
+
+        <!-- Change Password Tab -->
+        <div class="tab-pane fade" id="password" role="tabpanel" aria-labelledby="password-tab">
+          <article class="card shadow-md fade-in">
+            <div class="card-header p-4">
+              <h2 class="h5 fw-semibold mb-0">Change Password</h2>
+              <p class="text-muted mb-0 mt-1">Update your password to keep your account secure</p>
+            </div>
+            <div class="card-body p-4">
+              <form method="POST" action="{{ url_for('main.account') }}" class="needs-validation" novalidate>
+                {{ password_form.hidden_tag() }}
+                
+                <div class="row g-4">
+                  <div class="col-12">
+                    {{ password_form.current_password.label(class="form-label") }}
+                    {{ password_form.current_password(class="form-control", placeholder="Enter your current password") }}
+                    {% if password_form.current_password.errors %}
+                      <div class="invalid-feedback d-block">
+                        {% for error in password_form.current_password.errors %}
+                          {{ error }}
+                        {% endfor %}
+                      </div>
+                    {% endif %}
+                  </div>
+                  
+                  <div class="col-md-6">
+                    {{ password_form.new_password.label(class="form-label") }}
+                    {{ password_form.new_password(class="form-control", placeholder="Enter new password") }}
+                    {% if password_form.new_password.errors %}
+                      <div class="invalid-feedback d-block">
+                        {% for error in password_form.new_password.errors %}
+                          {{ error }}
+                        {% endfor %}
+                      </div>
+                    {% endif %}
+                    <div class="form-text">
+                      Password must be at least 8 characters long and contain uppercase, lowercase, number and special character.
+                    </div>
+                  </div>
+                  
+                  <div class="col-md-6">
+                    {{ password_form.confirm_password.label(class="form-label") }}
+                    {{ password_form.confirm_password(class="form-control", placeholder="Confirm new password") }}
+                    {% if password_form.confirm_password.errors %}
+                      <div class="invalid-feedback d-block">
+                        {% for error in password_form.confirm_password.errors %}
+                          {{ error }}
+                        {% endfor %}
+                      </div>
+                    {% endif %}
+                  </div>
+                  
+                  <div class="col-12">
+                    {{ password_form.submit(class="btn btn-primary ripple-effect") }}
+                    <button type="button" class="btn btn-outline-secondary ripple-effect ms-2" onclick="this.form.reset()">Cancel</button>
+                  </div>
                 </div>
               </form>
             </div>

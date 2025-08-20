@@ -19,6 +19,15 @@ from .api_controller import api_v1_bp
 # Importação dos objetos Blueprint do vulnerability_controller
 from .vulnerability_controller import vuln_ui_bp, vuln_api_bp
 
+# Importação do Blueprint do analytics_controller
+from .analytics_controller import analytics_api_bp
+
+# Importação do Blueprint do newsletter_admin_controller
+from .newsletter_admin_controller import newsletter_admin_bp
+
+# Importação do Blueprint do chatbot_controller
+from .chatbot_controller import chatbot_bp
+
 # Lista de todos os Blueprints a serem registrados pela aplicação
 BLUEPRINTS: List[Blueprint] = [
     main_bp,
@@ -29,6 +38,9 @@ BLUEPRINTS: List[Blueprint] = [
     vuln_ui_bp,
     vuln_api_bp,
     api_v1_bp,
+    analytics_api_bp,
+    newsletter_admin_bp,
+    chatbot_bp,
 ]
 
 # Opcional: Você pode listar explicitamente os Blueprints em __all__

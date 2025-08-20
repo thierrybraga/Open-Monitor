@@ -5,13 +5,12 @@ Formulário para validar parâmetros de query em endpoints de API
 (cves, vulnerabilities, assets) usando Flask-WTF para CSRF e validação de tipos.
 """
 
-from flask_wtf import FlaskForm
-from wtforms import StringField, IntegerField, SelectField, SubmitField
+from wtforms import Form, StringField, IntegerField, SelectField, SubmitField
 from wtforms.validators import Optional, NumberRange
 
-from ..models.enums import severity_levels
+from models.enums import severity_levels
 
-class APIQueryForm(FlaskForm):
+class APIQueryForm(Form):
     """
     Valida parâmetros de paginação e filtros comuns para API endpoints:
       - page: número da página (>= 1)

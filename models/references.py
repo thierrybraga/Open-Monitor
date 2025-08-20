@@ -1,5 +1,5 @@
-from sqlalchemy import Column, Integer, Text, ForeignKey
-from ..extensions.db import db
+from sqlalchemy import Column, Integer, Text, ForeignKey, String
+from extensions.db import db
 
 class Reference(db.Model):
     __tablename__ = 'reference'
@@ -8,9 +8,9 @@ class Reference(db.Model):
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Foreign key to Vulnerability
-    vulnerability_id = Column(
-        Integer,
-        ForeignKey('vulnerabilities.id', ondelete='CASCADE'),
+    cve_id = Column(
+        String,
+        ForeignKey('vulnerabilities.cve_id', ondelete='CASCADE'),
         nullable=False,
         index=True
     )
@@ -28,7 +28,7 @@ class Reference(db.Model):
 
     # Relationships
     vulnerability = db.relationship(
-        'Vulnerability', back_populates='references'
+        'Vulnerability', back_populates='references', foreign_keys=[cve_id]
     )
     reference_type = db.relationship(
         'ReferenceType', back_populates='references'

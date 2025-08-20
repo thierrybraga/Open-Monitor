@@ -1,6 +1,6 @@
-from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey, String
 from sqlalchemy.orm import relationship
-from ..extensions.db import db
+from extensions.db import db
 from datetime import datetime
 
 class RiskAssessment(db.Model):
@@ -12,25 +12,25 @@ class RiskAssessment(db.Model):
     # Foreign keys
     asset_id = Column(
         Integer,
-        ForeignKey('asset.id', ondelete='CASCADE'),
+        ForeignKey('assets.id', ondelete='CASCADE'),
         nullable=False,
         index=True
     )
     vulnerability_id = Column(
-        Integer,
-        ForeignKey('vulnerabilities.id', ondelete='CASCADE'),
+        String,
+        ForeignKey('vulnerabilities.cve_id', ondelete='CASCADE'),
         nullable=False,
         index=True
     )
-    recommendation_id = Column(
-        Integer,
-        ForeignKey('recommendation.id', ondelete='SET NULL'),
-        nullable=True,
-        index=True
-    )
+    # recommendation_id = Column(
+    #     Integer,
+    #     ForeignKey('recommendation.id', ondelete='SET NULL'),
+    #     nullable=True,
+    #     index=True
+    # )
     created_by = Column(
         Integer,
-        ForeignKey('user.id', ondelete='SET NULL'),
+        ForeignKey('users.id', ondelete='SET NULL'),
         nullable=True,
         index=True
     )
@@ -48,9 +48,9 @@ class RiskAssessment(db.Model):
     vulnerability = relationship(
         'Vulnerability', back_populates='risk_assessments'
     )
-    recommendation = relationship(
-        'Recommendation', back_populates='risk_assessments'
-    )
+    # recommendation = relationship(
+    #     'Recommendation', back_populates='risk_assessments'
+    # )
     user = relationship(
         'User', back_populates='risk_assessments'
     )

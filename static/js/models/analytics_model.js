@@ -99,4 +99,7 @@ class AnalyticsModel {
   }
 }
 
-export default AnalyticsModel;
+// Export for global access
+if (typeof window !== 'undefined') {
+    window.AnalyticsModel = AnalyticsModel;
+}

@@ -1,161 +1,288 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
-{% block title %}Vulnerability Reports – {{ app_name }}{% endblock %}
+{% block title %}Relatórios de Vulnerabilidades{% endblock %}
 
-{% block header_brand %}
-  <span class="navbar-brand-text">Vulnerability Reports</span>
-{% endblock %}
-
-{% block navbar_actions %}
-  <div class="d-flex gap-2">
-    <button id="export-csv" class="btn btn-outline-primary btn-sm" aria-label="Export as CSV" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Export as CSV">
-      <i class="bi bi-filetype-csv" aria-hidden="true"></i>
-      <span class="visually-hidden">Export CSV</span>
-    </button>
-    <button id="export-pdf" class="btn btn-outline-primary btn-sm" aria-label="Export as PDF" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Export as PDF">
-      <i class="bi bi-filetype-pdf" aria-hidden="true"></i>
-      <span class="visually-hidden">Export PDF</span>
-    </button>
-  </div>
-{% endblock %}
-
-{% block sidebar_extras %}
-  <li class="sidebar-item">
-    <a href="#" id="generate-report-link" class="sidebar-link d-flex align-items-center gap-3" title="Generate New Report">
-      <i class="bi bi-plus-circle fs-5"></i>
-      <span class="sidebar-label">Generate Report</span>
-    </a>
-  </li>
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
 {% endblock %}
 
 {% block content %}
-<div class="reports-container container py-4">
-  <!-- Header -->
-  <header class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h3 fw-bold">Vulnerability Reports</h1>
-    <span class="text-muted small">Last updated: {{ last_updated }}</span>
-  </header>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Page Header -->
+            <div class="reports-header">
+                <h1><i class="bi bi-file-earmark-text"></i> Relatórios de Vulnerabilidades</h1>
+                <p class="subtitle">Gerencie e visualize relatórios de segurança do sistema</p>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="reports-actions">
+                <div class="export-buttons">
+                    <a href="{{ url_for('report.export_csv') }}" class="btn-export">
+                        <i class="bi bi-file-earmark-spreadsheet"></i> Exportar CSV
+                    </a>
+                    <a href="{{ url_for('report.export_pdf') }}" class="btn-export">
+                        <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
+                    </a>
+                </div>
+                <a href="{{ url_for('report.generate_report') }}" class="btn-generate">
+                    <i class="bi bi-plus-circle"></i> Gerar Novo Relatório
+                </a>
+            </div>
 
-  <!-- Filters -->
-  <section class="card shadow-sm mb-4" role="region" aria-labelledby="filters-title">
-    <div class="card-body card-header p-3">
-      <h2 id="filters-title" class="h5 mb-0">Filters</h2>
-    </div>
-    <div class="card-body p-3">
-      <div class="row g-3">
-        <div class="col-md-3">
-          <label for="severity-filter" class="form-label small">Severity</label>
-          <select id="severity-filter" class="form-select form-select-sm" aria-label="Filter by severity" value="{{ filters.severity }}">
-            <option value="">All</option>
-            <option value="CRITICAL" {% if filters.severity == 'CRITICAL' %}selected{% endif %}>Critical</option>
-            <option value="HIGH" {% if filters.severity == 'HIGH' %}selected{% endif %}>High</option>
-            <option value="MEDIUM" {% if filters.severity == 'MEDIUM' %}selected{% endif %}>Medium</option>
-            <option value="LOW" {% if filters.severity == 'LOW' %}selected{% endif %}>Low</option>
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label for="vendor-filter" class="form-label small">Vendor</label>
-          <select id="vendor-filter" class="form-select form-select-sm" aria-label="Filter by vendor" value="{{ filters.vendor }}">
-            <option value="">All</option>
-            {% for vendor in vendors %}
-              <option value="{{ vendor }}" {% if filters.vendor == vendor %}selected{% endif %}>{{ vendor }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label for="date-start" class="form-label small">Start Date</label>
-          <input type="date" id="date-start" class="form-control form-control-sm" aria-label="Start date" value="{{ filters.date_start }}">
-        </div>
-        <div class="col-md-3">
-          <label for="date-end" class="form-label small">End Date</label>
-          <input type="date" id="date-end" class="form-control form-control-sm" aria-label="End date" value="{{ filters.date_end }}">
-        </div>
-      </div>
-      <div class="mt-3 d-flex gap-2">
-        <button id="apply-filters" class="btn btn-primary btn-sm" aria-label="Apply filters">Apply</button>
-        <button id="reset-filters" class="btn btn-outline-secondary btn-sm" aria-label="Reset filters">Reset</button>
-      </div>
-    </div>
-  </section>
+            <!-- Filters -->
+            <div class="reports-filters">
+                <div class="filters-header">
+                    <i class="bi bi-funnel"></i>
+                    <span>Filtros de Busca</span>
+                </div>
+                <form method="GET" action="{{ url_for('report.list_reports') }}">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="filter-group">
+                                <label for="severity">Severidade</label>
+                                <select class="form-select" id="severity" name="severity">
+                                    <option value="">Todas as severidades</option>
+                                    <option value="CRITICAL" {% if request.args.get('severity') == 'CRITICAL' %}selected{% endif %}>Crítica</option>
+                                    <option value="HIGH" {% if request.args.get('severity') == 'HIGH' %}selected{% endif %}>Alta</option>
+                                    <option value="MEDIUM" {% if request.args.get('severity') == 'MEDIUM' %}selected{% endif %}>Média</option>
+                                    <option value="LOW" {% if request.args.get('severity') == 'LOW' %}selected{% endif %}>Baixa</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="filter-group">
+                                <label for="vendor">Fornecedor</label>
+                                <input type="text" class="form-control" id="vendor" name="vendor" 
+                                       value="{{ request.args.get('vendor', '') }}" placeholder="Ex: Microsoft, Adobe...">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="filter-group">
+                                <label for="date_from">Data Inicial</label>
+                                <input type="date" class="form-control" id="date_from" name="date_from" 
+                                       value="{{ request.args.get('date_from', '') }}">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="filter-group">
+                                <label for="date_to">Data Final</label>
+                                <input type="date" class="form-control" id="date_to" name="date_to" 
+                                       value="{{ request.args.get('date_to', '') }}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="filter-buttons">
+                        <button type="submit" class="btn-filter">
+                            <i class="bi bi-search"></i> Aplicar Filtros
+                        </button>
+                        <a href="{{ url_for('report.list_reports') }}" class="btn-reset">
+                            <i class="bi bi-arrow-clockwise"></i> Limpar Filtros
+                        </a>
+                    </div>
+                </form>
+            </div>
 
-  <!-- Reports Table -->
-  <section class="card shadow-sm" role="region" aria-labelledby="reports-title">
-    <div class="card-header p-3">
-      <h2 id="reports-title" class="h5 mb-0">Reports ({{ total_vuln_count }})</h2>
-    </div>
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-hover table-sm mb-0" id="reports-table">
-          <thead class="bg-light">
-            <tr>
-              <th scope="col" data-sort="cve_id">CVE ID <i class="bi bi-sort-alpha-down" aria-hidden="true"></i></th>
-              <th scope="col" data-sort="description">Description</th>
-              <th scope="col" data-sort="base_severity">Severity</th>
-              <th scope="col" data-sort="cvss_score">CVSS Score</th>
-              <th scope="col" data-sort="affected_vendors">Vendor</th>
-              <th scope="col" data-sort="published_date">Published</th>
-              <th scope="col">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for vuln in vulnerabilities %}
-              <tr>
-                <td>{{ vuln.cve_id }}</td>
-                <td>{{ vuln.description | truncate(100, True) | e }}</td>
-                <td>
-                  <span class="badge {% if vuln.base_severity == 'CRITICAL' %}bg-danger{% elif vuln.base_severity == 'HIGH' %}bg-warning{% elif vuln.base_severity == 'MEDIUM' %}bg-info{% else %}bg-success{% endif %}">
-                    {{ vuln.base_severity }}
-                  </span>
-                </td>
-                <td>{{ vuln.cvss_score }}</td>
-                <td>{{ vuln.affected_vendors }}</td>
-                <td>{{ vuln.published_date }}</td>
-                <td>
-                  <button class="btn btn-outline-primary btn-sm view-report" data-cve-id="{{ vuln.cve_id }}" aria-label="View report for {{ vuln.cve_id }}" title="View Report">
-                    <i class="bi bi-eye" aria-hidden="true"></i>
-                  </button>
-                </td>
-              </tr>
-            {% else %}
-              <tr>
-                <td colspan="7" class="text-center text-muted">No vulnerabilities found.</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </section>
+            <!-- Reports Table -->
+            <div class="reports-table-container">
+                {% if vulnerabilities %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th><i class="bi bi-shield-exclamation me-2"></i>CVE ID</th>
+                                <th><i class="bi bi-file-text me-2"></i>Descrição</th>
+                                <th><i class="bi bi-exclamation-triangle me-2"></i>Severidade</th>
+                                <th><i class="bi bi-speedometer2 me-2"></i>CVSS Score</th>
+                                <th><i class="bi bi-building me-2"></i>Fornecedor</th>
+                                <th><i class="bi bi-person me-2"></i>Responsável</th>
+                                <th><i class="bi bi-calendar me-2"></i>Data de Publicação</th>
+                                <th><i class="bi bi-gear me-2"></i>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for vuln in vulnerabilities %}
+                            <tr>
+                                <td data-label="CVE ID"><strong>{{ vuln.cve_id }}</strong></td>
+                                <td data-label="Descrição">{{ vuln.description[:100] }}{% if vuln.description|length > 100 %}...{% endif %}</td>
+                                <td data-label="Severidade">
+                                    <span class="severity-badge severity-{{ vuln.base_severity.lower() }}">
+                                        {{ vuln.base_severity }}
+                                    </span>
+                                </td>
+                                <td data-label="CVSS Score">
+                                    {% if vuln.cvss_score %}
+                                        <span class="cvss-score">{{ vuln.cvss_score }}</span>
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td data-label="Fornecedor">{{ vuln.vendor or 'N/A' }}</td>
+                                <td data-label="Responsável">
+                                    {% if vuln.asset_vulnerabilities %}
+                                        {% set owners = vuln.asset_vulnerabilities | map(attribute='asset.owner') | select | map(attribute='username') | unique | list %}
+                                        {% if owners %}
+                                            <span class="text-muted">
+                                                <i class="bi bi-person-circle me-1"></i>
+                                                {{ owners | join(', ') }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">Não atribuído</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">Sem ativos</span>
+                                    {% endif %}
+                                </td>
+                                <td data-label="Data de Publicação">{{ vuln.published_date.strftime('%d/%m/%Y') if vuln.published_date else 'N/A' }}</td>
+                                <td data-label="Ações">
+                                    <a href="{{ url_for('vulnerability_ui.vulnerability_details', cve_id=vuln.cve_id) }}" class="btn-view">
+                                        <i class="bi bi-eye"></i> Visualizar
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-file-earmark-x"></i>
+                    <h3>Nenhuma vulnerabilidade encontrada</h3>
+                    <p>Não há vulnerabilidades que correspondam aos filtros aplicados.</p>
+                </div>
+                {% endif %}
+            </div>
 
-  <!-- Pagination -->
-  {% if total_pages > 1 %}
-    <nav aria-label="Report pagination" class="mt-4">
-      <ul class="pagination pagination-sm justify-content-center">
-        <li class="page-item {% if page == 1 %}disabled{% endif %}">
-          <a class="page-link" href="{{ url_for('main.reports', page=page-1, **current_args) }}" aria-label="Previous">
-            <span aria-hidden="true">«</span>
-          </a>
-        </li>
-        {% for p in range(1, total_pages + 1) %}
-          <li class="page-item {% if p == page %}active{% endif %}">
-            <a class="page-link" href="{{ url_for('main.reports', page=p, **current_args) }}">{{ p }}</a>
-          </li>
-        {% endfor %}
-        <li class="page-item {% if page == total_pages %}disabled{% endif %}">
-          <a class="page-link" href="{{ url_for('main.reports', page=page+1, **current_args) }}" aria-label="Next">
-            <span aria-hidden="true">»</span>
-          </a>
-        </li>
-      </ul>
-    </nav>
-  {% endif %}
+            <!-- Pagination -->
+            {% if pagination %}
+            <div class="pagination-container">
+                <nav aria-label="Navegação de páginas">
+                    <ul class="pagination">
+                        {% if pagination.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('report.list_reports', page=pagination.prev_num, **request.args) }}">
+                                <i class="bi bi-chevron-left"></i> Anterior
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for page_num in pagination.iter_pages() %}
+                            {% if page_num %}
+                                {% if page_num != pagination.page %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('report.list_reports', page=page_num, **request.args) }}">{{ page_num }}</a>
+                                </li>
+                                {% else %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                                {% endif %}
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if pagination.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('report.list_reports', page=pagination.next_num, **request.args) }}">
+                                Próxima <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
-{% endblock %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">
-{% endblock %}
+<!-- Toast Container -->
+<div class="toast-container"></div>
 
-{% block scripts %}
-<script defer src="{{ url_for('static', filename='js/reports.js') }}" nonce="{{ csp_nonce }}"></script>
+<script>
+// Toast notification function
+function showToast(message, type = 'info') {
+    const toastContainer = document.querySelector('.toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type} show`;
+    toast.innerHTML = `
+        <div class="toast-body">
+            <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+            ${message}
+        </div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+// Filter form enhancements
+document.addEventListener('DOMContentLoaded', function() {
+    const filterForm = document.querySelector('.reports-filters form');
+    const filterInputs = filterForm.querySelectorAll('input, select');
+    
+    // Auto-submit on filter change (optional)
+    filterInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            // Optional: Auto-submit form on change
+            // filterForm.submit();
+        });
+    });
+    
+    // Enhanced date validation
+    const dateFrom = document.getElementById('date_from');
+    const dateTo = document.getElementById('date_to');
+    
+    if (dateFrom && dateTo) {
+        dateFrom.addEventListener('change', function() {
+            if (dateTo.value && this.value > dateTo.value) {
+                showToast('A data inicial não pode ser posterior à data final', 'error');
+                this.value = '';
+            }
+        });
+        
+        dateTo.addEventListener('change', function() {
+            if (dateFrom.value && this.value < dateFrom.value) {
+                showToast('A data final não pode ser anterior à data inicial', 'error');
+                this.value = '';
+            }
+        });
+    }
+    
+    // Loading state for export buttons
+    const exportButtons = document.querySelectorAll('.btn-export, .btn-generate');
+    exportButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            const originalText = this.innerHTML;
+            this.innerHTML = '<span class="loading-spinner me-2"></span>Processando...';
+            this.disabled = true;
+            
+            // Re-enable after 3 seconds (adjust based on actual processing time)
+            setTimeout(() => {
+                this.innerHTML = originalText;
+                this.disabled = false;
+            }, 3000);
+        });
+    });
+    
+    // Table row hover effects
+    const tableRows = document.querySelectorAll('.table tbody tr');
+    tableRows.forEach(row => {
+        row.addEventListener('mouseenter', function() {
+            this.style.transform = 'scale(1.01)';
+        });
+        
+        row.addEventListener('mouseleave', function() {
+            this.style.transform = 'scale(1)';
+        });
+    });
+});
+</script>
 {% endblock %}

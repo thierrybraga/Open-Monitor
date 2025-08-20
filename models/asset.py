@@ -2,7 +2,7 @@
 # Refatorado para definir o modelo SQLAlchemy de Asset com campos, relacionamentos e mixins
 
 from datetime import datetime
-from ..extensions.db import db
+from extensions.db import db
 from .base_model import BaseModel
 
 class Asset(BaseModel):
@@ -15,6 +15,7 @@ class Asset(BaseModel):
     name = db.Column(db.String(100), nullable=False)
     ip_address = db.Column(db.String(45), unique=True, nullable=False)
     status = db.Column(db.String(50), nullable=False, default='unknown')
+    owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(
         db.DateTime,
@@ -24,8 +25,15 @@ class Asset(BaseModel):
     )
 
     # Relacionamento com AssetVulnerability
+# Relacionamentos
+    owner = db.relationship('User', back_populates='assets')
     vulnerabilities = db.relationship(
         'AssetVulnerability',
+        back_populates='asset',
+        cascade='all, delete-orphan'
+    )
+    risk_assessments = db.relationship(
+        'RiskAssessment',
         back_populates='asset',
         cascade='all, delete-orphan'
     )

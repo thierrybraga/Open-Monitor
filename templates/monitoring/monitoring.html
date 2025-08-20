@@ -89,10 +89,20 @@
           </div>
           <div class="card-footer p-4 d-flex flex-wrap justify-content-start align-items-center gap-2">
             <button class="btn btn-primary ripple-effect" id="refreshBtn" aria-label="Refresh data">
-              <i class="bi bi-arrow-repeat me-1"></i> Refresh
+              <i class="bi bi-arrow-repeat me-1"></i>
+              <span class="btn-text">Refresh</span>
+              <span class="btn-loading d-none">
+                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                Refreshing...
+              </span>
             </button>
             <button class="btn btn-danger ripple-effect d-none" id="bulkDeleteBtn" aria-label="Delete selected devices">
-              <i class="bi bi-trash me-1"></i> Delete Selected
+              <i class="bi bi-trash me-1"></i>
+              <span class="btn-text">Delete Selected</span>
+              <span class="btn-loading d-none">
+                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                Deleting...
+              </span>
             </button>
             <div class="dropdown">
               <button class="btn btn-outline-secondary dropdown-toggle" id="exportBtn" data-bs-toggle="dropdown" aria-label="Export data" aria-expanded="false">
@@ -223,8 +233,12 @@
             <div class="modal-footer">
               <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
               <button id="addDeviceBtn" type="submit" class="btn btn-primary ripple-effect">
+                <i class="bi bi-plus me-1"></i>
                 <span class="btn-text">Save Device</span>
-                <span class="spinner d-none ms-1" role="status" aria-hidden="true"></span>
+                <span class="btn-loading d-none">
+                  <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                  Saving...
+                </span>
               </button>
             </div>
           </form>

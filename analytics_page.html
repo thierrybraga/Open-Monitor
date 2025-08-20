@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <meta name="description" content="Open Monitor - Plataforma completa de monitoramento de segurança, análise de vulnerabilidades e geração de relatórios técnicos. Mantenha seus sistemas seguros com nossa solução abrangente.">
+  
+  
+  <meta name="keywords" content="segurança, vulnerabilidades, CVE, monitoramento, relatórios, cybersecurity, security monitoring, vulnerability assessment">
+  
+  
+  <meta name="theme-color" content="#3b82f6" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1e40af" media="(prefers-color-scheme: dark)">
+  
+  
+  <meta property="og:title" content="Open Monitor - Monitoramento de Segurança">
+  <meta property="og:description" content="Open Monitor - Plataforma completa de monitoramento de segurança, análise de vulnerabilidades e geração de relatórios técnicos. Mantenha seus sistemas seguros com nossa solução abrangente.">
+  <meta property="og:type" content="website">
+  
+  
+  
+  
+  
+  <title>Login</title>
+  
+  
+  <!-- SEO Meta Tags Template -->
+<!-- Este arquivo contém meta tags otimizadas para SEO que podem ser incluídas em templates -->
+
+<!-- Meta Tags Básicas -->
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+<meta name="googlebot" content="index, follow">
+<meta name="author" content="Open Monitor Team">
+<meta name="generator" content="Open Monitor Security Platform">
+<meta name="referrer" content="no-referrer-when-downgrade">
+
+<!-- Canonical URL -->
+<link rel="canonical" href="http://localhost:5000/auth/login?next=/analytics">
+
+<!-- Open Graph Meta Tags -->
+<meta property="og:site_name" content="Open Monitor">
+<meta property="og:url" content="http://localhost:5000/auth/login?next=/analytics">
+<meta property="og:image" content="http://localhost:5000/static/img/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Open Monitor - Security Monitoring Platform">
+<meta property="og:locale" content="pt_BR">
+
+<!-- Twitter Card Meta Tags -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@openmonitor">
+<meta name="twitter:creator" content="@openmonitor">
+<meta name="twitter:title" content="Open Monitor - Monitoramento de Segurança">
+<meta name="twitter:description" content="Open Monitor - Plataforma completa de monitoramento de segurança">
+<meta name="twitter:image" content="http://localhost:5000/static/img/twitter-card.png">
+<meta name="twitter:image:alt" content="Open Monitor - Security Monitoring">
+
+<!-- LinkedIn Meta Tags -->
+<meta property="article:author" content="">
+<meta property="article:publisher" content="">
+
+<!-- Additional SEO Meta Tags -->
+<meta name="application-name" content="Open Monitor">
+<meta name="msapplication-TileColor" content="#3b82f6">
+<meta name="msapplication-config" content="/static/browserconfig.xml">
+
+<!-- Preconnect to external domains for performance -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+
+<!-- DNS Prefetch for external resources -->
+<link rel="dns-prefetch" href="//fonts.googleapis.com">
+<link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+<link rel="dns-prefetch" href="//www.google-analytics.com">
+
+<!-- Alternate language versions -->
+
+
+<!-- Structured Data - Organization Schema -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Open Monitor",
+  "url": "http://localhost:5000/",
+  "logo": "http://localhost:5000/static/img/logo.png",
+  "description": "Plataforma de monitoramento de segurança e análise de vulnerabilidades",
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "contactType": "customer service",
+    "email": "contact@openmonitor.com"
+  },
+  "sameAs": [
+    "",
+    "",
+    ""
+  ]
+}
+</script>
+
+<!-- Structured Data - WebSite Schema -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Open Monitor",
+  "url": "http://localhost:5000/",
+  "description": "Plataforma de monitoramento de segurança e análise de vulnerabilidades",
+  "inLanguage": "pt-BR",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": {
+      "@type": "EntryPoint",
+      "urlTemplate": "http://localhost:5000/search?q={search_term_string}"
+    },
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
+
+<!-- Performance Hints -->
+<link rel="preload" href="/static/css/variables.css" as="style">
+<link rel="preload" href="/static/css/layout.css" as="style">
+<link rel="preload" href="/static/js/base.js" as="script">
+
+<!-- Security Headers -->
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="X-XSS-Protection" content="1; mode=block">
+<meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+
+<!-- PWA Meta Tags -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Open Monitor">
+
+<!-- Microsoft Tiles -->
+<meta name="msapplication-TileImage" content="/static/img/mstile-144x144.png">
+<meta name="msapplication-square70x70logo" content="/static/img/mstile-70x70.png">
+<meta name="msapplication-square150x150logo" content="/static/img/mstile-150x150.png">
+<meta name="msapplication-wide310x150logo" content="/static/img/mstile-310x150.png">
+<meta name="msapplication-square310x310logo" content="/static/img/mstile-310x310.png">
+
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+
+  
+  <link rel="icon" href="/static/img/favicon.ico" type="image/x-icon">
+  <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+  <link rel="manifest" href="/static/site.webmanifest">
+
+  
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+        integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+        crossorigin="anonymous"
+        onload="this.onload=null;this.rel='stylesheet'" 
+        onerror="this.onerror=null;this.href='/static/css/bootstrap.min.css'"> 
+  
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+        rel="stylesheet"
+        integrity="sha384-tC78DdvCYfORevCemecEKQ10NoNDB4jI6S/rEDH7kXWEva0U1S8vVOkW+5yW8m3+"
+        crossorigin="anonymous"
+        onerror="this.onerror=null;this.href='/static/css/bootstrap-icons.css'"> 
+  
+
+  
+  
+  <link href="/static/css/variables.css" rel="stylesheet"> 
+  <link href="/static/css/reset.css" rel="stylesheet"> 
+  <link href="/static/css/typography.css" rel="stylesheet"> 
+  <link href="/static/css/components.css" rel="stylesheet"> 
+  <link href="/static/css/layout.css" rel="stylesheet"> 
+  <link href="/static/css/responsive.css" rel="stylesheet"> 
+  <link href="/static/css/notifications.css" rel="stylesheet"> 
+  <link href="/static/css/loading.css" rel="stylesheet"> 
+  <link href="/static/css/utilities.css" rel="stylesheet"> 
+  <link href="/static/css/accessibility.css" rel="stylesheet"> 
+  <link href="/static/css/loading-states.css" rel="stylesheet"> 
+  <link href="/static/css/base.css" rel="stylesheet"> 
+  
+  
+
+  
+  
+  <script nonce="">document.documentElement.classList.add('no-js');</script> 
+
+  
+  
+
+</head>
+<body>
+
+  
+  
+  <div class="app-container d-flex flex-column min-vh-100">
+
+    
+    
+
+  
+  <link rel="stylesheet" href="/static/css/navbar.css">
+
+
+
+
+<header class="navbar flex-shrink-0">
+  <div class="container-fluid d-flex align-items-center justify-content-between">
+    
+     <button id="sidebarToggle"
+             class="sidebar-toggle btn btn-sm btn-outline-primary d-md-none"
+             type="button"
+             tabindex="0"
+             aria-controls="sidebar"
+             aria-expanded="false"
+             aria-label="Abrir menu de navegação"
+             title="Abrir menu de navegação"
+             data-bs-toggle="offcanvas"
+             data-bs-target="#sidebar">
+       <i class="bi bi-list" aria-hidden="true"></i>
+       <span class="visually-hidden">Abrir menu de navegação</span>
+     </button>
+
+    
+    
+    <a href="/" class="navbar-brand text-decoration-none" aria-label="Home">
+       
+       <span class="fw-bold">Home</span> 
+    </a>
+
+
+    
+    
+    <div class="d-flex align-items-center gap-3">
+
+      
+      
+      
+      <div class="status-sync-group d-none d-lg-flex align-items-center gap-2"> 
+          
+          
+          <div class="last-sync d-flex align-items-center gap-1"> 
+            
+            <span class="last-sync-label text-muted text-xs">Última sincronização:</span> 
+            
+            
+            <span class="last-sync-time text-muted text-xs fw-semibold" id="lastSyncTime">--:--</span> 
+          </div>
+
+          
+          
+          <span class="status-indicator d-flex align-items-center gap-1"> 
+            
+            
+              <i class="bi bi-circle-fill text-danger text-xs status-icon" aria-hidden="true"></i> 
+            
+
+            
+            
+            <span class="status-text text-muted text-xs fw-semibold"> 
+              Status do agente: Desconectado
+            </span>
+          </span>
+      </div> 
+
+
+      
+      
+      <button id="refreshButton"
+              class="btn btn-sm btn-outline-secondary ripple-effect"
+              type="button"
+              title="Atualizar dados"
+              aria-label="Refresh data">
+        <i class="bi bi-arrow-clockwise"></i>
+        <span class="visually-hidden">Refresh data</span>
+      </button>
+
+       
+
+      
+      
+      
+
+
+      
+      
+      <button class="dark-mode-toggle btn btn-sm btn-outline-secondary ripple-effect"
+              type="button"
+              tabindex="0"
+              aria-label="Toggle light/dark mode"
+              aria-pressed="false"
+              title="Toggle light/dark mode">
+        <i class="dark-mode-icon bi bi-moon"></i>
+        <span class="visually-hidden">Toggle Theme</span>
+      </button>
+    </div> 
+  </div>
+</header>
+
+
+
+<script nonce=""> 
+  document.addEventListener('DOMContentLoaded', function() {
+    // TODO: Mover lógica JS para um arquivo dedicado como static/js/navbar.js
+
+    // Configurar o botão de refresh
+    const refreshButton = document.getElementById('refreshButton');
+    const lastSyncTimeSpan = document.getElementById('lastSyncTime'); // Renomeado para clareza
+
+    if (refreshButton && lastSyncTimeSpan) {
+      refreshButton.addEventListener('click', function() {
+        // Adicionar classe de animação
+        refreshButton.classList.add('refreshing');
+
+        // TODO: Substituir por chamada real de API para sincronização
+        // Exemplo: fetch('/api/v1/sync').then(response => response.json()).then(data => { ... });
+
+        // Simular atualização (substitua por chamada real de API)
+        setTimeout(function() {
+          // Atualizar o timestamp
+          updateLastSyncTime();
+
+          // Remover classe de animação
+          refreshButton.classList.remove('refreshing');
+
+          // Exibir notificação de sucesso
+          // TODO: Integrar com sistema de notificação global (toast, etc.)
+          console.log("Dados atualizados com sucesso!"); // Log simples
+          // showSyncNotification(); // Se tiver a função implementada globalmente
+        }, 1000); // Tempo de simulação
+      });
+    }
+
+    // Atualizar o timestamp inicial ao carregar a página
+    updateLastSyncTime();
+
+    // Função auxiliar para atualizar o timestamp exibido
+    function updateLastSyncTime() {
+      if (lastSyncTimeSpan) {
+        const now = new Date();
+        const timeString = now.getHours().toString().padStart(2, '0') + ':' +
+                          now.getMinutes().toString().padStart(2, '0');
+        lastSyncTimeSpan.textContent = timeString;
+      }
+    }
+
+    // Sistema de tema melhorado
+    const darkModeToggle = document.querySelector('.dark-mode-toggle');
+    const darkModeIcon = darkModeToggle?.querySelector('.dark-mode-icon');
+    
+    if (darkModeToggle) {
+      // Função para aplicar tema
+      function applyTheme(theme) {
+        document.documentElement.classList.remove('theme-light', 'theme-dark');
+        document.documentElement.classList.add(`theme-${theme}`);
+        
+        // Atualizar ícone
+        if (darkModeIcon) {
+          darkModeIcon.className = theme === 'dark' ? 'dark-mode-icon bi bi-sun' : 'dark-mode-icon bi bi-moon';
+        }
+        
+        // Atualizar aria-pressed
+        darkModeToggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+      }
+      
+      // Carregar tema salvo ou detectar preferência do sistema
+      function loadTheme() {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme && ['light', 'dark'].includes(savedTheme)) {
+          applyTheme(savedTheme);
+        } else {
+          // Detectar preferência do sistema
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          applyTheme(prefersDark ? 'dark' : 'light');
+        }
+      }
+      
+      // Toggle do tema
+      darkModeToggle.addEventListener('click', function() {
+        const currentTheme = document.documentElement.classList.contains('theme-dark') ? 'dark' : 'light';
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        
+        applyTheme(newTheme);
+        localStorage.setItem('theme', newTheme);
+      });
+      
+      // Aplicar tema inicial
+      loadTheme();
+      
+      // Escutar mudanças na preferência do sistema
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+        // Só aplicar se não houver preferência salva
+        if (!localStorage.getItem('theme')) {
+          applyTheme(e.matches ? 'dark' : 'light');
+        }
+      });
+    }
+
+    // TODO: Implementar lógica para atualizar o status de conexão (is_connected) via JS/API
+    // A variável is_connected é passada no contexto Jinja para a renderização inicial.
+    // Para atualizar no frontend, você precisará:
+    // 1. Obter referências aos elementos do status (ícone e texto).
+    //    Ex: const statusIcon = document.querySelector('.status-indicator .status-icon');
+    //    Ex: const statusTextSpan = document.querySelector('.status-indicator .status-text');
+    // 2. Fazer requisições periódicas a um endpoint do backend que retorne o status atual (ex: /health).
+    // 3. Baseado na resposta, atualizar as classes CSS do ícone (text-success/text-danger)
+    //    e o textContent do span de texto.
+    // 4. (Opcional) Controlar classes de animação (como o pulso) no JS/CSS.
+
+    // TODO: Mover a função showSyncNotification para um arquivo JS global (ex: utils.js)
+  });
+</script>
+
+    
+    
+    
+    
+    <div class="main-content-area-wrapper flex-grow-1 d-flex"> 
+
+      
+      
+
+
+<link rel="stylesheet" href="/static/css/main.css">
+
+<nav id="sidebar" class="sidebar d-flex flex-column flex-shrink-0 py-3" 
+     aria-label="Navegação principal do sistema"
+     role="navigation"
+     tabindex="-1">
+
+  
+  <div class="sidebar-header d-flex align-items-center justify-content-between px-3 mb-3">
+    
+    <a href="/" class="d-flex align-items-center text-decoration-none text-white-50" aria-label="Voltar para a Home">
+      
+      <i class="bi bi-shield-lock fs-4 me-2"></i>
+      <span class="fs-5 fw-bold sidebar-label">VulnTracker</span>
+    </a>
+
+    
+    
+    <button id="sidebarCollapseBtn" class="btn btn-sm d-md-none" aria-label="Recolher ou expandir menu lateral">
+      <i class="bi bi-list collapse-icon-open"></i>
+      <i class="bi bi-chevron-left collapse-icon-close"></i>
+    </button>
+  </div>
+
+  
+  <div class="sidebar-nav-container flex-grow-1 overflow-y-auto">
+    <ul class="sidebar-nav list-unstyled mb-0 px-1">
+
+      
+      <li class="sidebar-category text-xs text-uppercase px-3 mt-3 mb-2 text-muted">Principal</li>
+
+      
+      <li class="sidebar-item">
+        <a href="/"
+           class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2 "
+           
+           title="Página Inicial"
+           data-bs-toggle="tooltip" data-bs-placement="right">
+          <i class="bi bi-house fs-5"></i>
+          <span class="sidebar-label">Home</span>
+        </a>
+      </li>
+
+      
+      <li class="sidebar-item">
+        <a href="/monitoring"
+           class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2 "
+           
+           title="Visualizar Monitoramento do Sistema"
+           data-bs-toggle="tooltip" data-bs-placement="right">
+          <i class="bi bi-activity fs-5"></i>
+          <span class="sidebar-label">Monitoramento</span>
+        </a>
+      </li>
+
+      
+      <li class="sidebar-item">
+        <a href="/analytics"
+           class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2 "
+           
+           title="Visualizar Análises e Relatórios"
+           data-bs-toggle="tooltip" data-bs-placement="right">
+          <i class="bi bi-bar-chart fs-5"></i>
+          <span class="sidebar-label">Analytics</span>
+        </a>
+      </li>
+
+      
+      <li class="sidebar-category text-xs text-uppercase px-3 mt-4 mb-2 text-muted">Ferramentas</li>
+
+      
+      <li class="sidebar-item">
+        <a href="/reports/"
+         class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2 "
+         
+           title="Visualizar Relatórios Gerados"
+           data-bs-toggle="tooltip" data-bs-placement="right">
+          <i class="bi bi-file-earmark-text fs-5"></i>
+          <span class="sidebar-label">Reports</span>
+        </a>
+      </li>
+
+      
+      <li class="sidebar-item">
+        <a href="/newsletter"
+           class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2 "
+           
+           title="Gerenciar Assinaturas de Newsletter"
+           data-bs-toggle="tooltip" data-bs-placement="right">
+          <i class="bi bi-newspaper fs-5"></i>
+          <span class="sidebar-label">Newsletter</span>
+        </a>
+      </li>
+
+      
+      <li class="sidebar-item">
+        <a href="/search"
+           class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2 "
+           
+           title="Buscar informações no sistema"
+           data-bs-toggle="tooltip" data-bs-placement="right">
+          <i class="bi bi-search fs-5"></i>
+          <span class="sidebar-label">Busca</span>
+        </a>
+      </li>
+
+      
+      <li class="sidebar-item">
+        <a href="/chatbot"
+           class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2 "
+           
+           title="Interagir com o Chatbot"
+           data-bs-toggle="tooltip" data-bs-placement="right">
+          <i class="bi bi-chat-dots fs-5"></i>
+          <span class="sidebar-label">Chatbot</span>
+        </a>
+      </li>
+
+      
+      
+      
+
+      
+    </ul>
+  </div> 
+
+  
+  <div class="sidebar-footer px-3 py-3 border-top mt-auto"> 
+
+    
+    
+      <a href="/auth/login"
+         class="sidebar-link d-flex align-items-center gap-2 py-2 text-decoration-none"
+         title="Fazer login">
+        <div class="user-avatar rounded-circle bg-light d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+          <i class="bi bi-person fs-5 text-dark"></i>
+        </div>
+        <div class="user-info flex-grow-1 overflow-hidden">
+          <div class="text-sm fw-medium text-white text-truncate sidebar-label">
+            Usuário Não Autenticado
+          </div>
+          <div class="text-muted text-xs text-truncate sidebar-label">
+            Clique para Fazer Login
+          </div>
+        </div>
+      </a>
+    
+
+    
+    
+
+  </div> 
+</nav>
+
+
+
+
+
+
+<script src="/static/js/sidebar.js"></script>
+
+      
+      <main id="main-content" class="main-content flex-grow-1"> 
+        
+        
+        <div id="system-alerts" class="container-fluid mt-3">
+            
+             
+              
+                  
+                      
+                          
+                          <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                              Please log in to access this page.
+                              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+                          </div>
+                      
+                  
+              
+        </div>
+        
+        <div class="container-fluid"> 
+          
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h2>Entrar</h2>
+            <p>Acesse sua conta para continuar</p>
+        </div>
+
+        
+          
+            
+              <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <i class="bi bi-info-circle me-2"></i>
+                Please log in to access this page.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+              </div>
+            
+          
+        
+
+        <form method="POST" class="auth-form" novalidate id="login-form">
+            <input id="csrf_token" name="csrf_token" type="hidden" value="IjNmODU0NjMzZTY3NTljOGVhNjNmYWMzOTdjY2Y0MjhhN2VlYTQzMDUi.aKUwCQ.TeCMwSGgbh1pyczqp-ZeCBXSmow">
+
+            <div class="form-group">
+                <label for="username" class="form-label required">
+                    <i class="bi bi-person me-1"></i>
+                    Nome de usuário ou E-mail
+                </label>
+                <input autocomplete="username" class="form-control" id="username" maxlength="50" minlength="3" name="username" placeholder="Digite seu nome de usuário" required type="text" value="">
+                
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label required">
+                    <i class="bi bi-lock me-1"></i>
+                    Senha
+                </label>
+                <div class="input-group">
+                    <input autocomplete="current-password" class="form-control" id="password" maxlength="128" minlength="8" name="password" placeholder="Digite sua senha" required type="password" value="">
+                    <button class="btn btn-outline-secondary" type="button" id="toggle-password">
+                        <i class="bi bi-eye" id="password-icon"></i>
+                    </button>
+                </div>
+                
+            </div>
+
+            <div class="form-group">
+                <div class="form-check">
+                    <input class="form-check-input" id="remember_me" name="remember_me" type="checkbox" value="y">
+                    <label class="form-check-label" for="remember_me">
+                        Lembrar-me por 30 dias
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" class="auth-button" id="submit-btn">
+                <i class="bi bi-box-arrow-in-right me-1"></i>
+                <span class="btn-text">Entrar</span>
+                <span class="btn-loading d-none">
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                    Entrando...
+                </span>
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <p>Não tem uma conta? <a href="/auth/register">Cadastre-se</a></p>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1055;"></div>
+
+<script>
+// Login form functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('login-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const btnText = submitBtn.querySelector('.btn-text');
+    const btnLoading = submitBtn.querySelector('.btn-loading');
+    const togglePassword = document.getElementById('toggle-password');
+    const passwordInput = document.getElementById('password');
+    const passwordIcon = document.getElementById('password-icon');
+
+    // Form submission with loading state
+    form.addEventListener('submit', function(e) {
+        if (form.checkValidity()) {
+            submitBtn.disabled = true;
+            btnText.classList.add('d-none');
+            btnLoading.classList.remove('d-none');
+        }
+    });
+
+    // Toggle password visibility
+    togglePassword.addEventListener('click', function() {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        
+        if (type === 'text') {
+            passwordIcon.classList.remove('bi-eye');
+            passwordIcon.classList.add('bi-eye-slash');
+        } else {
+            passwordIcon.classList.remove('bi-eye-slash');
+            passwordIcon.classList.add('bi-eye');
+        }
+    });
+
+    // Real-time validation feedback
+    const inputs = form.querySelectorAll('input');
+    inputs.forEach(input => {
+        input.addEventListener('blur', function() {
+            validateField(this);
+        });
+
+        input.addEventListener('input', function() {
+            if (this.classList.contains('is-invalid')) {
+                validateField(this);
+            }
+        });
+    });
+
+    function validateField(field) {
+        const value = field.value.trim();
+        const isRequired = field.hasAttribute('required') || field.labels[0]?.classList.contains('required');
+        
+        if (isRequired && !value) {
+            field.classList.add('is-invalid');
+            field.classList.remove('is-valid');
+        } else if (value) {
+            field.classList.remove('is-invalid');
+            field.classList.add('is-valid');
+        } else {
+            field.classList.remove('is-invalid', 'is-valid');
+        }
+    }
+
+    // Show toast notifications
+    function showToast(message, type = 'success') {
+        const toastContainer = document.querySelector('.toast-container');
+        const toastId = 'toast-' + Date.now();
+        
+        const toastHTML = `
+            <div class="toast align-items-center text-bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true" id="${toastId}">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+        
+        toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+        const toastElement = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
+        toast.show();
+        
+        toastElement.addEventListener('hidden.bs.toast', function() {
+            this.remove();
+        });
+    }
+});
+</script>
+
+        </div>
+      </main>
+
+    </div> 
+
+    
+    
+<footer class="footer mt-auto bg-dark text-light">
+  <div class="container">
+    <!-- Main Footer Content -->
+    <div class="row py-3">
+      <!-- Company Info Section -->
+      <div class="col-lg-3 col-md-6 mb-3">
+        <div class="footer-section">
+          <h6 class="footer-title mb-2">
+            <i class="bi bi-shield-check me-2"></i>
+            
+          </h6>
+          <p class="footer-description mb-2 small">
+            Monitoramento de segurança cibernética com análises avançadas de vulnerabilidades em tempo real.
+          </p>
+          <div class="footer-stats-compact d-flex justify-content-between">
+            <span class="stat-compact"><strong>24/7</strong> <small>Monitor</small></span>
+            <span class="stat-compact"><strong>99.9%</strong> <small>Uptime</small></span>
+            <span class="stat-compact"><strong>1000+</strong> <small>CVEs</small></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Links Section -->
+      <div class="col-lg-2 col-md-3 col-6 mb-3">
+        <div class="footer-section">
+          <h6 class="footer-title mb-2 small">Navegação</h6>
+          <ul class="footer-links list-unstyled small">
+            <li><a href="/" class="footer-link py-1"><i class="bi bi-house me-1"></i>Início</a></li>
+            <li><a href="/monitoring" class="footer-link py-1"><i class="bi bi-activity me-1"></i>Monitor</a></li>
+            <li><a href="/analytics" class="footer-link py-1"><i class="bi bi-bar-chart me-1"></i>Analytics</a></li>
+            <li><a href="/search" class="footer-link py-1"><i class="bi bi-search me-1"></i>Busca</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Resources Section -->
+      <div class="col-lg-2 col-md-3 col-6 mb-3">
+        <div class="footer-section">
+          <h6 class="footer-title mb-2 small">Recursos</h6>
+          <ul class="footer-links list-unstyled small">
+            <li><a href="/insights" class="footer-link py-1"><i class="bi bi-lightbulb me-1"></i>Insights</a></li>
+            <li><a href="/chatbot" class="footer-link py-1"><i class="bi bi-chat-dots me-1"></i>Chatbot</a></li>
+            <li><a href="#" class="footer-link py-1"><i class="bi bi-file-text me-1"></i>Docs</a></li>
+            <li><a href="#" class="footer-link py-1"><i class="bi bi-headset me-1"></i>Suporte</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Legal Section -->
+      <div class="col-lg-2 col-md-3 col-6 mb-3">
+        <div class="footer-section">
+          <h6 class="footer-title mb-2 small">Legal</h6>
+          <ul class="footer-links list-unstyled small">
+            <li><a href="#" class="footer-link py-1"><i class="bi bi-shield-lock me-1"></i>Privacidade</a></li>
+            <li><a href="#" class="footer-link py-1"><i class="bi bi-file-earmark-text me-1"></i>Termos</a></li>
+            <li><a href="#" class="footer-link py-1"><i class="bi bi-info-circle me-1"></i>Sobre</a></li>
+            <li><a href="#" class="footer-link py-1"><i class="bi bi-telephone me-1"></i>Contato</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Social & Actions Section -->
+      <div class="col-lg-3 col-md-3 mb-3">
+        <div class="footer-section">
+          <h6 class="footer-title mb-2 small">Conecte-se</h6>
+          
+          <!-- Social Links & Actions in one row -->
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <!-- Social Links -->
+            <div class="social-links">
+              
+                <a href="https://twitter.com/seu_perfil" target="_blank" rel="noopener noreferrer" 
+                   class="social-link social-link-twitter me-2" 
+                   aria-label="Twitter" 
+                   data-bs-toggle="tooltip" 
+                   data-bs-placement="top" 
+                   title="Twitter">
+                  <i class="bi bi-twitter"></i>
+                </a>
+              
+                <a href="https://linkedin.com/sua_pagina" target="_blank" rel="noopener noreferrer" 
+                   class="social-link social-link-linkedin me-2" 
+                   aria-label="Linkedin" 
+                   data-bs-toggle="tooltip" 
+                   data-bs-placement="top" 
+                   title="Linkedin">
+                  <i class="bi bi-linkedin"></i>
+                </a>
+              
+            </div>
+
+            <!-- Theme Toggle & Back to Top -->
+            <div class="d-flex gap-2">
+              <button id="theme-toggle" class="btn btn-outline-light btn-sm" aria-label="Alternar tema">
+                <i class="bi bi-sun-fill" id="theme-icon-light"></i>
+                <i class="bi bi-moon-fill d-none" id="theme-icon-dark"></i>
+              </button>
+              <button id="back-to-top" class="btn btn-outline-light btn-sm" aria-label="Voltar ao topo">
+                <i class="bi bi-arrow-up"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer Bottom -->
+    <div class="footer-bottom border-top border-secondary pt-2">
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <div class="copyright">
+            <span class="small">
+              ©  <strong></strong> - Todos os direitos reservados.
+            </span>
+          </div>
+        </div>
+        <div class="col-md-4 text-md-end">
+          <div class="footer-meta d-flex justify-content-md-end align-items-center gap-3">
+            <span class="small text-muted">
+              <i class="bi bi-code-slash me-1"></i>v2.0.1
+            </span>
+            <span class="small text-muted">
+              <i class="bi bi-heart-fill text-danger me-1"></i>Open Source
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+
+  </div> 
+
+
+  
+  
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+          crossorigin="anonymous"
+          onerror="this.onerror=null;this.src='/static/js/bootstrap.bundle.min.js'"
+          defer nonce=""></script> 
+
+  
+  
+  
+  <script defer src="/static/js/base.js" nonce=""></script> 
+  <script defer src="/static/js/responsive.js" nonce=""></script>
+  <script defer src="/static/js/notifications.js" nonce=""></script>
+  <script defer src="/static/js/loading.js" nonce=""></script>
+
+  
+  
+  
+
+  
+  
+  
+   <script nonce="">
+     document.addEventListener('DOMContentLoaded', function() {
+       // Adicionar listeners para status online/offline
+       window.addEventListener('online', updateOnlineStatus);
+       window.addEventListener('offline', updateOnlineStatus);
+
+       function updateOnlineStatus(event) {
+         const condition = navigator.onLine ? 'online' : 'offline';
+         const systemAlerts = document.getElementById('system-alerts');
+
+         if (systemAlerts) { // Verifica se a div system-alerts existe
+           const existingAlert = document.getElementById('offline-alert');
+
+           if (condition === 'offline') {
+             if (!existingAlert) { // Cria o alerta apenas se não existir
+               const offlineAlert = document.createElement('div');
+               // Usar classes de alerta Bootstrap
+               offlineAlert.className = 'alert alert-warning alert-dismissible fade show';
+               offlineAlert.role = 'alert';
+               offlineAlert.id = 'offline-alert';
+
+               const content = `
+                 <div class="d-flex align-items-center">
+                   <div class="me-2">
+                     <i class="bi bi-wifi-off"></i>
+                   </div>
+                   <div>Você está offline. Algumas funcionalidades podem estar indisponíveis.</div>
+                 </div>
+                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+               `;
+
+               offlineAlert.innerHTML = content;
+               // Prepend o alerta ao invés de append, para aparecer no topo da lista de alertas
+               systemAlerts.prepend(offlineAlert);
+                // Adiciona um timer para remover a classe 'show' após um pequeno delay para a animação de fade-in
+                // (Pode não ser necessário se o CSS gerenciar o fade com 'fade show')
+                // setTimeout(() => {
+                //     offlineAlert.classList.remove('show');
+                // }, 100);
+             }
+           } else { // Se online
+             if (existingAlert) {
+                // Adiciona a classe 'fade' e 'show' para a animação de fade-out antes de remover
+                // existingAlert.classList.add('fade'); // 'fade' já está na classe
+                existingAlert.classList.add('show');
+                // Espera a transição terminar antes de remover o elemento
+                existingAlert.addEventListener('transitionend', function() {
+                    existingAlert.remove();
+                });
+                // Caso a transição não ocorra por algum motivo, remover após um tempo
+                setTimeout(() => {
+                     if(existingAlert && existingAlert.parentNode) {
+                         existingAlert.remove();
+                     }
+                }, 600); // Tempo maior que a duração da transição
+             }
+           }
+         }
+       }
+
+       // Verificar estado de conexão ao carregar
+       updateOnlineStatus();
+
+       // TODO: Adicionar lógica JS para exibir mensagens flash do Flask em toasts
+       // Isso requer ler as mensagens flash do HTML (já estão lá)
+       // e inicializar e mostrar o componente toast do Bootstrap.
+       // Pode usar o toast-container já definido.
+     });
+   </script>
+
+   
+   <script src="/static/js/theme.js" defer></script>
+   
+   
+   <script src="/static/js/loading-manager.js" defer></script>
+   
+   
+   <script src="/static/js/performance-optimizer.js" defer></script>
+   
+   
+   <script src="/static/js/bundle-config.js" defer></script>
+   
+   
+   <script src="/static/js/performance-metrics.js" defer></script>
+
+</body>
+</html>

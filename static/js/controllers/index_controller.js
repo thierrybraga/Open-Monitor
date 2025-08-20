@@ -10,22 +10,28 @@ export class IndexController {
 
   _bindEvents() {
     // Event delegation na tabela
-    this.tableBody.addEventListener('click', (e) => {
-      const viewBtn = e.target.closest('[data-action="view"]');
-      const mitBtn  = e.target.closest('[data-action="mitigate"]');
-      if (viewBtn) {
-        this._onViewClick(viewBtn.dataset.cveId);
-      } else if (mitBtn) {
-        this._onMitigateClick(mitBtn.dataset.cveId, mitBtn);
-      }
-    });
+    if (this.tableBody) {
+      this.tableBody.addEventListener('click', (e) => {
+        const viewBtn = e.target.closest('[data-action="view"]');
+        const mitBtn  = e.target.closest('[data-action="mitigate"]');
+        if (viewBtn) {
+          this._onViewClick(viewBtn.dataset.cveId);
+        } else if (mitBtn) {
+          this._onMitigateClick(mitBtn.dataset.cveId, mitBtn);
+        }
+      });
+    }
 
     // Botões estáticos do modal
-    this.modalEl.querySelector('[data-action="modal-mitigate"]')
-      .addEventListener('click', () => {
-        const cveId = this.modalEl.querySelector('#modal-cve-id').textContent;
-        this._onMitigateClick(cveId);
-      });
+    if (this.modalEl) {
+      const mitigateBtn = this.modalEl.querySelector('[data-action="modal-mitigate"]');
+      if (mitigateBtn) {
+        mitigateBtn.addEventListener('click', () => {
+          const cveId = this.modalEl.querySelector('#modal-cve-id').textContent;
+          this._onMitigateClick(cveId);
+        });
+      }
+    }
 
     // Tooltips do Bootstrap
     document.querySelectorAll('[data-bs-toggle="tooltip"]')

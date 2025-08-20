@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional, Type, TypeVar, List
 
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-from ..extensions.db import db
+from extensions.db import db
 
 logger = logging.getLogger(__name__)
 T = TypeVar('T', bound='BaseModel')

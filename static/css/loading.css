@@ -1,0 +1,634 @@
+/**
+ * loading.css - Estados de Carregamento e Skeleton Screens
+ * Versão: 1.0 - Criado em Janeiro 2025
+ * Sistema completo de loading states, spinners e skeleton screens
+ */
+
+/* ==========================================================================
+   Variáveis para Loading States
+   ========================================================================== */
+
+:root {
+    /* Cores de loading */
+    --loading-bg: var(--color-neutral-100);
+    --loading-shimmer: var(--color-neutral-200);
+    --loading-overlay: rgba(255, 255, 255, 0.8);
+    --loading-overlay-dark: rgba(0, 0, 0, 0.5);
+    
+    /* Durações de animação */
+    --loading-duration: 1.5s;
+    --loading-pulse-duration: 2s;
+    --spinner-duration: 1s;
+    
+    /* Tamanhos de spinner */
+    --spinner-size-sm: 1rem;
+    --spinner-size-md: 1.5rem;
+    --spinner-size-lg: 2rem;
+    --spinner-size-xl: 3rem;
+    
+    /* Cores de spinner */
+    --spinner-color: var(--color-primary-500);
+    --spinner-bg: var(--color-neutral-200);
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] {
+    --loading-bg: var(--color-neutral-800);
+    --loading-shimmer: var(--color-neutral-700);
+    --loading-overlay: rgba(0, 0, 0, 0.8);
+    --spinner-bg: var(--color-neutral-700);
+}
+
+/* ==========================================================================
+   Keyframes para Animações
+   ========================================================================== */
+
+@keyframes shimmer {
+    0% {
+        background-position: -200px 0;
+    }
+    100% {
+        background-position: calc(200px + 100%) 0;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-10px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* ==========================================================================
+   Spinners
+   ========================================================================== */
+
+/* Spinner base */
+.spinner {
+    display: inline-block;
+    width: var(--spinner-size-md);
+    height: var(--spinner-size-md);
+    border: 2px solid var(--spinner-bg);
+    border-radius: 50%;
+    border-top-color: var(--spinner-color);
+    animation: spin var(--spinner-duration) ease-in-out infinite;
+}
+
+/* Tamanhos de spinner */
+.spinner-sm {
+    width: var(--spinner-size-sm);
+    height: var(--spinner-size-sm);
+    border-width: 1px;
+}
+
+.spinner-lg {
+    width: var(--spinner-size-lg);
+    height: var(--spinner-size-lg);
+    border-width: 3px;
+}
+
+.spinner-xl {
+    width: var(--spinner-size-xl);
+    height: var(--spinner-size-xl);
+    border-width: 4px;
+}
+
+/* Spinner com pontos */
+.spinner-dots {
+    display: inline-block;
+    position: relative;
+    width: var(--spinner-size-md);
+    height: var(--spinner-size-md);
+}
+
+.spinner-dots div {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--spinner-color);
+    animation: spin var(--spinner-duration) linear infinite;
+}
+
+.spinner-dots div:nth-child(1) { transform: translate(-50%, -50%) rotate(0deg) translate(10px) rotate(0deg); }
+.spinner-dots div:nth-child(2) { transform: translate(-50%, -50%) rotate(45deg) translate(10px) rotate(-45deg); }
+.spinner-dots div:nth-child(3) { transform: translate(-50%, -50%) rotate(90deg) translate(10px) rotate(-90deg); }
+.spinner-dots div:nth-child(4) { transform: translate(-50%, -50%) rotate(135deg) translate(10px) rotate(-135deg); }
+.spinner-dots div:nth-child(5) { transform: translate(-50%, -50%) rotate(180deg) translate(10px) rotate(-180deg); }
+.spinner-dots div:nth-child(6) { transform: translate(-50%, -50%) rotate(225deg) translate(10px) rotate(-225deg); }
+.spinner-dots div:nth-child(7) { transform: translate(-50%, -50%) rotate(270deg) translate(10px) rotate(-270deg); }
+.spinner-dots div:nth-child(8) { transform: translate(-50%, -50%) rotate(315deg) translate(10px) rotate(-315deg); }
+
+/* ==========================================================================
+   Loading Overlays
+   ========================================================================== */
+
+/* Overlay de loading */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--loading-overlay);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(2px);
+    animation: fadeIn 0.3s ease-out;
+}
+
+.loading-overlay.dark {
+    background: var(--loading-overlay-dark);
+    color: white;
+}
+
+/* Loading content */
+.loading-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+    text-align: center;
+}
+
+.loading-text {
+    font-size: var(--font-size-sm);
+    color: var(--color-neutral-600);
+    margin-top: var(--spacing-sm);
+}
+
+/* Loading para fullscreen */
+.loading-fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--loading-overlay);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+/* ==========================================================================
+   Skeleton Screens
+   ========================================================================== */
+
+/* Base skeleton */
+.skeleton {
+    background: var(--loading-bg);
+    background-image: linear-gradient(
+        90deg,
+        var(--loading-bg) 0px,
+        var(--loading-shimmer) 40px,
+        var(--loading-bg) 80px
+    );
+    background-size: 200px 100%;
+    background-repeat: no-repeat;
+    animation: shimmer var(--loading-duration) ease-in-out infinite;
+    border-radius: var(--border-radius-sm);
+}
+
+/* Skeleton text */
+.skeleton-text {
+    height: 1em;
+    margin-bottom: var(--spacing-xs);
+}
+
+.skeleton-text.line-1 { width: 100%; }
+.skeleton-text.line-2 { width: 85%; }
+.skeleton-text.line-3 { width: 70%; }
+.skeleton-text.line-4 { width: 90%; }
+.skeleton-text.line-short { width: 60%; }
+.skeleton-text.line-medium { width: 80%; }
+.skeleton-text.line-long { width: 95%; }
+
+/* Skeleton heading */
+.skeleton-heading {
+    height: 1.5em;
+    width: 60%;
+    margin-bottom: var(--spacing-sm);
+}
+
+.skeleton-heading.h1 { height: 2em; width: 70%; }
+.skeleton-heading.h2 { height: 1.8em; width: 65%; }
+.skeleton-heading.h3 { height: 1.6em; width: 60%; }
+
+/* Skeleton avatar */
+.skeleton-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+.skeleton-avatar.sm { width: 32px; height: 32px; }
+.skeleton-avatar.lg { width: 56px; height: 56px; }
+.skeleton-avatar.xl { width: 72px; height: 72px; }
+
+/* Skeleton button */
+.skeleton-button {
+    height: 36px;
+    width: 100px;
+    border-radius: var(--border-radius-md);
+}
+
+.skeleton-button.sm { height: 28px; width: 80px; }
+.skeleton-button.lg { height: 44px; width: 120px; }
+
+/* Skeleton card */
+.skeleton-card {
+    padding: var(--spacing-md);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--border-radius-lg);
+    background: white;
+}
+
+.skeleton-card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+}
+
+.skeleton-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+/* Skeleton table */
+.skeleton-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.skeleton-table td {
+    padding: var(--spacing-sm);
+    border-bottom: 1px solid var(--color-neutral-200);
+}
+
+.skeleton-table-cell {
+    height: 1em;
+}
+
+/* Skeleton list */
+.skeleton-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.skeleton-list-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+}
+
+/* ==========================================================================
+   Loading States para Componentes Específicos
+   ========================================================================== */
+
+/* Loading para dashboard cards */
+.dashboard-card.loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.dashboard-card.loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--loading-overlay);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Loading para tabelas */
+.table-loading {
+    position: relative;
+    min-height: 200px;
+}
+
+.table-loading tbody {
+    opacity: 0.5;
+}
+
+/* Loading para formulários */
+.form-loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.form-loading input,
+.form-loading select,
+.form-loading textarea,
+.form-loading button {
+    opacity: 0.6;
+}
+
+/* Loading para botões */
+.btn.loading {
+    position: relative;
+    color: transparent;
+    pointer-events: none;
+}
+
+.btn.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin var(--spinner-duration) linear infinite;
+}
+
+/* ==========================================================================
+   Skeleton Templates Específicos
+   ========================================================================== */
+
+/* Skeleton para dashboard */
+.skeleton-dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+}
+
+.skeleton-dashboard-card {
+    padding: var(--spacing-md);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--border-radius-lg);
+    background: white;
+}
+
+.skeleton-dashboard-card .skeleton-heading {
+    margin-bottom: var(--spacing-sm);
+}
+
+.skeleton-dashboard-card .skeleton-text {
+    height: 2em;
+    width: 40%;
+    font-size: var(--font-size-xl);
+    font-weight: bold;
+}
+
+/* Skeleton para lista de monitoramento */
+.skeleton-monitoring-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.skeleton-monitoring-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    border: 1px solid var(--color-neutral-200);
+    border-radius: var(--border-radius-md);
+    background: white;
+}
+
+.skeleton-monitoring-item .skeleton-avatar {
+    flex-shrink: 0;
+}
+
+.skeleton-monitoring-item .skeleton-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+/* Skeleton para gráficos */
+.skeleton-chart {
+    height: 300px;
+    border-radius: var(--border-radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--loading-bg);
+    position: relative;
+    overflow: hidden;
+}
+
+.skeleton-chart::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        var(--loading-shimmer) 50%,
+        transparent 100%
+    );
+    animation: shimmer var(--loading-duration) ease-in-out infinite;
+}
+
+/* ==========================================================================
+   Utilitários de Loading
+   ========================================================================== */
+
+/* Classe para ocultar conteúdo durante loading */
+.loading-hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Classe para mostrar conteúdo após loading */
+.loading-complete {
+    animation: slideDown 0.5s ease-out;
+}
+
+/* Classe para desabilitar interações durante loading */
+.loading-disabled {
+    pointer-events: none;
+    user-select: none;
+}
+
+/* ==========================================================================
+   Responsividade
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    .skeleton-dashboard {
+        grid-template-columns: 1fr;
+    }
+    
+    .skeleton-chart {
+        height: 200px;
+    }
+    
+    .loading-content {
+        padding: var(--spacing-md);
+    }
+    
+    .skeleton-card {
+        padding: var(--spacing-sm);
+    }
+}
+
+/* ==========================================================================
+   Acessibilidade
+   ========================================================================== */
+
+/* Respeitar preferências de movimento reduzido */
+@media (prefers-reduced-motion: reduce) {
+    .skeleton,
+    .spinner,
+    .loading-overlay {
+        animation: none;
+    }
+    
+    .skeleton {
+        background: var(--loading-bg);
+    }
+    
+    .spinner {
+        border-top-color: var(--spinner-color);
+    }
+}
+
+/* Screen readers */
+.loading-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Indicador de loading para screen readers */
+.loading-indicator[aria-hidden="false"] {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+/* ==========================================================================
+   Estados de Erro e Vazio
+   ========================================================================== */
+
+/* Estado vazio */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xl);
+    text-align: center;
+    color: var(--color-neutral-600);
+    min-height: 200px;
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+    color: var(--color-neutral-400);
+    margin-bottom: var(--spacing-md);
+}
+
+.empty-state-title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    margin-bottom: var(--spacing-sm);
+    color: var(--color-neutral-700);
+}
+
+.empty-state-description {
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--spacing-md);
+    max-width: 400px;
+}
+
+/* Estado de erro */
+.error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xl);
+    text-align: center;
+    min-height: 200px;
+}
+
+.error-state-icon {
+    font-size: 3rem;
+    color: var(--color-danger-500);
+    margin-bottom: var(--spacing-md);
+}
+
+.error-state-title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    margin-bottom: var(--spacing-sm);
+    color: var(--color-danger-700);
+}
+
+.error-state-description {
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--spacing-md);
+    color: var(--color-neutral-600);
+    max-width: 400px;
+}
+
+.error-state-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+    justify-content: center;
+}

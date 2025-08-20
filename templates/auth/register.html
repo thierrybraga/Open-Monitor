@@ -1,74 +1,455 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 
-{% block title %}Registrar Conta{% endblock %}
+{% block title %}Registro{% endblock %}
 
 {% block content %}
-<div class="auth-container mx-auto max-w-md p-6 bg-white rounded-xl shadow-lg">
-  <h2 class="text-2xl font-semibold mb-4 text-center">Registrar Conta</h2>
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h2>Criar Conta</h2>
+            <p>Preencha os dados para criar sua conta</p>
+        </div>
 
-  {# Flash globais #}
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      <div class="mb-4">
-        {% for category, msg in messages %}
-          <div class="alert alert-{{ category }} mb-2">{{ msg }}</div>
-        {% endfor %}
-      </div>
-    {% endif %}
-  {% endwith %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                <i class="bi bi-{{ 'exclamation-triangle' if category == 'error' else 'info-circle' }} me-2"></i>
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
 
-  <form method="post" action="{{ url_for('auth.register', next=request.args.get('next')) }}">
-    {{ form.hidden_tag() }}
-    {% if request.args.get('next') %}
-      <input type="hidden" name="next" value="{{ request.args.get('next') }}">
-    {% endif %}
+        <form method="POST" class="auth-form" novalidate id="register-form">
+            {{ form.csrf_token }}
 
-    <div class="mb-4">
-      {{ form.username.label(class="block text-sm font-medium mb-1") }}
-      {{ form.username(class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300",
-                       aria-describedby="username-error") }}
-      {% if form.username.errors %}
-        <p id="username-error" class="text-danger text-sm mt-1">{{ form.username.errors[0] }}</p>
-      {% endif %}
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="first_name" class="form-label required">
+                            <i class="bi bi-person me-1"></i>
+                            Nome
+                        </label>
+                        {{ form.first_name(class="form-control" + (" is-invalid" if form.first_name.errors else ""), id="first_name") }}
+                        {% if form.first_name.errors %}
+                            <div class="invalid-feedback">
+                                {{ form.first_name.errors[0] }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="last_name" class="form-label required">
+                            <i class="bi bi-person me-1"></i>
+                            Sobrenome
+                        </label>
+                        {{ form.last_name(class="form-control" + (" is-invalid" if form.last_name.errors else ""), id="last_name") }}
+                        {% if form.last_name.errors %}
+                            <div class="invalid-feedback">
+                                {{ form.last_name.errors[0] }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="username" class="form-label required">
+                    <i class="bi bi-at me-1"></i>
+                    Nome de usuário
+                </label>
+                {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else ""), id="username") }}
+                {% if form.username.errors %}
+                    <div class="invalid-feedback">
+                        {{ form.username.errors[0] }}
+                    </div>
+                {% endif %}
+                <small class="text-muted mt-1 d-block">
+                    Mínimo de 3 caracteres, apenas letras, números e underscore
+                </small>
+            </div>
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="form-group">
+                        <label for="email" class="form-label required">
+                            <i class="bi bi-envelope me-1"></i>
+                            E-mail
+                        </label>
+                        {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), id="email") }}
+                        {% if form.email.errors %}
+                            <div class="invalid-feedback">
+                                {{ form.email.errors[0] }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="phone" class="form-label">
+                            <i class="bi bi-telephone me-1"></i>
+                            Telefone
+                        </label>
+                        {{ form.phone(class="form-control" + (" is-invalid" if form.phone.errors else ""), id="phone") }}
+                        {% if form.phone.errors %}
+                            <div class="invalid-feedback">
+                                {{ form.phone.errors[0] }}
+                            </div>
+                        {% endif %}
+                        <small class="text-muted mt-1 d-block">Opcional</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label required">
+                    <i class="bi bi-lock me-1"></i>
+                    Senha
+                </label>
+                <div class="input-group">
+                    {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), id="password", placeholder="Digite sua senha") }}
+                    <button class="btn btn-outline-secondary" type="button" id="toggle-password">
+                        <i class="bi bi-eye" id="password-icon"></i>
+                    </button>
+                </div>
+                {% if form.password.errors %}
+                    <div class="invalid-feedback">
+                        {{ form.password.errors[0] }}
+                    </div>
+                {% endif %}
+                <div class="password-strength mt-2">
+                    <div class="progress" style="height: 4px;">
+                        <div class="progress-bar" role="progressbar" id="password-strength-bar"></div>
+                    </div>
+                    <small class="text-muted mt-1 d-block" id="password-strength-text">
+                        Mínimo de 8 caracteres com letras, números e símbolos
+                    </small>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="password2" class="form-label required">
+                    <i class="bi bi-shield-check me-1"></i>
+                    Confirmar Senha
+                </label>
+                <div class="input-group">
+                    {{ form.confirm_password(class="form-control" + (" is-invalid" if form.confirm_password.errors else ""), id="password2", placeholder="Confirme sua senha") }}
+                    <button class="btn btn-outline-secondary" type="button" id="toggle-password2">
+                        <i class="bi bi-eye" id="password2-icon"></i>
+                    </button>
+                </div>
+                {% if form.confirm_password.errors %}
+                    <div class="invalid-feedback">
+                        {{ form.confirm_password.errors[0] }}
+                    </div>
+                {% endif %}
+                <div class="password-match mt-1" id="password-match">
+                    <small class="text-muted">As senhas devem ser idênticas</small>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="form-check">
+                    {{ form.terms_accepted(class="form-check-input" + (" is-invalid" if form.terms_accepted.errors else ""), id="terms_accepted") }}
+                    <label class="form-check-label" for="terms_accepted">
+                        Aceito os <a href="#" target="_blank">termos de uso</a> e <a href="#" target="_blank">política de privacidade</a>
+                    </label>
+                    {% if form.terms_accepted.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.terms_accepted.errors[0] }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <button type="submit" class="auth-button" id="submit-btn">
+                <i class="bi bi-person-plus me-1"></i>
+                <span class="btn-text">Criar Conta</span>
+                <span class="btn-loading d-none">
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                    Criando conta...
+                </span>
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <p>Já tem uma conta? <a href="{{ url_for('auth.login') }}">Entrar</a></p>
+        </div>
     </div>
-
-    <div class="mb-4">
-      {{ form.email.label(class="block text-sm font-medium mb-1") }}
-      {{ form.email(class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300",
-                    aria-describedby="email-error") }}
-      {% if form.email.errors %}
-        <p id="email-error" class="text-danger text-sm mt-1">{{ form.email.errors[0] }}</p>
-      {% endif %}
-    </div>
-
-    <div class="mb-4">
-      {{ form.password.label(class="block text-sm font-medium mb-1") }}
-      {{ form.password(class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300",
-                        aria-describedby="password-error") }}
-      {% if form.password.errors %}
-        <p id="password-error" class="text-danger text-sm mt-1">{{ form.password.errors[0] }}</p>
-      {% endif %}
-    </div>
-
-    <div class="mb-6">
-      {{ form.confirm_password.label(class="block text-sm font-medium mb-1") }}
-      {{ form.confirm_password(class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300",
-                                aria-describedby="confirm-error") }}
-      {% if form.confirm_password.errors %}
-        <p id="confirm-error" class="text-danger text-sm mt-1">{{ form.confirm_password.errors[0] }}</p>
-      {% endif %}
-    </div>
-
-    <button type="submit"
-            class="w-full py-2 px-4 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 transition">
-      Registrar
-    </button>
-  </form>
-
-  <p class="mt-4 text-center text-sm text-gray-600">
-    Já possui conta?
-    <a href="{{ url_for('auth.login', next=request.args.get('next')) }}"
-       class="text-blue-600 hover:underline">Entrar</a>
-  </p>
 </div>
+
+<!-- Toast Container -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1055;"></div>
+
+<script>
+// Register form functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('register-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const btnText = submitBtn.querySelector('.btn-text');
+    const btnLoading = submitBtn.querySelector('.btn-loading');
+    const passwordInput = document.getElementById('password');
+    const password2Input = document.getElementById('password2');
+    const togglePassword = document.getElementById('toggle-password');
+    const togglePassword2 = document.getElementById('toggle-password2');
+    const passwordIcon = document.getElementById('password-icon');
+    const password2Icon = document.getElementById('password2-icon');
+    const strengthBar = document.getElementById('password-strength-bar');
+    const strengthText = document.getElementById('password-strength-text');
+    const passwordMatch = document.getElementById('password-match');
+
+    // Form submission with loading state
+    form.addEventListener('submit', function(e) {
+        if (form.checkValidity()) {
+            submitBtn.disabled = true;
+            btnText.classList.add('d-none');
+            btnLoading.classList.remove('d-none');
+        }
+    });
+
+    // Toggle password visibility
+    function setupPasswordToggle(toggleBtn, passwordField, icon) {
+        toggleBtn.addEventListener('click', function() {
+            const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordField.setAttribute('type', type);
+            
+            if (type === 'text') {
+                icon.classList.remove('bi-eye');
+                icon.classList.add('bi-eye-slash');
+            } else {
+                icon.classList.remove('bi-eye-slash');
+                icon.classList.add('bi-eye');
+            }
+        });
+    }
+
+    setupPasswordToggle(togglePassword, passwordInput, passwordIcon);
+    setupPasswordToggle(togglePassword2, password2Input, password2Icon);
+
+    // Password strength checker
+    passwordInput.addEventListener('input', function() {
+        const password = this.value;
+        const strength = calculatePasswordStrength(password);
+        updatePasswordStrength(strength);
+        checkPasswordMatch();
+    });
+
+    // Password match checker
+    password2Input.addEventListener('input', function() {
+        checkPasswordMatch();
+    });
+
+    function calculatePasswordStrength(password) {
+        let score = 0;
+        let feedback = [];
+        
+        // Verificações básicas
+        if (password.length >= 8) {
+            score++;
+        } else {
+            feedback.push('Mínimo 8 caracteres');
+        }
+        
+        if (password.length >= 12) {
+            score++;
+        }
+        
+        if (/[a-z]/.test(password)) {
+            score++;
+        } else {
+            feedback.push('Letra minúscula');
+        }
+        
+        if (/[A-Z]/.test(password)) {
+            score++;
+        } else {
+            feedback.push('Letra maiúscula');
+        }
+        
+        if (/\d/.test(password)) {
+            score++;
+        } else {
+            feedback.push('Número');
+        }
+        
+        if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+            score++;
+        } else {
+            feedback.push('Caractere especial');
+        }
+        
+        // Verificar sequências comuns
+        const commonSequences = ['123456', 'abcdef', 'qwerty', 'password'];
+        if (commonSequences.some(seq => password.toLowerCase().includes(seq))) {
+            score--;
+            feedback.push('Evite sequências comuns');
+        }
+        
+        // Determinar força
+        let strength = 'fraca';
+        let strengthClass = 'danger';
+        
+        if (score >= 5) {
+            strength = 'forte';
+            strengthClass = 'success';
+        } else if (score >= 3) {
+            strength = 'média';
+            strengthClass = 'warning';
+        }
+        
+        return { score: Math.max(0, score), strength, strengthClass, feedback };
+    }
+
+    function updatePasswordStrength(result) {
+        const { score, strength, strengthClass, feedback } = result;
+        
+        strengthBar.style.width = Math.min((score / 6) * 100, 100) + '%';
+        strengthBar.className = `progress-bar bg-${strengthClass}`;
+        strengthBar.setAttribute('role', 'progressbar');
+        strengthBar.setAttribute('aria-valuenow', score);
+        strengthBar.setAttribute('aria-valuemin', '0');
+        strengthBar.setAttribute('aria-valuemax', '6');
+        
+        strengthText.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-${strengthClass} fw-bold">
+                    Força: ${strength.charAt(0).toUpperCase() + strength.slice(1)}
+                </span>
+                <span class="text-muted">
+                    ${score}/6 pontos
+                </span>
+            </div>
+            ${feedback.length > 0 ? `
+                <div class="text-muted mt-1">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Faltam: ${feedback.join(', ')}
+                </div>
+            ` : ''}
+        `;
+        
+        // Atualizar classe do campo de senha
+        const passwordField = document.getElementById('password');
+        passwordField.classList.remove('is-valid', 'is-invalid');
+        if (score >= 4) {
+            passwordField.classList.add('is-valid');
+        } else if (passwordInput.value.length >= 3) {
+            passwordField.classList.add('is-invalid');
+        }
+    }
+
+    function checkPasswordMatch() {
+        const password = passwordInput.value;
+        const password2 = password2Input.value;
+        
+        if (password2.length > 0) {
+            if (password === password2) {
+                passwordMatch.innerHTML = '<small class="text-success"><i class="bi bi-check-circle me-1"></i>Senhas coincidem</small>';
+                password2Input.classList.remove('is-invalid');
+                password2Input.classList.add('is-valid');
+            } else {
+                passwordMatch.innerHTML = '<small class="text-danger"><i class="bi bi-x-circle me-1"></i>Senhas não coincidem</small>';
+                password2Input.classList.add('is-invalid');
+                password2Input.classList.remove('is-valid');
+            }
+        } else {
+            passwordMatch.innerHTML = '<small class="text-muted">As senhas devem ser idênticas</small>';
+            password2Input.classList.remove('is-invalid', 'is-valid');
+        }
+    }
+
+    // Real-time validation feedback
+    const inputs = form.querySelectorAll('input');
+    inputs.forEach(input => {
+        input.addEventListener('blur', function() {
+            validateField(this);
+        });
+
+        input.addEventListener('input', function() {
+            if (this.classList.contains('is-invalid')) {
+                validateField(this);
+            }
+        });
+    });
+
+    function validateField(field) {
+        const value = field.value.trim();
+        const isRequired = field.hasAttribute('required') || field.labels[0]?.classList.contains('required');
+        
+        if (isRequired && !value) {
+            field.classList.add('is-invalid');
+            field.classList.remove('is-valid');
+        } else if (value) {
+            // Email validation
+            if (field.type === 'email') {
+                const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (emailPattern.test(value)) {
+                    field.classList.remove('is-invalid');
+                    field.classList.add('is-valid');
+                } else {
+                    field.classList.add('is-invalid');
+                    field.classList.remove('is-valid');
+                }
+            }
+            // Username validation
+            else if (field.id === 'username') {
+                const usernamePattern = /^[a-zA-Z0-9_]{3,}$/;
+                if (usernamePattern.test(value)) {
+                    field.classList.remove('is-invalid');
+                    field.classList.add('is-valid');
+                } else {
+                    field.classList.add('is-invalid');
+                    field.classList.remove('is-valid');
+                }
+            }
+            // Password validation
+            else if (field.id === 'password') {
+                const strength = calculatePasswordStrength(value);
+                if (strength.score >= 75) {
+                    field.classList.remove('is-invalid');
+                    field.classList.add('is-valid');
+                } else {
+                    field.classList.add('is-invalid');
+                    field.classList.remove('is-valid');
+                }
+            }
+            else {
+                field.classList.remove('is-invalid');
+                field.classList.add('is-valid');
+            }
+        } else {
+            field.classList.remove('is-invalid', 'is-valid');
+        }
+    }
+
+    // Show toast notifications
+    function showToast(message, type = 'success') {
+        const toastContainer = document.querySelector('.toast-container');
+        const toastId = 'toast-' + Date.now();
+        
+        const toastHTML = `
+            <div class="toast align-items-center text-bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true" id="${toastId}">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+        
+        toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+        const toastElement = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
+        toast.show();
+        
+        toastElement.addEventListener('hidden.bs.toast', function() {
+            this.remove();
+        });
+    }
+});
+</script>
 {% endblock %}

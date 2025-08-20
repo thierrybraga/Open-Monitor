@@ -1,13 +1,42 @@
 /* footer.css - Estilos personalizados para o footer - Refatorado para usar variables.css */
 
+/* Footer Styles */
+:root {
+  --footer-bg: #1a1d23;
+  --footer-bg-secondary: #212529;
+  --footer-text: #ffffff;
+  --footer-text-muted: #6c757d;
+  --footer-text-light: #adb5bd;
+  --footer-link-color: #adb5bd;
+  --footer-link-hover: #ffffff;
+  --footer-border: #495057;
+  --footer-accent: #0d6efd;
+  --footer-spacing: 1rem;
+  --footer-font-size: 0.875rem;
+  --footer-transition: all 0.3s ease;
+  --footer-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+}
+
 /* Estilos gerais do footer */
 .footer {
-  background-color: var(--footer-bg); /* Usar variável de footer de variables.css */
+  background: linear-gradient(135deg, var(--footer-bg) 0%, var(--footer-bg-secondary) 100%);
   border-top: 1px solid var(--border-medium); /* Usar variável de borda de variables.css */
-  padding: var(--space-sm) 0; /* Usar variável de espaçamento de variables.css */
+  padding: 1rem 0; /* Reduzido de var(--space-sm) para menor altura */
   margin-top: auto;
   font-size: var(--font-size-sm); /* Usar variável de tamanho de fonte de variables.css/typography.css */
-  line-height: var(--line-height-base); /* Usar variável de altura de linha de variables.css/typography.css */
+  line-height: 1.4; /* Reduzido para compactar */
+  box-shadow: var(--footer-shadow);
+  position: relative;
+}
+
+.footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--footer-accent), transparent);
 }
 
 /* Estilos para darkmode - REMOVIDOS. A lógica de tema é tratada em variables.css */
@@ -31,6 +60,66 @@
   font-size: var(--font-size-xs); /* Usar variável de tamanho de fonte de variables.css/typography.css */
 }
 
+/* Footer Sections */
+.footer-section {
+  height: 100%;
+}
+
+.footer-title {
+  font-weight: 600;
+  color: var(--footer-text);
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+  position: relative;
+  padding-bottom: 0.25rem;
+}
+
+.footer-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 20px;
+  height: 1.5px;
+  background-color: var(--footer-accent);
+  border-radius: 1px;
+}
+
+.footer-description {
+  color: var(--footer-text-light);
+  line-height: 1.4;
+  font-size: 0.8rem;
+}
+
+/* Footer Stats - Versão Compacta */
+.footer-stats-compact {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.8rem;
+}
+
+.stat-compact {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-compact strong {
+  font-size: 0.9rem;
+  color: var(--footer-accent);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.stat-compact small {
+  font-size: 0.7rem;
+  color: var(--footer-text-muted);
+  line-height: 1;
+}
+
 /* Títulos de seção */
 .footer-section-title {
   font-size: var(--font-size-sm); /* Usar variável de tamanho de fonte de variables.css/typography.css */
@@ -41,13 +130,57 @@
   color: var(--content-weak); /* Usar variável de cor de texto fraca/secundária de variables.css */
 }
 
-/* Links do footer */
-.footer-links { /* Considerar mover para utilities.css ou base.css se for reset de lista */
+/* Footer Links */
+.footer-links {
   margin: 0;
   padding: 0;
 }
 
-.footer-link,
+.footer-links li {
+  margin-bottom: 0.25rem;
+}
+
+.footer-link {
+  color: var(--footer-link-color);
+  text-decoration: none;
+  transition: var(--footer-transition);
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0;
+  border-radius: 0.25rem;
+  font-size: 0.8rem;
+  position: relative;
+}
+
+.footer-link:hover {
+  color: var(--footer-link-hover);
+  transform: translateX(5px);
+  text-decoration: none;
+}
+
+.footer-link:hover::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 100%;
+  background-color: var(--footer-accent);
+  border-radius: 2px;
+}
+
+.footer-link i {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  transition: var(--footer-transition);
+}
+
+.footer-link:hover i {
+  opacity: 1;
+  color: var(--footer-accent);
+}
+
 .social-link {
   color: var(--content-medium); /* Usar variável de cor de texto normal de variables.css */
   text-decoration: none;
@@ -57,7 +190,6 @@
   align-items: center;
 }
 
-.footer-link:hover,
 .social-link:hover {
   color: var(--color-primary); /* Usar variável de cor primária de variables.css */
   transform: translateY(-2px); /* Manter ou criar variável de efeito */
@@ -72,15 +204,39 @@
   font-size: var(--font-size-sm); /* Usar variável de tamanho de fonte/ícone de variables.css/typography.css */
 }
 
+/* Social Links */
+.social-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 /* Links de redes sociais */
 .social-link {
   width: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
   height: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
   border-radius: var(--radius-full); /* Usar variável de raio de variables.css */
-  background-color: var(--surface-0); /* Usar variável de surface de variables.css */
-  border: 1px solid var(--border-medium); /* Usar variável de borda de variables.css */
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   transition: all var(--animation-duration-normal) var(--ease-standard); /* Usar variáveis de transição de variables.css */
   justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.social-link::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.social-link:hover::before {
+  left: 100%;
 }
 
 .social-link i {
@@ -88,8 +244,9 @@
 }
 
 .social-link:hover {
-  transform: translateY(-3px); /* Manter ou criar variável de efeito */
-  box-shadow: var(--shadow-md); /* Usar variável de sombra de variables.css */
+  transform: translateY(-3px) scale(1.1); /* Manter ou criar variável de efeito */
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  border-color: var(--footer-accent);
 }
 
 /* Personalização para redes sociais específicas - Manter cores hardcoded ou usar variáveis de marca */
@@ -100,7 +257,8 @@
 }
 
 .twitter-link:hover,
-.x-link:hover {
+.x-link:hover,
+.social-link-twitter:hover {
   background-color: #1da1f2;
   color: white; /* Considerar variável de cor de texto em background escuro */
   border-color: #1da1f2;
@@ -112,10 +270,108 @@
   border-color: #bc1888;
 }
 
-.linkedin-link:hover {
-  background-color: #0a66c2;
+.linkedin-link:hover,
+.social-link-linkedin:hover {
+  background-color: #0077b5;
   color: white; /* Considerar variável de cor de texto em background escuro */
-  border-color: #0a66c2;
+  border-color: #0077b5;
+}
+
+.github-link:hover,
+.social-link-github:hover {
+  background-color: #333;
+  color: white; /* Considerar variável de cor de texto em background escuro */
+  border-color: #333;
+}
+
+/* Theme Section */
+.theme-section {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.theme-section label {
+  color: var(--footer-text-light);
+  font-weight: 500;
+}
+
+#theme-toggle {
+  transition: var(--footer-transition);
+  position: relative;
+  overflow: hidden;
+}
+
+#theme-toggle:hover {
+  background-color: var(--footer-accent) !important;
+  border-color: var(--footer-accent) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+}
+
+#theme-toggle i {
+  transition: var(--footer-transition);
+}
+
+#theme-text {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* Back to Top Button */
+#back-to-top {
+  transition: var(--footer-transition);
+  position: relative;
+  overflow: hidden;
+}
+
+#back-to-top:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+#back-to-top i {
+  transition: var(--footer-transition);
+}
+
+#back-to-top:hover i {
+  transform: translateY(-2px);
+}
+
+/* Footer Bottom */
+.footer-bottom {
+  background: rgba(0, 0, 0, 0.2);
+  margin-top: 1rem;
+  padding-top: 0.75rem !important;
+}
+
+.copyright {
+  font-weight: 500;
+}
+
+.footer-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.footer-meta .text-danger {
+  animation: heartbeat 2s ease-in-out infinite;
+}
+
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* Tooltips */
+.tooltip {
+  font-size: 0.75rem;
 }
 
 .github-link:hover {
@@ -209,43 +465,210 @@
   animation: pulse var(--animation-duration-normal) var(--ease-standard); /* Usar variáveis de animação de variables.css */
 }
 
-/* Ajustes responsivos */
-@media (max-width: var(--breakpoint-md)) { /* Usar variável de breakpoint de variables.css */
+/* ========================================\
+    📱 RESPONSIVE DESIGN
+   ======================================== */
+
+/* Mobile (até 576px) */
+@media (max-width: 575.98px) {
   .footer {
+    font-size: 0.8rem;
+  }
+  
+  .footer-title {
+    font-size: 1rem;
     text-align: center;
-    padding: var(--space-sm) 0; /* Usar variável de espaçamento de variables.css */
   }
-
-  .footer nav { /* Considerar mover para layout ou utilities */
-    flex-wrap: wrap; /* Permite quebra em telas pequenas */
+  
+  .footer-description {
+    text-align: center;
+    font-size: 0.85rem;
+  }
+  
+  .footer-stats {
+    margin-top: 1rem;
+  }
+  
+  .stat-item strong {
+    font-size: 1rem;
+  }
+  
+  .social-links {
     justify-content: center;
-    gap: var(--space-sm); /* Usar variável de espaçamento de variables.css */
+    margin-bottom: 1rem;
   }
-
-  .footer .social-link {
-    width: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
-    height: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
+  
+  .social-link {
+    width: 2.2rem;
+    height: 2.2rem;
   }
-
-  .footer .social-link i {
-    font-size: var(--font-size-sm); /* Usar variável de tamanho de fonte/ícone de variables.css/typography.css */
+  
+  .theme-section,
+  #back-to-top {
+    margin-top: 1rem;
   }
-
-  .footer-brand, /* Considerar mover para layout ou utilities */
-  .footer-nav,
-  .footer-social {
-    margin-bottom: var(--space-sm); /* Usar variável de espaçamento de variables.css */
-  }
-
-  .footer-section-title {
-    margin-bottom: var(--space-sm); /* Usar variável de espaçamento de variables.css */
-  }
-
-  .footer-additional-info { /* Considerar mover para layout ou utilities */
+  
+  .footer-meta {
+    justify-content: center;
+    text-align: center;
     flex-direction: column;
+    gap: 0.5rem;
   }
+  
+  .footer-meta span {
+    display: block;
+  }
+}
 
-  .version-info {
-    margin-top: var(--space-sm); /* Usar variável de espaçamento de variables.css */
+/* Tablets (576px - 768px) */
+@media (min-width: 576px) and (max-width: 767.98px) {
+  .footer-title {
+    font-size: 1.05rem;
+  }
+  
+  .footer-description {
+    font-size: 0.88rem;
+  }
+  
+  .social-link {
+    width: 2.3rem;
+    height: 2.3rem;
+  }
+}
+
+/* Desktop médio (768px - 992px) */
+@media (min-width: 768px) and (max-width: 991.98px) {
+  .footer-stats {
+    margin-top: 1.5rem;
+  }
+}
+
+/* Desktop grande (992px+) */
+@media (min-width: 992px) {
+  .footer-section {
+    padding-right: 1rem;
+  }
+  
+  .social-link:hover {
+    transform: translateY(-4px) scale(1.15);
+  }
+  
+  .footer-link:hover {
+    transform: translateX(8px);
+  }
+  
+  .stat-item:hover {
+    transform: scale(1.05);
+    transition: var(--footer-transition);
+  }
+}
+
+/* Dark theme adjustments */
+[data-bs-theme="dark"] .footer {
+  background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+}
+
+[data-bs-theme="dark"] .footer-stats {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-bs-theme="dark"] .theme-section {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Light theme adjustments */
+[data-bs-theme="light"] .footer {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  color: #212529;
+}
+
+[data-bs-theme="light"] .footer-title,
+[data-bs-theme="light"] .footer-description,
+[data-bs-theme="light"] .footer-link {
+  color: #495057;
+}
+
+[data-bs-theme="light"] .footer-link:hover {
+  color: #212529;
+}
+
+[data-bs-theme="light"] .social-link {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #495057;
+}
+
+[data-bs-theme="light"] .footer-stats,
+[data-bs-theme="light"] .footer-stats-compact,
+[data-bs-theme="light"] .theme-section {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Responsividade aprimorada */
+@media (max-width: 768px) {
+  .footer {
+    padding: 0.75rem 0;
+  }
+  
+  .footer-title {
+    font-size: 0.9rem;
+    margin-bottom: 0.4rem;
+  }
+  
+  .footer-description {
+    font-size: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .footer-stats-compact {
+    padding: 0.4rem;
+    font-size: 0.75rem;
+  }
+  
+  .stat-compact strong {
+    font-size: 0.8rem;
+  }
+  
+  .stat-compact small {
+    font-size: 0.65rem;
+  }
+  
+  .footer-link {
+    font-size: 0.75rem;
+    padding: 0.15rem 0;
+  }
+  
+  .footer-bottom {
+    margin-top: 0.75rem;
+    padding-top: 0.5rem !important;
+  }
+  
+  .footer-meta {
+    flex-direction: column;
+    gap: 0.5rem !important;
+    text-align: center;
+  }
+}
+
+@media (max-width: 576px) {
+  .footer-stats-compact {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .stat-compact {
+    flex-direction: row;
+    gap: 0.25rem;
+  }
+  
+  .social-links {
+    justify-content: center;
+  }
+  
+  .d-flex.gap-2 {
+    justify-content: center;
   }
 }

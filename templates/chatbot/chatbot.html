@@ -73,9 +73,13 @@
                 aria-label="Mensagem"
                 autocomplete="off"
               >
-              <button class="btn btn-primary" type="submit">
+              <button class="btn btn-primary" type="submit" id="send-btn">
                 <i class="bi bi-send"></i>
-                <span class="d-none d-md-inline ms-1">Enviar</span>
+                <span class="btn-text d-none d-md-inline ms-1">Enviar</span>
+                <span class="btn-loading d-none">
+                  <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  <span class="d-none d-md-inline ms-1">Enviando...</span>
+                </span>
               </button>
             </div>
             <div class="form-text mt-2">
@@ -227,8 +231,8 @@
         // Limpa o campo de entrada
         chatInput.value = '';
 
-        // Simula uma resposta do bot (em uma aplicação real, isso seria uma chamada de API)
-        simulateBotResponse(message);
+        // Envia mensagem para a API do chatbot
+        sendMessageToAPI(message);
       }
     });
 
@@ -247,36 +251,123 @@
     });
 
     // Limpa a conversa
-    clearChatBtn.addEventListener('click', function() {
-      // Mantém apenas a mensagem de boas-vindas e as sugestões
+    clearChatBtn.addEventListener('click', async function() {
+      if (sessionId) {
+        try {
+          await fetch(`/api/chatbot/session/${sessionId}/clear`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          });
+        } catch (error) {
+          console.error('Erro ao limpar sessão:', error);
+        }
+      }
+      
+      // Limpa a interface
       while (chatMessages.children.length > 2) {
         chatMessages.removeChild(chatMessages.lastChild);
       }
+      
+      // Reset session ID
+      sessionId = null;
     });
 
-    // Simula respostas do bot para demonstração
-    function simulateBotResponse(userMessage) {
-      let botResponse = '';
+    // Variável para armazenar o ID da sessão
+    let sessionId = null;
 
-      // Respostas simuladas baseadas em palavras-chave simples
-      if (userMessage.toLowerCase().includes('cve-2023-1234')) {
-        botResponse = 'CVE-2023-1234 é uma vulnerabilidade crítica no Apache Log4j que permite execução remota de código. Foi descoberta em janeiro de 2023 e afeta as versões 2.0 a 2.16.0. Recomendo atualizar para a versão 2.17.1 ou superior imediatamente.';
-      }
-      else if (userMessage.toLowerCase().includes('log4shell')) {
-        botResponse = 'Para mitigar o Log4Shell (CVE-2021-44228), você deve:<br>1. Atualizar para Log4j 2.17.1 ou superior<br>2. Se não for possível atualizar, desativar lookups definindo a propriedade do sistema -Dlog4j2.formatMsgNoLookups=true<br>3. Monitorar tentativas de exploração em seus logs<br>4. Implementar regras WAF para bloquear solicitações maliciosas';
-      }
-      else if (userMessage.toLowerCase().includes('wordpress')) {
-        botResponse = 'Nas últimas semanas, detectamos várias vulnerabilidades em plugins do WordPress:<br>1. XSS em WP Forms (CVE-2023-8742)<br>2. SQL Injection no plugin SEO (CVE-2023-9154)<br>3. Bypass de autenticação no WooCommerce (CVE-2023-5823)<br><br>Recomendo manter todos os plugins atualizados e considerar o uso de um Web Application Firewall.';
-      }
-      else if (userMessage.toLowerCase().includes('prioridade') || userMessage.toLowerCase().includes('patch')) {
-        botResponse = 'Para definir prioridades de patch, considere:<br>1. Severidade da vulnerabilidade (CVSS)<br>2. Exploração ativa na natureza<br>3. Exposição do sistema (internet vs. intranet)<br>4. Dados processados (críticos vs. não críticos)<br>5. Dependências do sistema<br><br>Vulnerabilidades exploráveis remotamente em sistemas expostos à internet que processam dados sensíveis devem ter a maior prioridade.';
-      }
-      else {
-        botResponse = 'Obrigado pela sua pergunta. Para fornecer informações mais precisas sobre "' + userMessage + '", eu precisaria consultar nossa base de dados de CVEs. Você pode tentar perguntar sobre vulnerabilidades específicas, como CVE-2023-1234, ou sobre práticas de mitigação para vulnerabilidades conhecidas como Log4Shell.';
-      }
+    // Função para enviar mensagem para a API do chatbot
+    async function sendMessageToAPI(userMessage) {
+      try {
+        const response = await fetch('/api/chatbot/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: userMessage,
+            session_id: sessionId
+          })
+        });
 
-      // Adiciona a resposta do bot após um breve atraso para simular processamento
-      addBotMessage(botResponse);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
+          // Atualiza o ID da sessão
+          sessionId = data.session_id;
+          
+          // Adiciona a resposta do bot
+          addBotMessage(data.response);
+          
+          // Se houver CVEs relevantes, adiciona informações extras
+          if (data.relevant_cves && data.relevant_cves.length > 0) {
+            addCVEReferences(data.relevant_cves);
+          }
+        } else {
+          throw new Error(data.error || 'Erro desconhecido');
+        }
+      } catch (error) {
+        console.error('Erro ao enviar mensagem:', error);
+        addBotMessage('Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente em alguns instantes.');
+      }
+    }
+
+    // Função para adicionar referências de CVE
+    function addCVEReferences(cves) {
+      if (cves.length === 0) return;
+      
+      const referencesEl = document.createElement('div');
+      referencesEl.className = 'chat-message bot-message mb-3';
+      referencesEl.innerHTML = `
+        <div class="d-flex">
+          <div class="avatar me-2 flex-shrink-0">
+            <div class="avatar-icon rounded-circle bg-info d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+              <i class="bi bi-info-circle text-white"></i>
+            </div>
+          </div>
+          <div class="message-content">
+            <div class="message-bubble bg-light border p-3 rounded-3">
+              <h6 class="mb-2"><i class="bi bi-shield-exclamation me-1"></i>CVEs Relacionadas:</h6>
+              <div class="cve-list">
+                ${cves.map(cve => `
+                  <div class="cve-item mb-2 p-2 bg-white rounded border-start border-3 border-warning">
+                    <div class="d-flex justify-content-between align-items-start">
+                      <div>
+                        <strong class="text-primary">${cve.cve_id}</strong>
+                        <span class="badge bg-${getSeverityColor(cve.base_severity)} ms-2">${cve.base_severity}</span>
+                      </div>
+                      <small class="text-muted">CVSS: ${cve.cvss_score || 'N/A'}</small>
+                    </div>
+                    <p class="small text-muted mb-1 mt-1">${cve.description ? cve.description.substring(0, 100) + '...' : 'Sem descrição disponível'}</p>
+                    <a href="/vulnerability/${cve.cve_id}" class="btn btn-sm btn-outline-primary" target="_blank">
+                      <i class="bi bi-eye me-1"></i>Ver Detalhes
+                    </a>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      chatMessages.appendChild(referencesEl);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Função para obter cor da severidade
+    function getSeverityColor(severity) {
+      switch(severity?.toUpperCase()) {
+        case 'CRITICAL': return 'danger';
+        case 'HIGH': return 'warning';
+        case 'MEDIUM': return 'info';
+        case 'LOW': return 'secondary';
+        default: return 'secondary';
+      }
     }
 
     // Foca no input quando a página carrega

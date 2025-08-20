@@ -1,101 +1,370 @@
 /**
- * Estilos para a sidebar - Refatorado para usar variables.css
+ * Estilos modernos para a sidebar
  */
 
 /* Estilos básicos da sidebar */
 .sidebar {
-  width: var(--layout-sidebar-width-expanded); /* Usar variável de layout de variables.css */
-  transition: all var(--theme-transition-duration) var(--ease-standard); /* Usar variáveis de transição de variables.css */
-  height: 100vh; /* Manter se for um requisito específico do layout */
-  position: sticky; /* Manter */
-  top: 0; /* Manter ou usar variável de layout/espaçamento */
+  width: var(--layout-sidebar-width-expanded);
+  transition: all var(--theme-transition-duration) var(--ease-standard);
+  height: 100vh;
+  position: sticky;
+  top: 0;
   overflow-y: auto;
-  background-color: var(--sidebar-bg); /* Usar variável de sidebar de variables.css */
-  border-right: 1px solid var(--border-medium); /* Usar variável de borda de variables.css */
-  /* z-index pode ser movido para layout.css se for parte da estrutura geral */
+  background: linear-gradient(180deg, 
+    rgba(248, 250, 252, 0.95) 0%, 
+    rgba(241, 245, 249, 0.9) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.05);
+  z-index: var(--z-index-sidebar, 100);
+}
+
+/* Modo escuro para sidebar */
+@media (prefers-color-scheme: dark) {
+  .sidebar {
+    background: linear-gradient(180deg, 
+      rgba(15, 23, 42, 0.95) 0%, 
+      rgba(30, 41, 59, 0.9) 100%);
+    border-right: 1px solid rgba(51, 65, 85, 0.8);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Header da sidebar */
+.sidebar-header {
+  padding: var(--space-lg);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+  margin-bottom: var(--space-md);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.sidebar-header a {
+  color: var(--sidebar-text, #64748b);
+  text-decoration: none;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-lg);
+  transition: all var(--animation-duration-fast) var(--ease-standard);
+  letter-spacing: -0.02em;
+}
+
+.sidebar-header a:hover {
+  color: #6366f1;
+  transform: translateX(2px);
+}
+
+.sidebar-header i {
+  color: #6366f1;
+  font-size: 24px;
+  transition: transform var(--animation-duration-fast) var(--ease-standard);
+}
+
+.sidebar-header a:hover i {
+  transform: scale(1.1) rotate(5deg);
 }
 
 /* Estado colapsado da sidebar */
 .sidebar.collapsed {
-  width: var(--layout-sidebar-width-collapsed); /* Usar variável de layout de variables.css */
+  width: var(--layout-sidebar-width-collapsed);
 }
 
-/* Efeito hover para expandir quando colapsada */
-/* Considerar se este hover-to-expand é a UX desejada ou se deve ser apenas um toggle */
 .sidebar.collapsed:hover {
-  width: var(--layout-sidebar-width-expanded); /* Usar variável de layout de variables.css */
+  width: var(--layout-sidebar-width-expanded);
+  box-shadow: 8px 0 30px rgba(0, 0, 0, 0.1);
 }
 
-/* Esconde elementos quando a sidebar está colapsada */
+/* Animações para elementos colapsados */
 .sidebar.collapsed .sidebar-label,
-.sidebar.collapsed .sidebar-title,
-.sidebar.collapsed .sidebar-category,
-.sidebar.collapsed .user-info {
+.sidebar.collapsed .sidebar-category {
   opacity: 0;
-  white-space: nowrap;
-  transition: opacity var(--animation-duration-fast) var(--ease-standard); /* Usar variáveis de animação de variables.css */
+  transform: translateX(-10px);
+  transition: all var(--animation-duration-fast) var(--ease-standard);
 }
 
-/* Mostra elementos quando o mouse passa sobre a sidebar colapsada */
 .sidebar.collapsed:hover .sidebar-label,
-.sidebar.collapsed:hover .sidebar-title,
-.sidebar.collapsed:hover .sidebar-category,
-.sidebar.collapsed:hover .user-avatar, /* Adicionado avatar aqui também para consistência com sidebar-label */
-.sidebar.collapsed:hover .user-info {
+.sidebar.collapsed:hover .sidebar-category {
   opacity: 1;
-  /* display: inline-block; - Pode não ser necessário se o display original já é adequado */
-  /* Adicionar transição para suavizar o aparecimento */
-  transition-delay: var(--animation-duration-faster); /* Pequeno delay para hover */
-  transition-duration: var(--animation-duration-normal);
-  transition-timing-function: var(--ease-standard);
+  transform: translateX(0);
+  transition-delay: 0.1s;
 }
 
-/* Esconder elementos quando a sidebar está colapsada - ajustes para elementos que não devem aparecer */
-.sidebar.collapsed .user-avatar {
-    /* opacity: 0; - Já tratado acima, mas pode precisar de ajustes específicos */
+/* Botão de colapso */
+#sidebarCollapseBtn {
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: var(--radius-md);
+  color: #6366f1;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--animation-duration-fast) var(--ease-standard);
+}
+
+#sidebarCollapseBtn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  transform: scale(1.05);
+}
+
+/* Modo escuro para header */
+@media (prefers-color-scheme: dark) {
+  .sidebar-header {
+    border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+    background: rgba(0, 0, 0, 0.1);
+  }
+  
+  .sidebar-header a {
+    color: #cbd5e1;
+  }
+  
+  .sidebar-header a:hover {
+    color: #a5b4fc;
+  }
+  
+  #sidebarCollapseBtn {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: rgba(99, 102, 241, 0.3);
+    color: #a5b4fc;
+  }
 }
 
 
-/* Estilo dos links da sidebar */
-.sidebar-item { /* Adicionar classe para o item da lista, melhora a estrutura semântica */
-    margin: var(--space-sm) 0; /* Usar variável de espaçamento de variables.css */
+/* Categorias da sidebar */
+.sidebar-category {
+  color: var(--text-muted, #94a3b8);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: var(--space-md) var(--space-md) var(--space-xs);
+  margin-top: var(--space-lg);
+  position: relative;
+}
+
+.sidebar-category:first-child {
+  margin-top: 0;
+}
+
+.sidebar-category::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: var(--space-md);
+  right: var(--space-md);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.3), transparent);
+}
+
+/* Estilos modernos dos links da sidebar */
+.sidebar-item {
+  margin: var(--space-xs) var(--space-sm);
+  position: relative;
 }
 
 .sidebar-link {
-  color: var(--sidebar-text); /* Usar variável de sidebar de variables.css */
+  color: var(--sidebar-text, #64748b);
   text-decoration: none;
-  transition: all var(--animation-duration-fast) var(--ease-standard); /* Usar variáveis de animação de variables.css */
-  /* Padding e gap devem vir do HTML/classes utilitárias se possível,
-     ou definir aqui usando variáveis de espaçamento de variables.css */
-  /* Ex: padding: var(--space-sm) var(--space-md); gap: var(--space-md); */
-  height: var(--space-4xl); /* Usar variável de tamanho/espaçamento se links tiverem altura fixa */
-  display: flex; /* Garantir flex para alinhar ícone e texto */
-  align-items: center; /* Alinhar verticalmente */
-  gap: var(--space-md); /* Espaçamento entre ícone e texto */
-  padding: var(--space-sm) var(--space-md); /* Espaçamento interno */
-  border-radius: var(--radius-md); /* Raio das bordas do link */
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-lg);
+  position: relative;
+  overflow: hidden;
+  transition: all var(--animation-duration-normal) var(--ease-standard);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: -0.01em;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid transparent;
 }
 
-/* Efeito hover nos links */
+.sidebar-link::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(99, 102, 241, 0.1) 50%, 
+    transparent 100%);
+  transition: left var(--animation-duration-normal) var(--ease-standard);
+}
+
 .sidebar-link:hover {
-  background-color: var(--sidebar-hover-bg); /* Usar variável de sidebar de variables.css */
-  color: var(--sidebar-text-hover); /* Considerar variável para cor do texto no hover, se diferente */
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--sidebar-text-hover, #475569);
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+.sidebar-link:hover::before {
+  left: 100%;
 }
 
 /* Estado ativo dos links */
 .sidebar-link.active {
-  background-color: var(--sidebar-active-bg); /* Usar variável de sidebar de variables.css */
-  color: var(--sidebar-active-text); /* Usar variável de sidebar de variables.css */
-  font-weight: var(--font-weight-semibold); /* Usar variável de peso de fonte de variables.css/typography.css */
-  /* Adicionar indicador visual de ativo, como border-left, se não estiver no HTML */
-  /* Ex: border-left: 3px solid var(--color-primary); padding-left: calc(var(--space-md) - 3px); */
+  background: linear-gradient(135deg, 
+    rgba(99, 102, 241, 0.15) 0%, 
+    rgba(139, 92, 246, 0.1) 100%);
+  color: var(--sidebar-active-text, #3730a3);
+  font-weight: var(--font-weight-semibold);
+  border-left: 3px solid #6366f1;
+  padding-left: calc(var(--space-lg) - 3px);
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.sidebar-link.active::after {
+  content: '';
+  position: absolute;
+  right: var(--space-md);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  background: #6366f1;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
 }
 
 /* Estilos para ícones dos links */
-.sidebar-link .bi { /* Ou outra classe de ícone */
-    font-size: var(--font-size-xl); /* Usar variável de tamanho de fonte de variables.css/typography.css */
-    flex-shrink: 0; /* Previne que o ícone diminua */
-    color: var(--sidebar-icon-color); /* Considerar variável para cor dos ícones, se diferente do texto */
+.sidebar-link .bi {
+  font-size: 20px;
+  flex-shrink: 0;
+  color: inherit;
+  transition: transform var(--animation-duration-fast) var(--ease-standard);
+}
+
+.sidebar-link:hover .bi {
+  transform: scale(1.1);
+}
+
+.sidebar-link.active .bi {
+  color: #6366f1;
+  transform: scale(1.05);
+}
+
+.sidebar-link .sidebar-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: -100%;
+    top: 0;
+    height: 100vh;
+    z-index: 1000;
+    transition: left var(--animation-duration-normal) var(--ease-standard);
+  }
+  
+  .sidebar.show {
+    left: 0;
+  }
+  
+  .sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--animation-duration-normal) var(--ease-standard);
+  }
+  
+  .sidebar-overlay.show {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    width: 280px;
+  }
+  
+  .sidebar-header {
+    padding: var(--space-md);
+  }
+  
+  .sidebar-link {
+    padding: var(--space-sm);
+    margin: var(--space-xs);
+  }
+}
+
+/* Animações de entrada */
+@keyframes sidebar-slide-in {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.sidebar {
+  animation: sidebar-slide-in var(--animation-duration-normal) var(--ease-standard);
+}
+
+/* Estados de foco para acessibilidade */
+.sidebar-link:focus {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
+
+#sidebarCollapseBtn:focus {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
+
+/* Modo escuro para links */
+@media (prefers-color-scheme: dark) {
+  .sidebar-category {
+    color: #64748b;
+  }
+  
+  .sidebar-category::after {
+    background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.4), transparent);
+  }
+  
+  .sidebar-link {
+    color: #cbd5e1;
+  }
+  
+  .sidebar-link:hover {
+    background: rgba(99, 102, 241, 0.15);
+    color: #e2e8f0;
+    border-color: rgba(99, 102, 241, 0.3);
+  }
+  
+  .sidebar-link.active {
+    background: linear-gradient(135deg, 
+      rgba(99, 102, 241, 0.25) 0%, 
+      rgba(139, 92, 246, 0.2) 100%);
+    color: #a5b4fc;
+    border-color: rgba(99, 102, 241, 0.4);
+  }
+  
+  .sidebar-overlay {
+    background: rgba(0, 0, 0, 0.7);
+  }
 }
 
 .sidebar-link.active .bi {
@@ -157,18 +426,27 @@
     left: 0;
     z-index: var(--z-index-sidebar); /* Usar variável de z-index de variables.css */
     transform: translateX(-100%); /* Estado inicial escondido em mobile */
-    /* transition: transform var(--theme-transition-duration) var(--ease-standard); - Já definido na regra .sidebar principal */
+    transition: transform var(--animation-duration-normal) var(--ease-standard),
+                box-shadow var(--animation-duration-fast) var(--ease-standard);
     box-shadow: var(--shadow-lg); /* Adicionar sombra quando expandido em mobile */
     width: var(--layout-sidebar-width-expanded); /* Largura expandida em mobile, usar variável de layout */
+    backdrop-filter: blur(8px); /* Efeito de desfoque para melhor separação visual */
   }
 
   .sidebar.collapsed { /* Classe para esconder em mobile */
      transform: translateX(-100%);
+     box-shadow: none;
+  }
+
+  .sidebar.expanded { /* Classe para mostrar em mobile */
+     transform: translateX(0);
+     box-shadow: var(--shadow-xl);
   }
 
   /* Remover hover-to-expand em mobile se a navegação for baseada em toggle */
   .sidebar.collapsed:hover {
     width: var(--layout-sidebar-width-collapsed); /* Manter largura colapsada em hover em mobile */
+    transform: translateX(-100%); /* Manter escondido em mobile */
   }
 
    /* Resetar transição e visibilidade dos elementos em mobile,
@@ -197,6 +475,45 @@
    .sidebar:not(.expanded) .sidebar-nav a::after {
        display: none;
    }
+}
+
+/* Responsividade para tablets */
+@media (min-width: var(--breakpoint-md)) and (max-width: var(--breakpoint-lg)) {
+  .sidebar {
+    width: var(--layout-sidebar-width-collapsed); /* Sidebar colapsada por padrão em tablets */
+  }
+  
+  .sidebar:hover {
+    width: var(--layout-sidebar-width-expanded); /* Expande no hover em tablets */
+    box-shadow: var(--shadow-md);
+  }
+  
+  /* Ajustar padding dos links para tablets */
+  .sidebar-link {
+    padding: var(--space-xs) var(--space-sm);
+    justify-content: center;
+  }
+  
+  .sidebar:hover .sidebar-link {
+    justify-content: flex-start;
+    padding: var(--space-sm) var(--space-md);
+  }
+}
+
+/* Responsividade para telas grandes */
+@media (min-width: var(--breakpoint-xl)) {
+  .sidebar {
+    width: var(--layout-sidebar-width-expanded); /* Sempre expandida em telas grandes */
+  }
+  
+  .sidebar-link {
+    padding: var(--space-md) var(--space-lg); /* Mais espaçamento em telas grandes */
+  }
+  
+  .sidebar-category {
+    padding: 0 var(--space-lg);
+    margin-top: var(--space-lg);
+  }
 }
 
 /* Ajustes para modo escuro - REMOVIDOS. A lógica de tema é tratada em variables.css */

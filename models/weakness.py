@@ -12,8 +12,7 @@ import re
 from typing import Optional, TYPE_CHECKING
 from sqlalchemy import Column, ForeignKey, String, Integer, PrimaryKeyConstraint, Index
 from sqlalchemy.orm import relationship, validates
-from ..extensions.db import db
-from .base_model import BaseModel
+from extensions.db import db
 
 # Configure logging to align with settings.py
 logger = logging.getLogger(__name__)
@@ -22,7 +21,7 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from project.models import Vulnerability
 
-class Weakness(BaseModel):
+class Weakness(db.Model):
     """
     Weakness model representing a CWE identifier associated with a vulnerability.
 
@@ -41,12 +40,12 @@ class Weakness(BaseModel):
     """
     __tablename__ = 'weaknesses'
 
-    vulnerability_id = Column(
-        Integer,
-        ForeignKey('vulnerabilities.id', ondelete='CASCADE'),
+    cve_id = Column(
+        String,
+        ForeignKey('vulnerabilities.cve_id', ondelete='CASCADE'),
         nullable=False,
         index=True,
-        doc="Foreign key referencing the vulnerability ID."
+        doc="Foreign key referencing the vulnerability CVE ID."
     )
     cwe_id = Column(
         String(50),
@@ -55,7 +54,7 @@ class Weakness(BaseModel):
     )
 
     __table_args__ = (
-        PrimaryKeyConstraint('vulnerability_id', 'cwe_id', name='pk_weaknesses'),
+        PrimaryKeyConstraint('cve_id', 'cwe_id', name='pk_weaknesses'),
         Index('ix_weaknesses_cwe_id', 'cwe_id'),  # Index for queries by cwe_id
     )
 
@@ -96,7 +95,7 @@ class Weakness(BaseModel):
         Returns:
             str: Representation of the instance.
         """
-        return f"<Weakness vuln_id={self.vulnerability_id} cwe_id={self.cwe_id}>"
+        return f"<Weakness cve_id={self.cve_id} cwe_id={self.cwe_id}>"
 
     @classmethod
     def find_by_cwe_id(cls, cwe_id: str) -> Optional['Weakness']:

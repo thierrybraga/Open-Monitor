@@ -208,7 +208,7 @@
           <div class="card chart-card h-100">
             <div class="card-body p-3">
               <h3 class="h6 fw-semibold mb-3">Severity Distribution</h3>
-              <div class="chart-container">
+              <div class="chart-container doughnut-chart">
                 <canvas id="severityChart" aria-label="Severity distribution chart"></canvas>
               </div>
             </div>
@@ -218,7 +218,7 @@
       <div class="card chart-card h-100">
         <div class="card-body p-3">
           <h3 class="h6 fw-semibold mb-3">Patch Status</h3>
-          <div class="chart-container">
+          <div class="chart-container doughnut-chart">
             <canvas id="patchStatusChart" aria-label="Patch status chart"></canvas>
           </div>
         </div>
@@ -228,7 +228,7 @@
       <div class="card chart-card h-100">
         <div class="card-body p-3">
           <h3 class="h6 fw-semibold mb-3">Top Products</h3>
-          <div class="chart-container">
+          <div class="chart-container pie-chart">
             <canvas id="productChart" aria-label="Product distribution chart"></canvas>
           </div>
         </div>
@@ -238,7 +238,7 @@
       <div class="card chart-card h-100">
         <div class="card-body p-3">
           <h3 class="h6 fw-semibold mb-3">Top CWEs</h3>
-          <div class="chart-container">
+          <div class="chart-container pie-chart">
             <canvas id="cweChart" aria-label="CWE distribution chart"></canvas>
           </div>
         </div>
@@ -362,14 +362,6 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}
-<!-- Import map for Chart.js -->
-<script type="importmap">
-  {
-    "imports": {
-      "chart.js/auto": "https://cdn.jsdelivr.net/npm/chart.js@4.4.0/+esm"
-    }
-  }
-</script>
-<script type="module" defer src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/analytics.js') }}" defer></script>
 {% endblock %}

@@ -18,11 +18,13 @@ from flask import (
 )
 
 from dotenv import load_dotenv
+from markupsafe import Markup
 
-# Importações assumidas do seu projeto
-from .settings import config_map
-from .extensions import init_extensions, db  # Assumindo que 'db' é a instância do SQLAlchemy ou similar
-from .controllers import BLUEPRINTS  # Assumindo que BLUEPRINTS é uma lista de Blueprint instances
+# Importações do projeto
+from settings import config_map
+from extensions import init_extensions, db
+from extensions.csrf import exempt_api_blueprints
+from controllers import BLUEPRINTS
 
 # Configuração básica de logging - pode ser expandida para setups mais complexos
 # Configura o formato e o handler básico para o root logger
@@ -54,6 +56,28 @@ def format_datetime(value: Optional[datetime], format: str = '%Y-%m-%d') -> str:
         return str(value)
 
 
+def markdown_filter(text: str) -> Markup:
+    """
+    Converts Markdown text to HTML.
+    Useful as a Jinja2 filter.
+    """
+    if not text:
+        return Markup("")
+    
+    try:
+        import markdown
+        html = markdown.markdown(text, extensions=['tables', 'fenced_code', 'nl2br'])
+        return Markup(html)
+    except ImportError:
+        logger.warning("Biblioteca markdown não encontrada, retornando texto simples")
+        # Fallback: converter quebras de linha simples para HTML
+        html = text.replace('\n', '<br>')
+        return Markup(f"<pre>{html}</pre>")
+    except Exception as e:
+        logger.error(f"Erro ao processar markdown: {e}")
+        return Markup(f"<pre>{text}</pre>")
+
+
 def configure_app(app: Flask, env_name: str = None) -> None:
     """Loads and applies configuration to the Flask app object."""
     load_dotenv()
@@ -79,7 +103,7 @@ def configure_app(app: Flask, env_name: str = None) -> None:
     # Validate configuration if it has a validate method
     if hasattr(cfg, 'validate'):
         try:
-            cfg.info("Attempting to validate configuration...") # Add info log before validation
+            logger.info("Attempting to validate configuration...")
             cfg.validate()
             logger.info("Configuration validated successfully.")
         except Exception as e:
@@ -160,7 +184,8 @@ def create_app(env_name: str = None) -> Flask:
 
     # Register custom Jinja2 filters
     app.jinja_env.filters['datetimeformat'] = format_datetime
-    logger.debug("Custom Jinja2 filter 'datetimeformat' registered.")
+    app.jinja_env.filters['markdown'] = markdown_filter
+    logger.debug("Custom Jinja2 filters 'datetimeformat' and 'markdown' registered.")
 
     # Inject common variables into all templates
     @app.context_processor
@@ -222,6 +247,13 @@ def create_app(env_name: str = None) -> Flask:
     # Log all successfully registered blueprint names and their prefixes
     registered_blueprints_info = {name: bp.url_prefix if bp.url_prefix is not None else '/' for bp in blueprints_to_register if bp.name in seen_prefixes for name in [bp.name]}
     logger.debug(f"Finished blueprint registration. Registered: {registered_blueprints_info}")
+
+    # Exempt API blueprints from CSRF protection
+    try:
+        exempt_api_blueprints(app)
+        logger.debug("API blueprints exempted from CSRF protection.")
+    except Exception as e:
+        logger.error(f"Failed to exempt API blueprints from CSRF protection: {e}", exc_info=True)
 
 
     # TODO: Setup CSP - Uncomment and implement if needed

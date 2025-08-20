@@ -1,22 +1,8 @@
 from sqlalchemy import String, Integer, Column, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.ext.declarative import declarative_base
+from extensions.db import db
 
-Base = declarative_base()
-
-class UserRole(Base):
-    __tablename__ = "user_role"
-
-    # Campos
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("user.id"), primary_key=True)
-    role_id: Mapped[int] = mapped_column(Integer, ForeignKey("role.id"), primary_key=True)
-
-    # Relações
-    user: Mapped["User"] = relationship("User", back_populates="roles")
-    role: Mapped["Role"] = relationship("Role", back_populates="users")
-
-
-class Role(Base):
+class Role(db.Model):
     __tablename__ = "role"
 
     # Campos
@@ -25,7 +11,7 @@ class Role(Base):
     description: Mapped[str] = mapped_column(String(255), nullable=True)
 
     # Relações
-    users: Mapped[list["UserRole"]] = relationship("UserRole", back_populates="role")
+    # users: Mapped[list["UserRole"]] = relationship("UserRole", back_populates="role")
 
     def __init__(self, name: str, description: str = None):
         """Inicializa um novo papel com nome e descrição opcional."""

@@ -3,7 +3,7 @@
 from sqlalchemy import Column, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 # Importar db do pacote extensions
-from ..extensions import db
+from extensions import db
 # Importar modelos relacionados (User e Role) para definições de relacionamento
 # from .user import User
 # from .role import Role
@@ -14,7 +14,7 @@ class UserRole(db.Model):
 
     # Usar Column em vez de mapped_column para consistência com User model
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True) # Chave estrangeira para a tabela 'users'
-    role_id = Column(Integer, ForeignKey("roles.id"), primary_key=True) # Chave estrangeira para a tabela 'roles' (presumindo nome da tabela 'roles')
+    role_id = Column(Integer, ForeignKey("role.id"), primary_key=True) # Chave estrangeira para a tabela 'role'
 
     # Relações (opcional para association object, dependendo como você o usa)
     # Estas relações aqui permitem acessar User e Role diretamente do objeto UserRole

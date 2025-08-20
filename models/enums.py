@@ -8,7 +8,7 @@ from sqlalchemy import Enum as SQLEnum
 
 # Common severity levels for CVEs
 severity_levels = SQLEnum(
-    'LOW', 'MEDIUM', 'HIGH', 'CRITICAL',
+    'N/A', 'NONE', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL',
     name='severity_levels',
     create_type=True  # ensure the enumeration type is created in the database
 )

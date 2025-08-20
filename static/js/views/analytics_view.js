@@ -1,16 +1,45 @@
 // analytics_view.js
 // Responsável por renderizar as métricas de vulnerabilidades e disparar eventos para filtros e gráficos
 
-import AnalyticsModel from "../models/analytics_model.js";
-
 const AnalyticsView = (() => {
     let container;
     let filterForm;
+    let analyticsModel;
+    let debounceTimer;
+    let isInitialized = false;
+
+    // Lazy loading do modelo
+    async function loadModel() {
+        if (!analyticsModel) {
+            // Aguarda o modelo estar disponível globalmente
+            if (typeof window.AnalyticsModel !== 'undefined') {
+                analyticsModel = window.AnalyticsModel;
+            } else {
+                throw new Error('AnalyticsModel not loaded');
+            }
+        }
+        return analyticsModel;
+    }
 
     function init() {
+        if (isInitialized) return;
+        
         container = document.getElementById("analytics-container");
         filterForm = document.getElementById("analytics-filter-form");
         bindEvents();
+        isInitialized = true;
+    }
+
+    // Debounce para eventos de filtro
+    function debounce(func, wait) {
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(debounceTimer);
+                func(...args);
+            };
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(later, wait);
+        };
     }
 
     /**
@@ -78,24 +107,65 @@ const AnalyticsView = (() => {
     }
 
     /**
-     * Associa evento de filtro ao formulário.
+     * Associa evento de filtro ao formulário com debounce.
      */
     function bindEvents() {
         if (!filterForm) return;
+        
+        const debouncedFilter = debounce((filters) => {
+            document.dispatchEvent(
+                new CustomEvent("analytics:filter:apply", { detail: filters })
+            );
+        }, 300);
+        
         filterForm.addEventListener("submit", (e) => {
             e.preventDefault();
             const formData = new FormData(filterForm);
             const filters = Object.fromEntries(formData.entries());
-            document.dispatchEvent(
-                new CustomEvent("analytics:filter:apply", { detail: filters })
-            );
+            debouncedFilter(filters);
         });
+        
+        // Adiciona listener para mudanças em tempo real nos inputs
+        const inputs = filterForm.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            input.addEventListener('input', debounce(() => {
+                const formData = new FormData(filterForm);
+                const filters = Object.fromEntries(formData.entries());
+                debouncedFilter(filters);
+            }, 500));
+        });
+    }
+
+    /**
+     * Limpa recursos e event listeners para evitar memory leaks.
+     */
+    function cleanup() {
+        if (debounceTimer) {
+            clearTimeout(debounceTimer);
+        }
+        
+        if (filterForm) {
+            const inputs = filterForm.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                input.removeEventListener('input', () => {});
+            });
+        }
+        
+        container = null;
+        filterForm = null;
+        analyticsModel = null;
+        isInitialized = false;
     }
 
     return {
         render,
-        clear
+        clear,
+        cleanup,
+        init
     };
 })();
 
-export default AnalyticsView;
+// Export for global access
+if (typeof window !== 'undefined') {
+    window.AnalyticsView = AnalyticsView;
+}

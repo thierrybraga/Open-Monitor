@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String
-from ..extensions.db import db
+from extensions.db import db
 
 class ReferenceType(db.Model):
     __tablename__ = 'reference_type'

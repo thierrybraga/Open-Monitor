@@ -283,29 +283,93 @@ class NVDFetcher:
                  logger.warning(f"Could not parse last modified date '{last_modified_str}' for CVE {cve_id}.")
 
 
-        # Extrair métricas CVSS (priorizar V31, depois V30, depois V2)
+        # Extrair métricas CVSS de todas as versões disponíveis
         base_severity = 'UNKNOWN'
         cvss_score = None
+        cvss_metrics = []
 
         metrics = cve_data.get('metrics', {})
-        # Lista de chaves CVSS em ordem de preferência
-        cvss_keys = ['cvssMetricV31', 'cvssMetricV30', 'cvssMetricV2']
-
-        for key in cvss_keys:
-            metric_list = metrics.get(key)
-            if metric_list and isinstance(metric_list, list) and len(metric_list) > 0:
-                cvss_data = metric_list[0].get('cvssData')
-                if cvss_data:
-                    base_severity = cvss_data.get('baseSeverity', base_severity)
-                    cvss_score = cvss_data.get('baseScore', cvss_score)
-                    # Assumindo que queremos a primeira métrica encontrada na ordem
+        # Mapear chaves CVSS para versões
+        cvss_version_map = {
+            'cvssMetricV31': '3.1',
+            'cvssMetricV30': '3.0', 
+            'cvssMetricV2': '2.0'
+        }
+        
+        # Ordem de prioridade para score principal
+        priority_order = ['cvssMetricV31', 'cvssMetricV30', 'cvssMetricV2']
+        
+        # Extrair todas as métricas CVSS disponíveis
+        for cvss_key, version in cvss_version_map.items():
+            metric_list = metrics.get(cvss_key, [])
+            if not isinstance(metric_list, list):
+                continue
+                
+            for i, metric_item in enumerate(metric_list):
+                cvss_data = metric_item.get('cvssData', {})
+                if not cvss_data:
+                    continue
+                    
+                try:
+                    # Extrair dados base comuns a todas as versões
+                    metric_info = {
+                        'cvss_version': version,
+                        'base_score': float(cvss_data.get('baseScore', 0.0)),
+                        'base_severity': cvss_data.get('baseSeverity', 'UNKNOWN').upper(),
+                        'base_vector': cvss_data.get('vectorString', ''),
+                        'is_primary': i == 0,  # Primeira métrica de cada versão é primária
+                        'exploitability_score': cvss_data.get('exploitabilityScore'),
+                        'impact_score': cvss_data.get('impactScore')
+                    }
+                    
+                    # Extrair componentes específicos por versão
+                    if version in ['3.0', '3.1']:
+                        # CVSS v3.x componentes
+                        metric_info.update({
+                            'attack_vector': cvss_data.get('attackVector'),
+                            'attack_complexity': cvss_data.get('attackComplexity'),
+                            'privileges_required': cvss_data.get('privilegesRequired'),
+                            'user_interaction': cvss_data.get('userInteraction'),
+                            'scope': cvss_data.get('scope'),
+                            'confidentiality_impact': cvss_data.get('confidentialityImpact'),
+                            'integrity_impact': cvss_data.get('integrityImpact'),
+                            'availability_impact': cvss_data.get('availabilityImpact')
+                        })
+                    elif version == '2.0':
+                        # CVSS v2.x componentes
+                        metric_info.update({
+                            'access_vector': cvss_data.get('accessVector'),
+                            'access_complexity': cvss_data.get('accessComplexity'),
+                            'authentication': cvss_data.get('authentication'),
+                            'confidentiality_impact': cvss_data.get('confidentialityImpact'),
+                            'integrity_impact': cvss_data.get('integrityImpact'),
+                            'availability_impact': cvss_data.get('availabilityImpact')
+                        })
+                    
+                    # Converter scores para float quando disponíveis
+                    for score_field in ['exploitability_score', 'impact_score']:
+                        if metric_info[score_field] is not None:
+                            try:
+                                metric_info[score_field] = float(metric_info[score_field])
+                            except (ValueError, TypeError):
+                                metric_info[score_field] = None
+                    
+                    cvss_metrics.append(metric_info)
+                    
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Error processing CVSS {version} data for CVE {cve_id}: {e}")
+                    continue
+        
+        # Definir score e severidade principais baseados na prioridade
+        for priority_key in priority_order:
+            if priority_key in cvss_version_map:
+                version = cvss_version_map[priority_key]
+                primary_metrics = [m for m in cvss_metrics if m['cvss_version'] == version and m['is_primary']]
+                if primary_metrics:
+                    primary_metric = primary_metrics[0]
+                    cvss_score = primary_metric['base_score']
+                    base_severity = primary_metric['base_severity']
                     break
-        if cvss_score is not None:
-             try:
-                  cvss_score = float(cvss_score)
-             except (ValueError, TypeError):
-                  logger.warning(f"Could not convert CVSS score {cvss_score} to float for CVE {cve_id}.")
-                  cvss_score = None
 
         # TODO: Extrair e mapear outros dados relevantes: references, configurations (CPEs), weakness (CWEs), etc.
         # Estes também devem ser mapeados para seus respectivos modelos e relacionados à Vulnerabilidade.
@@ -320,6 +384,7 @@ class NVDFetcher:
              "last_modified": last_modified,
              "base_severity": base_severity,
              "cvss_score": cvss_score,
+             "cvss_metrics": cvss_metrics,  # Lista completa de métricas CVSS
              # TODO: Incluir outros dados extraídos/mapeados (references, cpes, cwes, etc.)
              "raw_data": cve_data # Opcional: armazenar o JSON bruto para referência
         }

@@ -1,106 +1,100 @@
-// static/js/views/chatbot_view.js
-// View for rendering and handling chatbot interactions.
+// static/js/models/chatbot_model.js
+// Model for handling chatbot data operations and API communication.
 
-import ChatbotModel from "../models/chatbot_model.js";
-
-class ChatbotView {
+class ChatbotModel {
   /**
-   * Initialize the chatbot view: bind events and load history.
+   * Fetch conversation history from the server.
+   * @returns {Promise<Array>} Array of message objects
    */
-  static init() {
-    // DOM elements
-    this.chatContainer = document.getElementById('chat-container');
-    this.inputField = document.getElementById('chat-input');
-    this.sendButton = document.getElementById('chat-send');
+  static async fetchHistory() {
+    try {
+      const response = await fetch('/api/chatbot/history', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
 
-    // Event listeners
-    this.sendButton.addEventListener('click', () => this.handleSend());
-    this.inputField.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        this.handleSend();
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    });
 
-    // Load existing conversation
-    this.loadHistory();
-  }
-
-  /**
-   * Load conversation history from the server and render messages.
-   */
-  static async loadHistory() {
-    try {
-      const history = await ChatbotModel.fetchHistory();
-      history.forEach(msg => this.renderMessage(msg));
-      this.scrollToBottom();
+      const data = await response.json();
+      return data.success ? data.messages : [];
     } catch (error) {
-      console.error('Error loading chatbot history:', error);
-      this.renderSystemMessage('Erro ao carregar histórico do chatbot.');
+      console.error('Error fetching chatbot history:', error);
+      throw error;
     }
   }
 
   /**
-   * Handle sending a new message.
+   * Send a message to the chatbot API.
+   * @param {string} message - The user message
+   * @param {string|null} sessionId - Current session ID
+   * @returns {Promise<Object>} API response object
    */
-  static async handleSend() {
-    const text = this.inputField.value.trim();
-    if (!text) return;
-
-    // Render user message
-    const userMsg = { sender: 'user', text };
-    this.renderMessage(userMsg);
-    this.inputField.value = '';
-    this.scrollToBottom();
-
+  static async sendMessage(message, sessionId = null) {
     try {
-      // Send to API
-      const response = await ChatbotModel.sendMessage(text);
-      const botMsg = { sender: 'bot', text: response.reply };
-      this.renderMessage(botMsg);
-      this.scrollToBottom();
+      const response = await fetch('/api/chatbot/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: message,
+          session_id: sessionId
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Unknown error occurred');
+      }
+
+      return {
+        reply: data.response,
+        sessionId: data.session_id,
+        relevantCves: data.relevant_cves || []
+      };
     } catch (error) {
-      console.error('Error sending chatbot message:', error);
-      this.renderSystemMessage('Erro ao enviar mensagem. Tente novamente.');
-      this.scrollToBottom();
+      console.error('Error sending message to chatbot:', error);
+      throw error;
     }
   }
 
   /**
-   * Render a single message in the chat container.
-   * @param {{sender: string, text: string}} msg
+   * Clear the current chat session.
+   * @param {string} sessionId - Session ID to clear
+   * @returns {Promise<boolean>} Success status
    */
-  static renderMessage(msg) {
-    const msgEl = document.createElement('div');
-    msgEl.classList.add('chat-message', `chat-${msg.sender}`);
-    msgEl.textContent = msg.text;
-    this.chatContainer.appendChild(msgEl);
-  }
+  static async clearSession(sessionId) {
+    try {
+      const response = await fetch('/api/chatbot/clear', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          session_id: sessionId
+        })
+      });
 
-  /**
-   * Render a system message (errors, notifications).
-   * @param {string} text
-   */
-  static renderSystemMessage(text) {
-    const sysEl = document.createElement('div');
-    sysEl.classList.add('chat-message', 'chat-system');
-    sysEl.textContent = text;
-    this.chatContainer.appendChild(sysEl);
-  }
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-  /**
-   * Scroll the chat container to the bottom.
-   */
-  static scrollToBottom() {
-    this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
+      const data = await response.json();
+      return data.success;
+    } catch (error) {
+      console.error('Error clearing chatbot session:', error);
+      throw error;
+    }
   }
 }
 
-// Initialize when DOM is ready
-if (document.readyState !== 'loading') {
-  ChatbotView.init();
-} else {
-  document.addEventListener('DOMContentLoaded', () => ChatbotView.init());
-}
-
-export default ChatbotView;
+export default ChatbotModel;

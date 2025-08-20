@@ -10,7 +10,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from datetime import datetime
 from email_validator import validate_email, EmailNotValidError
-from ..models.newsletter_subscription import NewsletterSubscription
+from models.newsletter_subscriber import NewsletterSubscription
 
 
 class NewsletterService:
@@ -24,6 +24,43 @@ class NewsletterService:
             session: SQLAlchemy session for database operations.
         """
         self.session = session
+    
+    def get_all_subscribers(self, active_only: bool = True):
+        """Get all newsletter subscribers."""
+        query = self.session.query(NewsletterSubscription)
+        if active_only:
+            query = query.filter_by(is_active=True)
+        return query.all()
+    
+    def get_subscriber_by_email(self, email: str) -> Optional[NewsletterSubscription]:
+        """Get a subscriber by email address."""
+        return self.session.query(NewsletterSubscription).filter_by(email=email.strip().lower()).first()
+    
+    def unsubscribe(self, email: str) -> bool:
+        """Unsubscribe an email from the newsletter."""
+        try:
+            subscriber = self.get_subscriber_by_email(email)
+            if subscriber and subscriber.is_active:
+                subscriber.unsubscribe()
+                self.session.commit()
+                return True
+            return False
+        except Exception as e:
+            self.session.rollback()
+            raise RuntimeError(f"Error unsubscribing email '{email}': {e}")
+    
+    def resubscribe(self, email: str) -> bool:
+        """Resubscribe an email to the newsletter."""
+        try:
+            subscriber = self.get_subscriber_by_email(email)
+            if subscriber and not subscriber.is_active:
+                subscriber.resubscribe()
+                self.session.commit()
+                return True
+            return False
+        except Exception as e:
+            self.session.rollback()
+            raise RuntimeError(f"Error resubscribing email '{email}': {e}")
 
     def signup(self, email: str) -> bool:
         """

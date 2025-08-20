@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String
-from ..extensions.db import db
+from extensions.db import db
 
 class Vendor(db.Model):
     __tablename__ = 'vendor'
@@ -9,8 +9,6 @@ class Vendor(db.Model):
 
     # Vendor details
     name = Column(String(255), unique=True, nullable=False)
-    website = Column(String(255), nullable=True)
-    contact_email = Column(String(255), nullable=True)
 
     # Relationships
     cve_vendors = db.relationship(
@@ -19,10 +17,6 @@ class Vendor(db.Model):
     )
     products = db.relationship(
         'Product', back_populates='vendor',
-        cascade='all, delete-orphan'
-    )
-    monitoring_rules = db.relationship(
-        'MonitoringRule', back_populates='vendor',
         cascade='all, delete-orphan'
     )
 

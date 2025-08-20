@@ -1,18 +1,43 @@
 // search_view.js
 // Responsável por renderizar resultados de busca e manipular eventos de pesquisa
 
-import SearchModel from "../models/search_model.js";
-
 const SearchView = (() => {
     let container;
     let form;
     let inputField;
+    let searchModel;
+    let debounceTimer;
+    let isInitialized = false;
+
+    // Lazy loading do modelo
+    async function loadModel() {
+        if (!searchModel) {
+            const { default: SearchModel } = await import("../models/search_model.js");
+            searchModel = SearchModel;
+        }
+        return searchModel;
+    }
 
     function init() {
+        if (isInitialized) return;
+        
         container = document.getElementById("search-results-container");
         form = document.getElementById("search-form");
         inputField = document.getElementById("search-input");
         bindEvents();
+        isInitialized = true;
+    }
+
+    // Debounce para eventos de busca
+    function debounce(func, wait) {
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(debounceTimer);
+                func(...args);
+            };
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(later, wait);
+        };
     }
 
     /**
@@ -53,18 +78,31 @@ const SearchView = (() => {
     }
 
     /**
-     * Associa eventos ao formulário e botões de detalhes.
+     * Associa eventos ao formulário e botões de detalhes com debounce.
      */
     function bindEvents() {
         if (!form || !inputField) return;
+        
+        const debouncedSearch = debounce((query) => {
+            document.dispatchEvent(
+                new CustomEvent("search:execute", { detail: { query } })
+            );
+        }, 300);
+        
         form.addEventListener("submit", (e) => {
             e.preventDefault();
             const query = inputField.value.trim();
             if (!query) return;
-            document.dispatchEvent(
-                new CustomEvent("search:execute", { detail: { query } })
-            );
+            debouncedSearch(query);
         });
+        
+        // Busca em tempo real enquanto digita
+        inputField.addEventListener('input', debounce(() => {
+            const query = inputField.value.trim();
+            if (query.length >= 3) {
+                debouncedSearch(query);
+            }
+        }, 500));
     }
 
     /**
@@ -82,9 +120,26 @@ const SearchView = (() => {
         });
     }
 
+    /**
+     * Limpa recursos e event listeners para evitar memory leaks.
+     */
+    function cleanup() {
+        if (debounceTimer) {
+            clearTimeout(debounceTimer);
+        }
+        
+        container = null;
+        form = null;
+        inputField = null;
+        searchModel = null;
+        isInitialized = false;
+    }
+
     return {
         render,
-        clear
+        clear,
+        cleanup,
+        init
     };
 })();
 

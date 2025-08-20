@@ -18,7 +18,7 @@ from flask import current_app # Importar current_app (opcional, descomente se us
 
 # Use importação relativa CORRETA para as instâncias das extensões
 # Assumindo que db e login_manager são exportados por project/extensions/__init__.py
-from ..extensions import db, login_manager # CORRIGIDO: Caminho de importação
+from extensions import db, login_manager
 
 
 # Importar BaseModel para herdar campos auditáveis (criado_em, atualizado_em)
@@ -56,6 +56,15 @@ class User(BaseModel, UserMixin, db.Model): # Herda de BaseModel, UserMixin e db
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True) # CORRIGIDO
     password_hash: Mapped[str] = mapped_column(String(128), nullable=False) # CORRIGIDO
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False) # CORRIGIDO
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False) # Campo para identificar administradores
+    
+    # Campos de perfil
+    first_name: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    last_name: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    bio: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
+    profile_picture: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # Caminho para a imagem
 
     # Campos auditáveis (herdados de BaseModel) - Se BaseModel usa Mapped[] e mapped_column, user também deve herdar corretamente
     # Se BaseModel define estes campos diretamente sem Mapped[], você pode precisar anotá-los aqui ou garantir que BaseModel use Mapped[]
@@ -67,8 +76,11 @@ class User(BaseModel, UserMixin, db.Model): # Herda de BaseModel, UserMixin e db
     # Relacionamentos usando Mapped[List[...]]
     # A anotação de tipo agora usa Mapped[] envolvendo a lista
     # Use o nome string do modelo ('Asset', 'MonitoringRule') no relationship
+# Relacionamentos
     assets: Mapped[List['Asset']] = relationship('Asset', back_populates='owner', lazy='dynamic') # CORRIGIDO
     monitoring_rules: Mapped[List['MonitoringRule']] = relationship('MonitoringRule', back_populates='user', lazy='dynamic') # CORRIGIDO
+    reports: Mapped[List['Report']] = relationship('Report', back_populates='user', lazy='dynamic')
+    risk_assessments: Mapped[List['RiskAssessment']] = relationship('RiskAssessment', back_populates='user', lazy='dynamic')
 
     # TODO: Adicionar outros relacionamentos usando Mapped[List['Modelo']] ou Mapped['Modelo']
     # chat_logs: Mapped[List['ChatLog']] = relationship('ChatLog', back_populates='user', lazy='dynamic') # CORRIGIDO
@@ -80,11 +92,20 @@ class User(BaseModel, UserMixin, db.Model): # Herda de BaseModel, UserMixin e db
     # SQLAlchemy pode gerar um __init__ automaticamente, mas você pode definir um personalizado
     # se precisar de lógica adicional na inicialização (como validação).
     # Se BaseModel tem um __init__ que precisa ser chamado, adicione a chamada aqui.
-    def __init__(self, username: str, email: str, password: Optional[str] = None): # Senha opcional para alguns casos
+    def __init__(self, username: str, email: str, password: Optional[str] = None, **kwargs): # Senha opcional para alguns casos
         self.username = username
         self.email = self._validate_email(email) # Valida e normaliza e-mail
         if password:
             self.set_password(password)
+        
+        # Campos de perfil opcionais
+        self.first_name = kwargs.get('first_name')
+        self.last_name = kwargs.get('last_name')
+        self.phone = kwargs.get('phone')
+        self.address = kwargs.get('address')
+        self.bio = kwargs.get('bio')
+        self.profile_picture = kwargs.get('profile_picture')
+        
         # TODO: Se BaseModel tem __init__, chamar: super().__init__() # ou BaseModel.__init__(self)
 
 
@@ -146,8 +167,15 @@ class User(BaseModel, UserMixin, db.Model): # Herda de BaseModel, UserMixin e db
             'id': self.id,
             'username': self.username,
             'email': self.email,
+            'first_name': self.first_name,
+            'last_name': self.last_name,
+            'phone': self.phone,
+            'address': self.address,
+            'bio': self.bio,
+            'profile_picture': self.profile_picture,
             'is_active': self.is_active,
-            # Convertar objetos datetime para ISO 8601 strings, lidando com None
+            'is_admin': self.is_admin,
+            # Converter objetos datetime para ISO 8601 strings, lidando com None
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             # TODO: Incluir outros campos ou relacionamentos serializados (ex: roles)

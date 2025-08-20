@@ -22,11 +22,18 @@ from flask import (
     url_for
 )
 
-# TODO: Import necessary services or models for data fetching
-from ..services.vulnerability_service import VulnerabilityService
-from ..models.vulnerability import Vulnerability
-from ..forms.search_forms import SearchForm # Exemplo de importação de formulários
-from ..forms.newsletter_forms import NewsletterForm # Exemplo
+# Import necessary services or models for data fetching
+from services.vulnerability_service import VulnerabilityService
+from services.user_service import UserService
+from models.vulnerability import Vulnerability
+from models.user import User
+from models.asset import Asset
+from models.asset_vulnerability import AssetVulnerability
+from forms.search_forms import SearchForm
+from forms.newsletter_forms import NewsletterSubscriptionForm, NewsletterUnsubscribeForm
+from forms.profile_form import ProfileForm, ChangePasswordForm
+from extensions import db
+from flask_login import login_required, current_user
 
 
 # Configuração do logger para este módulo
@@ -131,21 +138,61 @@ def index() -> str:
     """Renders the home page."""
     logger.info("Accessing index page.") # Logging mais informativo
 
-    # TODO: Add logic to get data for the index page (e.g., critical vulnerability count, recent vulnerabilities)
-    critical_count: int = 0 # Placeholder
-    vulnerabilities: List[Any] = [] # Placeholder
-    total_pages: int = 1 # Placeholder
-    page: int = request.args.get('page', 1, type=int) # Exemplo de parâmetro de paginação
-
-
-    return render_page(
-        'index', # Passa a chave da rota
-        critical_count=critical_count,
-        page=page,
-        vulnerabilities=vulnerabilities,
-        total_pages=total_pages,
-        # TODO: Passar outros dados específicos da página index
-    )
+    try:
+        from extensions import db
+        
+        # Get database session and initialize service
+        session = db.session
+        vuln_service = VulnerabilityService(session)
+        
+        # Get dashboard counts
+        counts = vuln_service.get_dashboard_counts()
+        
+        # Get weekly counts for new CVEs
+        weekly_counts = vuln_service.get_weekly_counts()
+        
+        # Get pagination parameters
+        page: int = request.args.get('page', 1, type=int)
+        per_page: int = 10  # Number of vulnerabilities per page
+        
+        # Get recent vulnerabilities with pagination
+        vulnerabilities, total_count = vuln_service.get_recent_paginated(page, per_page)
+        total_pages = (total_count + per_page - 1) // per_page  # Calculate total pages
+        
+        # No need to close session as it's managed by Flask-SQLAlchemy
+        
+        return render_page(
+            'index', # Passa a chave da rota
+            critical_count=counts.get('critical', 0),
+            high_count=counts.get('high', 0),
+            medium_count=counts.get('medium', 0),
+            total_count=counts.get('total', 0),
+            weekly_critical=weekly_counts.get('critical', 0),
+            weekly_high=weekly_counts.get('high', 0),
+            weekly_medium=weekly_counts.get('medium', 0),
+            weekly_total=weekly_counts.get('total', 0),
+            page=page,
+            vulnerabilities=vulnerabilities,
+            total_pages=total_pages,
+        )
+        
+    except Exception as e:
+        logger.error(f"Error loading index page data: {e}", exc_info=True)
+        # Fallback to placeholder data if database query fails
+        return render_page(
+            'index',
+            critical_count=0,
+            high_count=0,
+            medium_count=0,
+            total_count=0,
+            weekly_critical=0,
+            weekly_high=0,
+            weekly_medium=0,
+            weekly_total=0,
+            page=1,
+            vulnerabilities=[],
+            total_pages=1,
+        )
 
 @main_bp.route(ROUTES['search']['path'], methods=ROUTES['search']['methods'])
 def search() -> str:
@@ -192,44 +239,112 @@ def search() -> str:
 def newsletter() -> str:
     """Renders the newsletter page and processes the signup form."""
     logger.info(f"Accessing newsletter page with method: {request.method}")
+    
+    from services.newsletter_service import NewsletterService
+    from services.email_service import EmailService
+    from extensions.db import db
+    
+    form = NewsletterSubscriptionForm()
+    newsletter_service = NewsletterService(db.session)
+    email_service = EmailService()
 
-    # TODO: Initialize NewsletterForm if using Flask-WTF
-    # form = NewsletterForm()
+    if request.method == 'POST' and form.validate_on_submit():
+        email = form.email.data.strip().lower()
+        preferences = form.preferences.data
+        source = form.source.data
+        
+        logger.info(f"Newsletter signup attempt for email: '{email}'")
+        
+        try:
+            # Check if email is already subscribed
+            existing_subscriber = newsletter_service.get_subscriber_by_email(email)
+            
+            if existing_subscriber:
+                if existing_subscriber.is_active:
+                    flash(f"O email {email} já está inscrito na newsletter!", 'info')
+                else:
+                    # Reactivate subscription
+                    newsletter_service.resubscribe(email)
+                    flash(f"Bem-vindo de volta! Sua inscrição foi reativada para {email}.", 'success')
+                    # Send welcome email
+                    email_service.send_welcome_email(email)
+            else:
+                # Create new subscription
+                success = newsletter_service.signup(email)
+                if success:
+                    flash(f"Obrigado por se inscrever na newsletter com {email}!", 'success')
+                    # Send welcome email
+                    email_service.send_welcome_email(email)
+                    logger.info(f"Newsletter signup successful for {email}")
+                else:
+                    flash("Erro ao processar a inscrição. Tente novamente.", 'danger')
+                    
+        except ValueError as e:
+            flash(f"Erro de validação: {str(e)}", 'danger')
+            logger.error(f"Newsletter signup validation error for {email}: {e}")
+        except Exception as e:
+            flash(f"Erro ao processar a inscrição: {str(e)}", 'danger')
+            logger.error(f"Newsletter signup failed for {email}: {e}")
+            
+        return redirect(url_for('main.newsletter'))
+    
+    elif request.method == 'POST':
+        # Form validation failed
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"Erro no campo {getattr(form, field).label.text}: {error}", 'danger')
+        logger.debug("Newsletter form validation failed.")
 
-    if request.method == 'POST':
-        # TODO: Process form submission and validation
-        # if form.validate_on_submit():
-        #     email = form.email.data.strip()
-        #     logger.info(f"Newsletter signup attempt for email: '{email}'")
-        #     try:
-        #         # TODO: Add logic to process newsletter signup via a service
-        #         NewsletterService.signup(email) # Exemplo de chamada de serviço
-        #         flash(f"Obrigado por subscrever a newsletter com {email}!", 'success')
-        #         # return redirect(url_for('main.newsletter')) # Opcional: redirecionar após sucesso
-        #     except Exception as e: # Capturar exceções específicas do serviço
-        #          logger.error(f"Newsletter signup failed for {email}: {e}")
-        #          flash(f"Erro ao processar a subscrição: {e}", 'danger')
-        # else:
-        #     for field, errors in form.errors.items():
-        #         for error in errors:
-        #              flash(f"Erro no campo {getattr(form, field).label.text}: {error}", 'danger')
-        #     logger.debug("Newsletter form validation failed.")
-        #     # Permite exibir a página com erros de validação
-
-        # Exemplo básico sem form (manter se não usar Flask-WTF por enquanto)
-        email: Optional[str] = request.form.get('email', '').strip()
-        if email:
-             flash(f"Pedido de subscrição para {email} recebido. Funcionalidade não totalmente implementada/validada.", 'info')
-        else:
-            flash("Por favor, insira um endereço de e-mail.", 'warning')
-            logger.debug("Newsletter signup form submitted without email (basic).")
-
-    # Para método GET ou após POST sem redirecionamento
-    # Chama render_template diretamente
     return render_template(
-        ROUTES['newsletter']['template'], # Usará 'newsletter/newsletter.html' conforme o ROUTES
-        # form=form # Passa o formulário para o template se estiver usando Flask-WTF
+        ROUTES['newsletter']['template'],
+        form=form
     )
+
+
+@main_bp.route('/newsletter/unsubscribe', methods=['GET', 'POST'])
+def newsletter_unsubscribe() -> str:
+    """Handles newsletter unsubscription."""
+    logger.info(f"Accessing newsletter unsubscribe page with method: {request.method}")
+    
+    from services.newsletter_service import NewsletterService
+    from services.email_service import EmailService
+    from extensions.db import db
+    
+    form = NewsletterUnsubscribeForm()
+    newsletter_service = NewsletterService(db.session)
+    email_service = EmailService()
+    
+    if request.method == 'POST' and form.validate_on_submit():
+        email = form.email.data.strip().lower()
+        
+        logger.info(f"Newsletter unsubscribe attempt for email: '{email}'")
+        
+        try:
+            existing_subscriber = newsletter_service.get_subscriber_by_email(email)
+            
+            if existing_subscriber and existing_subscriber.is_active:
+                newsletter_service.unsubscribe(email)
+                flash(f"Sua inscrição foi cancelada com sucesso para {email}.", 'success')
+                # Send unsubscribe confirmation email
+                email_service.send_unsubscribe_confirmation(email)
+                logger.info(f"Newsletter unsubscribe successful for {email}")
+            else:
+                flash(f"O email {email} não está inscrito na newsletter.", 'info')
+                
+        except Exception as e:
+            flash(f"Erro ao processar o cancelamento: {str(e)}", 'danger')
+            logger.error(f"Newsletter unsubscribe failed for {email}: {e}")
+            
+        return redirect(url_for('main.newsletter_unsubscribe'))
+    
+    elif request.method == 'POST':
+        # Form validation failed
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"Erro no campo {getattr(form, field).label.text}: {error}", 'danger')
+        logger.debug("Newsletter unsubscribe form validation failed.")
+    
+    return render_template('newsletter/unsubscribe.html', form=form)
 
 @main_bp.route(ROUTES['chatbot']['path'], methods=ROUTES['chatbot']['methods'])
 def chatbot() -> str:
@@ -239,20 +354,179 @@ def chatbot() -> str:
     return render_page('chatbot')
 
 @main_bp.route(ROUTES['analytics']['path'], methods=ROUTES['analytics']['methods'])
+@login_required
 def analytics() -> str:
     """Renders the Analytics page."""
     logger.info("Accessing analytics page.") # Logging mais informativo
-    # TODO: Get analytical data for the analytics.html template
-    analytics_data: Dict[str, Any] = {} # Placeholder
-    return render_page('analytics', analytics_data=analytics_data)
+    
+    try:
+        from extensions import db
+        from models.vulnerability import Vulnerability
+        from sqlalchemy import func, or_
+        from datetime import datetime, timedelta
+        
+        # Get database session and initialize service
+        session = db.session
+        vuln_service = VulnerabilityService(session)
+        
+        # Get dashboard counts for analytics - filtered by user's assets
+        user_vulnerabilities = session.query(Vulnerability).join(
+            AssetVulnerability, Vulnerability.cve_id == AssetVulnerability.vulnerability_id
+        ).join(
+            Asset, AssetVulnerability.asset_id == Asset.id
+        ).filter(
+            Asset.owner_id == current_user.id
+        )
+        
+        # Calculate counts for user's vulnerabilities
+        total_vulns = user_vulnerabilities.count()
+        critical_vulns = user_vulnerabilities.filter(Vulnerability.base_severity == 'CRITICAL').count()
+        high_vulns = user_vulnerabilities.filter(Vulnerability.base_severity == 'HIGH').count()
+        medium_vulns = user_vulnerabilities.filter(Vulnerability.base_severity == 'MEDIUM').count()
+        
+        counts = {
+            'total': total_vulns,
+            'critical': critical_vulns,
+            'high': high_vulns,
+            'medium': medium_vulns
+        }
+        
+        # Calculate additional analytics data
+        # Patched vs Unpatched - usando lógica mais realista
+        # Consideramos "patched" CVEs mais antigos (>90 dias) com severidade baixa/média
+        # e "unpatched" CVEs recentes ou críticos/altos
+        old_date = datetime.now() - timedelta(days=90)
+        
+        # CVEs considerados "patched" (mais antigos e menos críticos) - filtered by user
+        patched_cves = user_vulnerabilities.filter(
+            Vulnerability.published_date < old_date,
+            Vulnerability.base_severity.in_(['LOW', 'MEDIUM'])
+        ).count()
+        
+        # CVEs considerados "unpatched" (recentes ou críticos/altos) - filtered by user
+        unpatched_cves = user_vulnerabilities.filter(
+            or_(
+                Vulnerability.published_date >= old_date,
+                Vulnerability.base_severity.in_(['CRITICAL', 'HIGH'])
+            )
+        ).count()
+        
+        # Active Threats (critical vulnerabilities from last 30 days) - filtered by user
+        recent_date = datetime.now() - timedelta(days=30)
+        active_threats = user_vulnerabilities.filter(
+            Vulnerability.base_severity == 'CRITICAL',
+            Vulnerability.published_date >= recent_date
+        ).count()
+        
+        # Average CVSS Score - filtered by user
+        avg_cvss_result = user_vulnerabilities.with_entities(func.avg(Vulnerability.cvss_score)).scalar()
+        avg_cvss_score = round(float(avg_cvss_result), 2) if avg_cvss_result else 0.0
+        
+        # Average Exploitability (simulated as 80% of CVSS score) - filtered by user
+        avg_exploit_result = user_vulnerabilities.with_entities(func.avg(Vulnerability.cvss_score * 0.8)).scalar()
+        avg_exploit_score = round(float(avg_exploit_result), 2) if avg_exploit_result else 0.0
+        
+        # Patch Coverage
+        total_vulns = counts.get('total', 0)
+        patch_coverage = round((patched_cves / total_vulns * 100), 1) if total_vulns > 0 else 0.0
+        
+        # Vendor, Product and CWE counts (with error handling for schema issues)
+        vendor_count = 0
+        product_count = 0
+        cwe_count = 0
+        
+        try:
+            from models.vendor import Vendor
+            vendor_count = session.query(Vendor).count()
+        except Exception:
+            vendor_count = 0
+            
+        try:
+            from models.product import Product
+            product_count = session.query(Product).count()
+        except Exception:
+            product_count = 0
+            
+        try:
+            from models.weakness import Weakness
+            cwe_count = session.query(Weakness).count()
+        except Exception:
+            cwe_count = 0
+        
+        # Prepare analytics data
+        analytics_data: Dict[str, Any] = {
+            'total_cves': counts.get('total', 0),
+            'critical_cves': counts.get('critical', 0),
+            'high_cves': counts.get('high', 0),
+            'medium_cves': counts.get('medium', 0),
+            'severity_distribution': {
+                'critical': counts.get('critical', 0),
+                'high': counts.get('high', 0),
+                'medium': counts.get('medium', 0)
+            }
+        }
+        
+        # No need to close session as it's managed by Flask-SQLAlchemy
+        
+        return render_page(
+            'analytics',
+            analytics_data=analytics_data,
+            total_cves=counts.get('total', 0),
+            critical_cves=counts.get('critical', 0),
+            high_cves=counts.get('high', 0),
+            medium_cves=counts.get('medium', 0),
+            patched_cves=patched_cves,
+            unpatched_cves=unpatched_cves,
+            active_threats=active_threats,
+            avg_cvss_score=avg_cvss_score,
+            avg_exploit_score=avg_exploit_score,
+            patch_coverage=patch_coverage,
+            vendor_count=vendor_count,
+            product_count=product_count,
+            cwe_count=cwe_count
+        )
+        
+    except Exception as e:
+        logger.error(f"Error loading analytics page data: {e}", exc_info=True)
+        # Fallback to placeholder data if database query fails
+        analytics_data: Dict[str, Any] = {
+            'total_cves': 0,
+            'critical_cves': 0,
+            'high_cves': 0,
+            'medium_cves': 0,
+            'severity_distribution': {'critical': 0, 'high': 0, 'medium': 0}
+        }
+        return render_page(
+            'analytics',
+            analytics_data=analytics_data,
+            total_cves=0,
+            critical_cves=0,
+            high_cves=0,
+            medium_cves=0,
+            patched_cves=0,
+            unpatched_cves=0,
+            active_threats=0,
+            avg_cvss_score=0.0,
+            avg_exploit_score=0.0,
+            patch_coverage=0.0,
+            vendor_count=0,
+            product_count=0,
+            cwe_count=0
+        )
 
 @main_bp.route(ROUTES['assets']['path'], methods=ROUTES['assets']['methods'])
+@login_required
 def assets() -> str:
     """Renders the Assets listing page."""
     logger.info("Accessing assets page.") # Logging mais informativo
-    # TODO: Get assets data (e.g., from an AssetService), possibly with pagination
-    assets_list: List[Any] = [] # Placeholder
-    return render_page(ROUTES['assets']['template'], assets_list=assets_list)
+    try:
+        # Get assets data filtered by current user
+        assets_list = Asset.query.filter_by(owner_id=current_user.id).all()
+        return render_page(ROUTES['assets']['template'], assets_list=assets_list)
+    except Exception as e:
+        logger.error(f"Error loading assets page: {e}", exc_info=True)
+        flash('Erro ao carregar assets.', 'danger')
+        return render_page(ROUTES['assets']['template'], assets_list=[])
 
 @main_bp.route(ROUTES['insights']['path'], methods=ROUTES['insights']['methods'])
 def insights() -> str:
@@ -280,48 +554,12 @@ def monitoring() -> str:
         # TODO: Pass other monitoring data (e.g., recent logs)
     )
 
-# Route for the Reports page
-# Uses a variable parameter <period> in the URL
-# Also includes a route without a parameter for a default period
-@main_bp.route(ROUTES['reports']['path'] + '/<period>', methods=ROUTES['reports']['methods'])
-@main_bp.route(ROUTES['reports']['path'], methods=ROUTES['reports']['methods'])
-def reports(period: Optional[str] = None) -> str:
-    """
-    Renders the Reports page for a given period.
-
-    Args:
-        period: The report period (e.g., 'daily', 'weekly', 'monthly').
-                Defaults to 'weekly' if not specified in the URL.
-    """
-    logger.info(f"Accessing reports page for period: {period}")
-
-    if period is None:
-        period = 'weekly'
-        logger.debug("No period specified, defaulting to 'weekly'.")
-
-    valid_periods = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly']
-    if period not in valid_periods:
-        logger.warning(f"Invalid period '{period}' requested for reports.")
-        flash(f"Período de relatório inválido: '{period}'. Exibindo relatório semanal.", 'warning')
-        period = 'weekly'
-
-    # TODO: Add logic to get report data based on the 'period' (from a reports service)
-    report_data: Dict[str, Any] = {} # Placeholder
-    flash(f"Exibindo relatório: {period.capitalize()}", 'info')
-
-    # Chama render_template diretamente
-    return render_template(
-        ROUTES['reports']['template'], # <-- Aqui usará 'reports/report.html' se o ROUTES estiver correto
-        period=period,
-        report_data=report_data,
-        valid_periods=valid_periods,
-        # TODO: Add other report-specific context variables
-    )
+# Reports route is handled by report_controller.py
+# Removed duplicate route to avoid conflicts
 # TODO: Add routes for Account, Vulnerability Details, etc., referencing ROUTES dictionary
 # Example:
-@main_bp.route('/account', methods=['GET', 'POST']) # Definido explicitamente. Ajuste path/methods conforme ROUTES
-# TODO: Add login_required decorator if using Flask-Login
-# @login_required
+@main_bp.route('/account', methods=['GET', 'POST'])
+@login_required
 def account() -> str:
     """
     Rota para a página da Conta do Usuário.
@@ -329,63 +567,168 @@ def account() -> str:
     Renders the account.html template e processa atualizações da conta.
     """
     logger.info(f"Accessing account page with method: {request.method}")
-    user_account_data: Dict[str, Any] = {} # Placeholder
-
-    if request.method == 'POST':
-         # TODO: Integrate with an account form (e.g., Flask-WTF) for validation
-         logger.info("Processing account update (not fully implemented).")
-         flash("Atualização da conta não totalmente implementada/validada.", 'info')
-         # TODO: Add logic to update user account data via a service
-         # return redirect(url_for('main.account')) # Optional redirect
-
-    # TODO: Get user account data (e.g., from a UserService)
-    # user_account_data = UserService.get_user_data(current_user.id)
-
-    return render_page(ROUTES.get('account', {}).get('template', 'account.html'), user_account_data=user_account_data) # Referencia ROUTES mas usa fallback
+    
+    # Inicializar formulários
+    profile_form = ProfileForm()
+    password_form = ChangePasswordForm()
+    
+    # Inicializar serviço de usuário
+    user_service = UserService(db.session)
+    
+    try:
+        # Buscar dados do usuário atual
+        user_data = user_service.get_user_data(current_user.id)
+        
+        # Pré-preencher formulário com dados atuais
+        if request.method == 'GET':
+            profile_form.first_name.data = user_data.get('first_name', '')
+            profile_form.last_name.data = user_data.get('last_name', '')
+            profile_form.email.data = user_data.get('email', '')
+            profile_form.phone.data = user_data.get('phone', '')
+            profile_form.address.data = user_data.get('address', '')
+            profile_form.bio.data = user_data.get('bio', '')
+        
+        # Processar submissão do formulário de perfil
+        if request.method == 'POST':
+            form_type = request.form.get('form_type')
+            
+            if form_type == 'profile' and profile_form.validate_on_submit():
+                try:
+                    # Preparar dados para atualização
+                    update_data = {
+                        'first_name': profile_form.first_name.data,
+                        'last_name': profile_form.last_name.data,
+                        'email': profile_form.email.data,
+                        'phone': profile_form.phone.data,
+                        'address': profile_form.address.data,
+                        'bio': profile_form.bio.data
+                    }
+                    
+                    # Atualizar dados do usuário
+                    success = user_service.update_user_data(current_user.id, update_data)
+                    
+                    if success:
+                        flash('Perfil atualizado com sucesso!', 'success')
+                        logger.info(f"Profile updated successfully for user {current_user.id}")
+                        return redirect(url_for('main.account'))
+                    else:
+                        flash('Erro ao atualizar perfil. Tente novamente.', 'error')
+                        
+                except Exception as e:
+                    logger.error(f"Error updating profile for user {current_user.id}: {str(e)}")
+                    flash('Erro interno ao atualizar perfil.', 'error')
+            
+            elif form_type == 'password' and password_form.validate_on_submit():
+                try:
+                    # Verificar senha atual
+                    if not current_user.check_password(password_form.current_password.data):
+                        flash('Senha atual incorreta.', 'error')
+                    else:
+                        # Atualizar senha
+                        current_user.set_password(password_form.new_password.data)
+                        db.session.commit()
+                        flash('Senha alterada com sucesso!', 'success')
+                        logger.info(f"Password changed successfully for user {current_user.id}")
+                        return redirect(url_for('main.account'))
+                        
+                except Exception as e:
+                    logger.error(f"Error changing password for user {current_user.id}: {str(e)}")
+                    flash('Erro interno ao alterar senha.', 'error')
+                    db.session.rollback()
+        
+        # Buscar dados atualizados para exibição
+        user_data = user_service.get_user_data(current_user.id)
+        
+        return render_page(
+            ROUTES.get('account', {}).get('template', 'account.html'),
+            user_account_data=user_data,
+            profile_form=profile_form,
+            password_form=password_form
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in account page for user {current_user.id}: {str(e)}")
+        flash('Erro ao carregar dados da conta.', 'error')
+        return render_page(
+            ROUTES.get('account', {}).get('template', 'account.html'),
+            user_account_data={},
+            profile_form=ProfileForm(),
+            password_form=ChangePasswordForm()
+        )
 
 
 @main_bp.route('/vulnerabilities/<string:cve_id>', methods=['GET']) # Definido explicitamente. Ajuste path/methods conforme ROUTES
 def vulnerability_details(cve_id: str) -> str:
     """
-    Rota para a página de Detalhes da Vulnerabilidade.
-
-    Renders the vulnerability_details.html template para um CVE ID específico.
-    Inclui validação básica do formato do CVE ID.
-
+    Renders the vulnerability details page for a specific CVE with comprehensive analytics.
+    
     Args:
-        cve_id: O ID da vulnerabilidade (e.g., 'CVE-YYYY-NNNNN').
+        cve_id: The CVE ID to display details for.
+    
+    Returns:
+        Rendered vulnerability details template.
     """
-    logger.info(f"Accessing vulnerability details page for CVE ID: {cve_id}")
-
-    # Validação básica do formato do CVE ID (exemplo)
-    # Importado re localmente para este exemplo. Mova para imports se usado globalmente.
+    logger.info(f"Accessing vulnerability details for CVE: {cve_id}")
+    
+    # Validação básica do formato do CVE ID
     import re
-    cve_pattern = re.compile(r'^CVE-\d{4}-\d+$', re.IGNORECASE) # Formato CVE padrão
+    cve_pattern = re.compile(r'^CVE-\d{4}-\d+$', re.IGNORECASE)
 
     if not cve_pattern.match(cve_id):
         logger.warning(f"Invalid CVE ID format received: '{cve_id}'")
         flash("O ID da vulnerabilidade fornecido tem um formato inválido.", 'danger')
-        # Aborta com 400 (Bad Request) que será capturado pelo handler de erro
         abort(400, description=f"Invalid CVE ID format: {cve_id}. Expected format: CVE-YYYY-NNNNN")
-
-
-    # TODO: Obter dados da vulnerabilidade com base no cve_id (e.g., de um VulnerabilityService)
-    # vulnerability_data = VulnerabilityService.get_vulnerability_by_id(cve_id)
-    vulnerability_data: Optional[Dict[str, Any]] = None # Placeholder
-
-    # Verificar se a vulnerabilidade foi encontrada
-    if vulnerability_data is None:
-        logger.warning(f"Vulnerability with ID '{cve_id}' not found.")
-        flash(f"Vulnerabilidade com ID '{cve_id}' não encontrada.", 'warning')
-        # Aborta com 404 (Not Found) que será capturado pelo handler de erro
-        abort(404, description=f"Vulnerability with ID {cve_id} not found.")
-
-    return render_page(
-        ROUTES.get('vulnerability_details', {}).get('template', 'vulnerability_details.html'), # Referencia ROUTES mas usa fallback
-        cve_id=cve_id,
-        vulnerability_data=vulnerability_data,
-        # TODO: Adicionar outras variáveis de contexto específicas aqui (e.g., dados relacionados)
-    )
+    
+    try:
+        from extensions import db
+        
+        # Get database session and initialize service
+        session = db.session
+        vuln_service = VulnerabilityService(session)
+        
+        # First try to get the vulnerability directly
+        vulnerability = vuln_service.get_vulnerability_by_id(cve_id)
+        
+        if not vulnerability:
+            logger.warning(f"Vulnerability with CVE ID {cve_id} not found.")
+            abort(404)
+        
+        # Try to get analytics, but provide fallback if it fails
+        try:
+            analytics = vuln_service.get_vulnerability_analytics(cve_id)
+        except Exception as analytics_error:
+            logger.warning(f"Error getting analytics for {cve_id}: {analytics_error}")
+            # Provide minimal analytics data as fallback
+            analytics = {
+                'vulnerability': vulnerability,
+                'affected_assets_count': 0,
+                'similar_vulnerabilities_count': 0,
+                'calculated_risk_score': 0.0,
+                'severity_level': vulnerability.base_severity,
+                'cvss_score': vulnerability.cvss_score,
+                'published_date': vulnerability.published_date,
+                'last_modified': vulnerability.last_update
+            }
+        
+        # Get related vulnerabilities with same severity
+        related_vulns, _ = vuln_service.get_recent_paginated(1, 5)
+        related_vulns = [v for v in related_vulns if v.base_severity == vulnerability.base_severity and v.cve_id != cve_id][:3]
+        
+        # Additional context for the template
+        context = {
+            'vulnerability': vulnerability,
+            'analytics': analytics,
+            'related_vulnerabilities': related_vulns,
+            'cve_id': cve_id,
+            'page_title': f'Detalhes - {cve_id}',
+            'moment': datetime.now  # Adiciona função para calcular tempo
+        }
+        
+        return render_page('vulnerability_details', **context)
+        
+    except Exception as e:
+        logger.error(f"Error loading vulnerability details for {cve_id}: {e}", exc_info=True)
+        abort(500)
 
 # TODO: Adicionar outras rotas explicitamente aqui
 

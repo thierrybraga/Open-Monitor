@@ -1,0 +1,320 @@
+/* Base CSS - Estilos base da aplicação com animações melhoradas */
+
+/* Reset básico com transições suaves */
+* {
+    box-sizing: border-box;
+}
+
+/* Transições globais suaves para elementos interativos */
+*,
+*::before,
+*::after {
+    transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+    transition-duration: var(--animation-duration-normal, 0.2s);
+    transition-timing-function: var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+/* Respeitar preferência de movimento reduzido */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Estilos do corpo */
+body {
+    font-family: var(--font-family-base, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif);
+    line-height: var(--line-height-base, 1.6);
+    margin: 0;
+    padding: 0;
+    background-color: var(--surface-0, #f8f9fa);
+    color: var(--content-strong, #333);
+    transition: background-color var(--animation-duration-normal) var(--ease-standard),
+                color var(--animation-duration-normal) var(--ease-standard);
+}
+
+/* Container principal */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+/* Estilos de botões modernos com animações */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+    padding: var(--space-sm) var(--space-md);
+    margin-bottom: 0;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
+    line-height: var(--line-height-compact);
+    text-align: center;
+    text-decoration: none;
+    vertical-align: middle;
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    position: relative;
+    overflow: hidden;
+    transition: all var(--animation-duration-normal) var(--ease-standard);
+    transform: translateY(0);
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn:active {
+    transform: translateY(0);
+    transition-duration: var(--animation-duration-fast);
+}
+
+.btn:focus-visible {
+    outline: var(--focus-visible-outline);
+    outline-offset: var(--focus-visible-outline-offset);
+}
+
+/* Efeito ripple para botões */
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width var(--animation-duration-normal) var(--ease-standard),
+                height var(--animation-duration-normal) var(--ease-standard);
+}
+
+.btn:active::before {
+    width: 300px;
+    height: 300px;
+}
+
+.btn-primary {
+    color: white;
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.btn-primary:hover {
+    background-color: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+    color: white;
+}
+
+.btn-primary:active {
+    background-color: var(--color-primary-active);
+    border-color: var(--color-primary-active);
+}
+
+/* Estilos de formulários modernos */
+.form-control {
+    display: block;
+    width: 100%;
+    padding: var(--space-sm) var(--space-md);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-base);
+    color: var(--content-strong);
+    background-color: var(--surface-0);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-md);
+    transition: all var(--animation-duration-normal) var(--ease-standard);
+    position: relative;
+}
+
+.form-control:hover {
+    border-color: var(--border-strong);
+}
+
+.form-control:focus {
+    color: var(--content-strongest);
+    background-color: var(--surface-0);
+    border-color: var(--color-primary);
+    outline: 0;
+    box-shadow: 0 0 0 3px rgba(var(--primary-500-rgb), 0.1);
+    transform: translateY(-1px);
+}
+
+.form-control:focus-visible {
+    outline: var(--focus-visible-outline);
+    outline-offset: var(--focus-visible-outline-offset);
+}
+
+/* Estados de validação */
+.form-control.is-valid {
+    border-color: var(--color-success);
+}
+
+.form-control.is-valid:focus {
+    border-color: var(--color-success);
+    box-shadow: 0 0 0 3px rgba(var(--success-500-rgb), 0.1);
+}
+
+.form-control.is-invalid {
+    border-color: var(--color-error);
+}
+
+.form-control.is-invalid:focus {
+    border-color: var(--color-error);
+    box-shadow: 0 0 0 3px rgba(var(--error-500-rgb), 0.1);
+}
+
+/* Alertas modernos com animações */
+.alert {
+    position: relative;
+    padding: var(--space-md) var(--space-lg);
+    margin-bottom: var(--space-lg);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    border-left: 4px solid;
+    font-weight: var(--font-weight-medium);
+    transition: all var(--animation-duration-normal) var(--ease-standard);
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.alert:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Animação de entrada para alertas */
+@keyframes alert-slide-in {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.alert {
+    animation: alert-slide-in var(--animation-duration-normal) var(--ease-standard);
+}
+
+.alert-success {
+    color: var(--success-700);
+    background-color: var(--success-50);
+    border-color: var(--success-200);
+    border-left-color: var(--color-success);
+}
+
+.alert-danger {
+    color: var(--error-700);
+    background-color: var(--error-50);
+    border-color: var(--error-200);
+    border-left-color: var(--color-error);
+}
+
+.alert-warning {
+    color: var(--alert-700);
+    background-color: var(--alert-50);
+    border-color: var(--alert-200);
+    border-left-color: var(--color-alert);
+}
+
+.alert-info {
+    color: var(--info-700);
+    background-color: var(--info-50);
+    border-color: var(--info-200);
+    border-left-color: var(--color-info);
+}
+
+/* Botão de fechar alerta */
+.alert .btn-close {
+    position: absolute;
+    top: var(--space-sm);
+    right: var(--space-sm);
+    padding: var(--space-xs);
+    background: none;
+    border: none;
+    font-size: var(--font-size-lg);
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity var(--animation-duration-fast) var(--ease-standard);
+}
+
+.alert .btn-close:hover {
+    opacity: 1;
+}
+
+.alert-info {
+    color: #0c5460;
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+}
+
+/* Utilitários */
+.text-center {
+    text-align: center;
+}
+
+.text-left {
+    text-align: left;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.d-none {
+    display: none;
+}
+
+.d-block {
+    display: block;
+}
+
+.d-flex {
+    display: flex;
+}
+
+.justify-content-center {
+    justify-content: center;
+}
+
+.align-items-center {
+    align-items: center;
+}
+
+/* Margens e padding */
+.m-0 { margin: 0; }
+.m-1 { margin: 0.25rem; }
+.m-2 { margin: 0.5rem; }
+.m-3 { margin: 1rem; }
+.m-4 { margin: 1.5rem; }
+.m-5 { margin: 3rem; }
+
+.p-0 { padding: 0; }
+.p-1 { padding: 0.25rem; }
+.p-2 { padding: 0.5rem; }
+.p-3 { padding: 1rem; }
+.p-4 { padding: 1.5rem; }
+.p-5 { padding: 3rem; }
+
+/* Responsividade básica */
+@media (max-width: 768px) {
+    .container {
+        padding: 0 10px;
+    }
+    
+    .btn {
+        font-size: 0.875rem;
+        padding: 0.25rem 0.5rem;
+    }
+}

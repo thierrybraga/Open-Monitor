@@ -3,7 +3,7 @@
 # Suas importações existentes
 from sqlalchemy import Column, Integer, String, ForeignKey, Float
 from sqlalchemy.orm import relationship
-from ..extensions import db
+from extensions import db
 from .base_model import BaseModel
 from .vulnerability import Vulnerability # <-- Adicionado: Importa a classe Vulnerability
 from typing import TYPE_CHECKING

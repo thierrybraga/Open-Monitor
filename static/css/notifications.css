@@ -1,0 +1,589 @@
+/* notifications.css - Sistema de Notificações e Feedback
+ * Versão: 1.0 - Criado em Janeiro 2025
+ * Sistema completo de toasts, alertas e feedback visual
+ * Dependências: variables.css
+ */
+
+/* ==========================================================================
+   Variáveis de Notificações
+   ========================================================================== */
+
+:root {
+  /* Posicionamento */
+  --toast-container-top: var(--space-lg);
+  --toast-container-right: var(--space-lg);
+  --toast-container-bottom: var(--space-lg);
+  --toast-container-left: var(--space-lg);
+  
+  /* Dimensões */
+  --toast-width: 320px;
+  --toast-max-width: 90vw;
+  --toast-min-height: 64px;
+  
+  /* Timing */
+  --toast-duration-default: 5000ms;
+  --toast-duration-success: 4000ms;
+  --toast-duration-warning: 6000ms;
+  --toast-duration-error: 8000ms;
+  --toast-duration-info: 5000ms;
+  
+  /* Animações */
+  --toast-slide-distance: 100%;
+  --toast-fade-duration: var(--animation-duration-normal);
+  --toast-slide-duration: var(--animation-duration-normal);
+  
+  /* Z-index */
+  --toast-z-index: 1060;
+  --notification-overlay-z-index: 1055;
+}
+
+/* ==========================================================================
+   Container de Toasts
+   ========================================================================== */
+
+.toast-container {
+  position: fixed;
+  top: var(--toast-container-top);
+  right: var(--toast-container-right);
+  z-index: var(--toast-z-index);
+  pointer-events: none;
+  max-width: var(--toast-max-width);
+}
+
+.toast-container.top-left {
+  top: var(--toast-container-top);
+  left: var(--toast-container-left);
+  right: auto;
+}
+
+.toast-container.top-center {
+  top: var(--toast-container-top);
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+
+.toast-container.bottom-right {
+  top: auto;
+  bottom: var(--toast-container-bottom);
+  right: var(--toast-container-right);
+}
+
+.toast-container.bottom-left {
+  top: auto;
+  bottom: var(--toast-container-bottom);
+  left: var(--toast-container-left);
+  right: auto;
+}
+
+.toast-container.bottom-center {
+  top: auto;
+  bottom: var(--toast-container-bottom);
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+
+/* ==========================================================================
+   Toast Base
+   ========================================================================== */
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  width: var(--toast-width);
+  max-width: 100%;
+  min-height: var(--toast-min-height);
+  margin-bottom: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  pointer-events: auto;
+  position: relative;
+  overflow: hidden;
+  
+  /* Animações */
+  animation: toast-slide-in var(--toast-slide-duration) var(--ease-standard);
+  transition: all var(--animation-duration-fast) var(--ease-standard);
+}
+
+.toast.hiding {
+  animation: toast-slide-out var(--toast-slide-duration) var(--ease-standard) forwards;
+}
+
+.toast:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-2xl);
+}
+
+/* ==========================================================================
+   Tipos de Toast
+   ========================================================================== */
+
+/* Toast de Sucesso */
+.toast.toast-success {
+  border-left: 4px solid var(--color-success);
+  background: var(--color-success-subtle);
+}
+
+.toast.toast-success .toast-icon {
+  color: var(--color-success);
+}
+
+/* Toast de Erro */
+.toast.toast-error {
+  border-left: 4px solid var(--color-danger);
+  background: var(--color-danger-subtle);
+}
+
+.toast.toast-error .toast-icon {
+  color: var(--color-danger);
+}
+
+/* Toast de Aviso */
+.toast.toast-warning {
+  border-left: 4px solid var(--color-warning);
+  background: var(--color-warning-subtle);
+}
+
+.toast.toast-warning .toast-icon {
+  color: var(--color-warning);
+}
+
+/* Toast de Informação */
+.toast.toast-info {
+  border-left: 4px solid var(--color-info);
+  background: var(--color-info-subtle);
+}
+
+.toast.toast-info .toast-icon {
+  color: var(--color-info);
+}
+
+/* ==========================================================================
+   Elementos do Toast
+   ========================================================================== */
+
+.toast-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  margin-right: var(--space-sm);
+  font-size: var(--font-size-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.toast-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-on-surface);
+  margin: 0 0 var(--space-xs) 0;
+  line-height: var(--line-height-tight);
+}
+
+.toast-message {
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+  margin: 0;
+  line-height: var(--line-height-normal);
+  word-wrap: break-word;
+}
+
+.toast-actions {
+  display: flex;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+}
+
+.toast-action {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--animation-duration-fast) var(--ease-standard);
+}
+
+.toast-action.primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+.toast-action.primary:hover {
+  background: var(--color-primary-hover);
+}
+
+.toast-action.secondary {
+  background: transparent;
+  color: var(--color-on-surface-variant);
+  border: 1px solid var(--border-subtle);
+}
+
+.toast-action.secondary:hover {
+  background: var(--color-surface-variant);
+}
+
+.toast-close {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  color: var(--color-on-surface-variant);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-sm);
+  transition: all var(--animation-duration-fast) var(--ease-standard);
+}
+
+.toast-close:hover {
+  background: var(--color-surface-variant);
+  color: var(--color-on-surface);
+}
+
+/* ==========================================================================
+   Barra de Progresso
+   ========================================================================== */
+
+.toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--color-primary);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  transition: width linear;
+}
+
+.toast.toast-success .toast-progress {
+  background: var(--color-success);
+}
+
+.toast.toast-error .toast-progress {
+  background: var(--color-danger);
+}
+
+.toast.toast-warning .toast-progress {
+  background: var(--color-warning);
+}
+
+.toast.toast-info .toast-progress {
+  background: var(--color-info);
+}
+
+/* ==========================================================================
+   Alertas Inline
+   ========================================================================== */
+
+.alert {
+  display: flex;
+  align-items: flex-start;
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  position: relative;
+}
+
+.alert-dismissible {
+  padding-right: calc(var(--space-md) + 24px + var(--space-sm));
+}
+
+.alert-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-right: var(--space-sm);
+  font-size: var(--font-size-md);
+}
+
+.alert-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.alert-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  margin: 0 0 var(--space-xs) 0;
+}
+
+.alert-message {
+  font-size: var(--font-size-sm);
+  margin: 0;
+  line-height: var(--line-height-normal);
+}
+
+.alert-close {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--animation-duration-fast) var(--ease-standard);
+}
+
+/* Tipos de Alert */
+.alert-success {
+  background: var(--color-success-subtle);
+  border-color: var(--color-success-border);
+  color: var(--color-success-text);
+}
+
+.alert-success .alert-icon {
+  color: var(--color-success);
+}
+
+.alert-error {
+  background: var(--color-danger-subtle);
+  border-color: var(--color-danger-border);
+  color: var(--color-danger-text);
+}
+
+.alert-error .alert-icon {
+  color: var(--color-danger);
+}
+
+.alert-warning {
+  background: var(--color-warning-subtle);
+  border-color: var(--color-warning-border);
+  color: var(--color-warning-text);
+}
+
+.alert-warning .alert-icon {
+  color: var(--color-warning);
+}
+
+.alert-info {
+  background: var(--color-info-subtle);
+  border-color: var(--color-info-border);
+  color: var(--color-info-text);
+}
+
+.alert-info .alert-icon {
+  color: var(--color-info);
+}
+
+/* ==========================================================================
+   Feedback de Loading
+   ========================================================================== */
+
+.loading-feedback {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-on-surface-variant);
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-surface-variant);
+  border-top: 2px solid var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* ==========================================================================
+   Feedback de Formulário
+   ========================================================================== */
+
+.form-feedback {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-xs);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.form-feedback.valid {
+  color: var(--color-success);
+}
+
+.form-feedback.invalid {
+  color: var(--color-danger);
+}
+
+.form-control.is-valid {
+  border-color: var(--color-success);
+  box-shadow: 0 0 0 2px var(--color-success-subtle);
+}
+
+.form-control.is-invalid {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 2px var(--color-danger-subtle);
+}
+
+/* ==========================================================================
+   Animações
+   ========================================================================== */
+
+@keyframes toast-slide-in {
+  from {
+    transform: translateX(var(--toast-slide-distance));
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-slide-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+    max-height: 200px;
+    margin-bottom: var(--space-sm);
+  }
+  to {
+    transform: translateX(var(--toast-slide-distance));
+    opacity: 0;
+    max-height: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ==========================================================================
+   Responsividade
+   ========================================================================== */
+
+@media (max-width: 575.98px) {
+  .toast-container {
+    top: var(--space-md);
+    right: var(--space-md);
+    left: var(--space-md);
+    max-width: none;
+  }
+  
+  .toast {
+    width: 100%;
+    margin-bottom: var(--space-xs);
+  }
+  
+  .alert {
+    margin-bottom: var(--space-sm);
+    padding: var(--space-sm);
+  }
+}
+
+/* ==========================================================================
+   Acessibilidade
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+  
+  .toast.hiding {
+    animation: none;
+    opacity: 0;
+  }
+  
+  .loading-spinner {
+    animation: none;
+  }
+}
+
+/* Melhor contraste para usuários com necessidades visuais */
+@media (prefers-contrast: high) {
+  .toast {
+    border-width: 2px;
+  }
+  
+  .alert {
+    border-width: 2px;
+  }
+}
+
+/* ==========================================================================
+   Estados de Foco
+   ========================================================================== */
+
+.toast-close:focus-visible,
+.alert-close:focus-visible,
+.toast-action:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Utilitários
+   ========================================================================== */
+
+.notification-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  background: var(--color-danger);
+  color: var(--color-on-danger);
+  border-radius: 9px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.notification-dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  background: var(--color-danger);
+  border: 2px solid var(--color-surface);
+  border-radius: 50%;
+}
+
+.pulse-animation {
+  animation: pulse 2s infinite;
+}

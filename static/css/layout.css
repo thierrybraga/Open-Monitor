@@ -96,8 +96,11 @@ body.sidebar-collapsed .navbar {
     overflow-y: auto; /* Permite rolagem interna se os links excederem a altura */
     z-index: var(--z-index-sidebar); /* Abaixo da navbar fixa */
     /* As transições para largura e transform (usado em mobile) devem estar aqui */
-    transition: width var(--theme-transition-duration, 0.3s) var(--ease-standard, ease),
-                transform var(--theme-transition-duration, 0.3s) var(--ease-standard, ease);
+    transition: width var(--animation-duration-normal) var(--ease-standard),
+                transform var(--animation-duration-normal) var(--ease-standard),
+                box-shadow var(--animation-duration-fast) var(--ease-standard);
+    /* Animação de entrada da sidebar */
+    animation: sidebar-slide-in var(--animation-duration-normal) var(--ease-standard);
 
     /* Estilos visuais (background, borda direita, padding superior/inferior) devem estar em sidebar.css */
     /* Exemplo (movido para sidebar.css):
@@ -119,8 +122,8 @@ body.sidebar-collapsed .navbar {
   z-index: var(--z-index-backdrop); /* Abaixo da sidebar, acima do conteúdo principal */
   opacity: 0; /* Estado inicial invisível */
   visibility: hidden; /* Estado inicial escondido */
-  transition: opacity var(--animation-duration-normal, 0.3s) var(--ease-standard, ease),
-              visibility var(--animation-duration-normal, 0.3s) var(--ease-standard, ease); /* Transição suave */
+  transition: opacity var(--animation-duration-normal) var(--ease-standard),
+              visibility var(--animation-duration-normal) var(--ease-standard); /* Transição suave */
   backdrop-filter: blur(3px); /* Efeito de desfoque, opcional - pode precisar de variável */
   /* Garante que o scrim não seja clicável quando invisível */
   pointer-events: none;
@@ -155,7 +158,10 @@ body.sidebar-collapsed .navbar {
     overflow-x: hidden; /* Evita scroll horizontal no conteúdo */
 
     /* A transição para margin-left e width (quando a sidebar colapsa/expande) deve estar aqui */
-    transition: margin-left var(--theme-transition-duration, 0.3s) var(--ease-standard, ease);
+    transition: margin-left var(--animation-duration-normal) var(--ease-standard),
+                padding var(--animation-duration-fast) var(--ease-standard);
+    /* Animação de entrada do conteúdo principal */
+    animation: content-fade-in var(--animation-duration-slow) var(--ease-standard);
 
     /* A largura é implicitamente 100% menos a margem esquerda no layout flexbox */
     /* width: calc(100% - var(--layout-sidebar-width-expanded)); */ /* Esta regra pode ser redundante com flex-grow: 1 e margin-left */
@@ -266,18 +272,90 @@ body.sidebar-collapsed .main-content {
 
 }
 
-/* Exemplo: Ajustes para telas muito pequenas (celular, se diferente do breakpoint md) */
-@media (max-width: var(--breakpoint-sm)) { /* Use a variável de breakpoint pequeno */
-   /* Exemplo: Ajustar padding da navbar em telas muito pequenas */
+/* Ajustes para telas muito pequenas (mobile pequeno) */
+@media (max-width: var(--breakpoint-sm)) {
    .navbar {
-       padding: var(--space-xs) var(--space-sm);
+       padding: var(--space-xs) var(--space-xs);
+       height: calc(var(--layout-navbar-height) - var(--space-xs));
    }
 
-   /* Exemplo: Ajustar padding do main content em telas muito pequenas */
    .main-content {
-       padding-left: var(--space-sm);
-       padding-right: var(--space-sm);
+       padding: var(--space-xs) var(--space-xs);
+       padding-top: calc(var(--layout-navbar-height) + var(--space-xs));
    }
+   
+   .sidebar-scrim {
+       backdrop-filter: blur(4px);
+   }
+}
+
+/* Ajustes para tablets */
+@media (min-width: var(--breakpoint-sm)) and (max-width: var(--breakpoint-lg)) {
+   .main-content {
+       padding: var(--space-sm) var(--space-md);
+   }
+   
+   .sidebar-scrim {
+       backdrop-filter: blur(6px);
+   }
+}
+
+/* Ajustes para desktop grande */
+@media (min-width: var(--breakpoint-lg)) {
+   .main-content {
+       padding: var(--space-md) var(--space-lg);
+       transition: margin-left var(--animation-duration-normal) var(--ease-standard),
+                   padding var(--animation-duration-fast) var(--ease-standard),
+                   transform var(--animation-duration-fast) var(--ease-standard);
+   }
+   
+   .sidebar {
+       box-shadow: var(--shadow-lg);
+   }
+   
+   .navbar {
+       backdrop-filter: blur(10px);
+   }
+}
+
+/* ==========================================================================\
+   Animações de Layout
+   ========================================================================== */
+
+/* Animação de entrada da sidebar */
+@keyframes sidebar-slide-in {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Animação de entrada do conteúdo principal */
+@keyframes content-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Animação de entrada da navbar */
+@keyframes navbar-slide-down {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 /* ==========================================================================\

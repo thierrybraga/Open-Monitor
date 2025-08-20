@@ -1,40 +1,98 @@
 
-/* navbar.css - Estilos personalizados para a navbar - Refatorado para usar variables.css */
+/* navbar.css - Estilos modernos para a navbar */
 
 /* Estilos gerais da navbar */
 .navbar {
-  padding: var(--space-sm) var(--space-md); /* Usar variáveis de espaçamento de variables.css */
-  box-shadow: var(--shadow-sm); /* Usar variável de sombra de variables.css */
-  background-color: var(--navbar-bg); /* Usar variável de navbar de variables.css */
-  border-bottom: 1px solid var(--border-medium); /* Usar variável de borda de variables.css */
-  min-height: var(--layout-navbar-height); /* Usar variável de layout de variables.css */
-  z-index: var(--z-index-navbar); /* Usar variável de z-index de variables.css */
-  /* Adicionar estilos de layout como position: fixed, top, left, right, display, align-items que estavam em layout.css */
+  padding: var(--space-sm) var(--space-md);
+  background: var(--navbar-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-medium);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 
+              0 1px 3px rgba(0, 0, 0, 0.1);
+  min-height: var(--layout-navbar-height);
+  z-index: var(--z-index-navbar);
   position: fixed;
   top: 0;
-  left: var(--layout-sidebar-width-collapsed); /* Usar variável de layout de variables.css */
+  left: var(--layout-sidebar-width-collapsed);
   right: 0;
   display: flex;
   align-items: center;
-  transition: left var(--theme-transition-duration); /* Usar variável de transição de tema de variables.css */
+  transition: all var(--animation-duration-normal) var(--ease-standard);
+  animation: navbar-slide-down 0.6s var(--ease-standard);
+  color: var(--navbar-text);
 }
 
-/* Estilo para o logo/brand */
+/* Animação de entrada da navbar */
+@keyframes navbar-slide-down {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Tema escuro para navbar */
+@media (prefers-color-scheme: dark) {
+  .navbar {
+    background: var(--navbar-bg);
+    border-bottom: 1px solid var(--border-medium);
+    color: var(--navbar-text);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 
+                0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* Suporte para classes de tema forçado */
+.theme-light .navbar {
+  background: var(--navbar-bg);
+  border-bottom: 1px solid var(--border-medium);
+  color: var(--navbar-text);
+}
+
+.theme-dark .navbar {
+  background: var(--navbar-bg);
+  border-bottom: 1px solid var(--border-medium);
+  color: var(--navbar-text);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 
+              0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Estilo moderno para o logo/brand */
 .navbar-brand {
-  font-weight: var(--font-weight-semibold); /* Usar variável de peso de fonte de variables.css/typography.css */
-  color: var(--navbar-text); /* Usar variável de navbar de variables.css */
-  transition: color var(--animation-duration-fast) var(--ease-standard); /* Usar variáveis de transição de variables.css */
-  /* Adicionar font-size, display, align-items, gap, text-decoration de layout.css */
-  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--navbar-text);
+  font-size: var(--font-size-xl);
   display: flex;
   align-items: center;
-  gap: var(--space-xs); /* Usar variável de espaçamento de variables.css (ajustado de space-2 para space-xs com base em layout.css) */
+  gap: var(--space-sm);
   text-decoration: none;
+  position: relative;
+  transition: all var(--animation-duration-fast) var(--ease-standard);
+  letter-spacing: -0.02em;
+}
+
+.navbar-brand::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  transition: width var(--animation-duration-normal) var(--ease-standard);
 }
 
 .navbar-brand:hover {
-  color: var(--navbar-text-hover); /* Considerar variável para cor do texto no hover, se diferente, ou apenas opacity */
-  opacity: 0.85; /* Manter ou criar variável de opacidade */
+  transform: translateY(-1px);
+  color: var(--navbar-text-hover);
+}
+
+.navbar-brand:hover::after {
+  width: 100%;
 }
 
 
@@ -64,38 +122,126 @@ mg {
 }
 
 
-/* Botões */
-.sidebar-toggle { /* Considerar mover para components.css ou layout.css */
-  border-radius: var(--radius-md); /* Usar variável de raio de variables.css */
-  width: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
-  height: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
+/* Botões modernos da navbar */
+.sidebar-toggle,
+.dark-mode-toggle,
+#refreshButton {
+  border-radius: var(--radius-lg);
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--animation-duration-fast) var(--ease-standard); /* Usar variáveis de transição de variables.css */
-  /* Adicionar background e color de layout.css se não forem utilitários */
-  background: none;
-  border: none;
-  color: var(--navbar-text);
-}
-
-.sidebar-toggle:hover {
-  background-color: var(--ui-bg-hover); /* Usar variável de background de hover de variables.css */
-}
-
-.dark-mode-toggle { /* Considerar mover para components.css ou navbar.css */
-  border-radius: var(--radius-md); /* Usar variável de raio de variables.css */
-  width: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
-  height: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color var(--animation-duration-fast) var(--ease-standard), color var(--animation-duration-fast) var(--ease-standard); /* Usar variáveis de transição de variables.css */
-  /* Adicionar background, border, color, cursor de layout.css */
-  background: none;
-  border: none;
+  background: var(--ui-bg-hover);
+  border: 1px solid var(--border-medium);
   color: var(--navbar-text);
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all var(--animation-duration-fast) var(--ease-standard);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.sidebar-toggle::before,
+.dark-mode-toggle::before,
+#refreshButton::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: all var(--animation-duration-normal) var(--ease-standard);
+  z-index: 0;
+}
+
+.sidebar-toggle:hover,
+.dark-mode-toggle:hover,
+#refreshButton:hover {
+  background: var(--ui-bg-active);
+  border-color: var(--ui-border-interactive);
+  color: var(--navbar-text-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.sidebar-toggle:hover::before,
+.dark-mode-toggle:hover::before,
+#refreshButton:hover::before {
+  width: 100px;
+  height: 100px;
+}
+
+.sidebar-toggle:active,
+.dark-mode-toggle:active,
+#refreshButton:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-toggle i,
+.dark-mode-toggle i,
+#refreshButton i {
+  position: relative;
+  z-index: 1;
+  font-size: 18px;
+  transition: transform var(--animation-duration-fast) var(--ease-standard);
+}
+
+.sidebar-toggle:hover i,
+.dark-mode-toggle:hover i,
+#refreshButton:hover i {
+  transform: scale(1.1);
+}
+
+/* Animação específica para o botão de refresh */
+#refreshButton:active i {
+  animation: spin 0.6s ease-in-out;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg) scale(1.1); }
+  to { transform: rotate(360deg) scale(1.1); }
+}
+
+/* Tema escuro para botões */
+@media (prefers-color-scheme: dark) {
+  .sidebar-toggle,
+  .dark-mode-toggle,
+  #refreshButton {
+    background: var(--ui-bg-hover);
+    border-color: var(--border-medium);
+    color: var(--navbar-text);
+  }
+  
+  .sidebar-toggle:hover,
+  .dark-mode-toggle:hover,
+  #refreshButton:hover {
+    background: var(--ui-bg-active);
+    border-color: var(--ui-border-interactive);
+    color: var(--navbar-text-hover);
+  }
+}
+
+/* Suporte para classes de tema forçado nos botões */
+.theme-light .sidebar-toggle,
+.theme-light .dark-mode-toggle,
+.theme-light #refreshButton {
+  background: var(--ui-bg-hover);
+  border-color: var(--border-medium);
+  color: var(--navbar-text);
+}
+
+.theme-dark .sidebar-toggle,
+.theme-dark .dark-mode-toggle,
+.theme-dark #refreshButton {
+  background: var(--ui-bg-hover);
+  border-color: var(--border-medium);
+  color: var(--navbar-text);
 }
 
 .dark-mode-toggle:hover {
@@ -116,10 +262,14 @@ mg {
   padding: var(--space-xs) var(--space-sm); /* Usar variáveis de espaçamento de variables.css */
   border-radius: var(--radius-md); /* Usar variável de raio de variables.css */
   transition: all var(--animation-duration-fast) var(--ease-standard); /* Usar variáveis de transição de variables.css */
+  color: var(--navbar-text);
+  border: 1px solid var(--border-medium);
 }
 
 .avatar-button:hover {
   background-color: var(--ui-bg-hover); /* Usar variável de background de hover de variables.css */
+  color: var(--navbar-text-hover);
+  border-color: var(--ui-border-interactive);
 }
 
 .avatar-image { /* Considerar mover para components.css */
@@ -136,6 +286,7 @@ mg {
 .username { /* Considerar mover para components.css ou typography.css */
   margin-left: var(--space-xs); /* Usar variável de espaçamento de variables.css */
   font-weight: var(--font-weight-medium); /* Usar variável de peso de fonte de variables.css/typography.css */
+  color: var(--navbar-text);
 }
 
 /* Dropdown menu melhorado */
@@ -201,17 +352,19 @@ mg {
 .last-sync { /* Considerar mover para components.css ou utilities.css */
   font-size: var(--font-size-sm); /* Usar variável de tamanho de fonte de variables.css/typography.css */
   padding: 0 var(--space-sm); /* Usar variável de espaçamento de variables.css */
-  color: var(--content-weak); /* Usar variável de cor de texto fraca/secundária de variables.css */
+  color: var(--content-medium); /* Melhor contraste que content-weak */
   border-right: 1px solid var(--border-medium); /* Usar variável de borda de variables.css */
   margin-right: var(--space-xs); /* Usar variável de espaçamento de variables.css */
 }
 
 .last-sync-label { /* Considerar mover para typography.css */
   font-size: var(--font-size-xs); /* Usar variável de tamanho de fonte de variables.css/typography.css */
+  color: var(--content-medium); /* Melhor contraste */
 }
 
 .last-sync-time { /* Considerar mover para typography.css */
   font-weight: var(--font-weight-semibold); /* Usar variável de peso de fonte de variables.css/typography.css */
+  color: var(--content-strong); /* Melhor contraste para o timestamp */
 }
 
 /* Notificação de sincronização */
@@ -244,26 +397,118 @@ mg {
 }
 
 /* Ajustes responsivos */
-@media (max-width: var(--breakpoint-md)) { /* Usar variável de breakpoint de variables.css */
+/* Mobile pequeno */
+@media (max-width: var(--breakpoint-sm)) {
   .navbar {
-    padding: var(--space-xs) var(--space-sm); /* Usar variáveis de espaçamento de variables.css */
-    /* Remover left e transition de left se a sidebar for sempre escondida em mobile */
+    padding: var(--space-xs) var(--space-xs);
+    left: 0;
+    transition: none;
+    height: calc(var(--layout-navbar-height) - var(--space-xs));
+  }
+  
+  .navbar-brand {
+    font-size: var(--font-size-md);
+  }
+  
+  .brand-icon {
+    padding: var(--space-2xs);
+  }
+  
+  .brand-icon i {
+    font-size: var(--font-size-lg);
+  }
+  
+  .sidebar-toggle,
+  .dark-mode-toggle,
+  .refresh-button {
+    width: var(--space-2xl);
+    height: var(--space-2xl);
+    padding: 0;
+  }
+  
+  .refresh-text,
+  .username,
+  .last-sync {
+    display: none;
+  }
+  
+  .avatar-image {
+    width: var(--space-xl);
+    height: var(--space-xl);
+  }
+}
+
+/* Mobile médio e tablets */
+@media (min-width: var(--breakpoint-sm)) and (max-width: var(--breakpoint-md)) {
+  .navbar {
+    padding: var(--space-xs) var(--space-sm);
     left: 0;
     transition: none;
   }
 
-  .navbar.expanded { /* Regra para quando a sidebar *não* está colapsada em mobile */
+  .navbar.expanded {
        left: 0;
   }
 
-  .refresh-button { /* Considerar mover para components.css */
-    width: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
-    height: var(--space-3xl); /* Usar variável de tamanho/espaçamento de variables.css */
+  .refresh-button {
+    width: var(--space-3xl);
+    height: var(--space-3xl);
     padding: 0;
   }
 
-  .refresh-text { /* Considerar mover para utilities.css */
+  .refresh-text {
     display: none;
+  }
+  
+  .username {
+    display: none;
+  }
+}
+
+/* Desktop médio */
+@media (min-width: var(--breakpoint-md)) and (max-width: var(--breakpoint-lg)) {
+  .navbar {
+    padding: var(--space-sm) var(--space-md);
+  }
+  
+  .sidebar-toggle,
+  .dark-mode-toggle {
+    width: calc(var(--space-3xl) + var(--space-xs));
+    height: calc(var(--space-3xl) + var(--space-xs));
+  }
+  
+  .refresh-button {
+    padding: var(--space-xs) var(--space-sm);
+  }
+}
+
+/* Desktop grande */
+@media (min-width: var(--breakpoint-lg)) {
+  .navbar {
+    padding: var(--space-sm) var(--space-lg);
+  }
+  
+  .sidebar-toggle,
+  .dark-mode-toggle {
+    width: calc(var(--space-3xl) + var(--space-sm));
+    height: calc(var(--space-3xl) + var(--space-sm));
+  }
+  
+  .sidebar-toggle:hover,
+  .dark-mode-toggle:hover {
+    transform: scale(1.05);
+  }
+  
+  .refresh-button {
+    padding: var(--space-sm) var(--space-md);
+  }
+  
+  .refresh-button:hover {
+    transform: translateY(-1px);
+  }
+  
+  .avatar-button:hover {
+    transform: translateY(-1px);
   }
 }
 

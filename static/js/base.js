@@ -62,7 +62,10 @@
   function checkRequiredElements() {
     const requiredElements = [
       { el: htmlEl, name: 'html' },
-      { el: bodyEl, name: 'body' },
+      { el: bodyEl, name: 'body' }
+    ];
+
+    const optionalElements = [
       { el: sidebarToggle, name: 'sidebarToggle button' },
       { el: sidebar, name: 'sidebar nav' },
       { el: mainContent, name: 'main-content area' },
@@ -70,7 +73,6 @@
       { el: footer, name: 'footer' },
       { el: sidebarScrim, name: 'sidebar scrim' },
       { el: systemAlertsContainer, name: 'system alerts container' }
-      // darkModeToggle is optional, so not marked as required here
     ];
 
     let allFound = true;
@@ -80,6 +82,14 @@
         allFound = false;
       }
     });
+
+    // Log optional elements that are missing (for debugging) but don't fail
+    optionalElements.forEach(item => {
+      if (!item.el) {
+        console.debug(`Open CVE Report Base JS Debug: Optional element "${item.name}" not found.`);
+      }
+    });
+
     return allFound;
   }
 

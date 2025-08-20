@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Date, ForeignKey
-from ..extensions.db import db
+from extensions.db import db
 
 class Product(db.Model):
     __tablename__ = 'product'
@@ -17,8 +17,6 @@ class Product(db.Model):
 
     # Product details
     name = Column(String(255), nullable=False)
-    version = Column(String(100), nullable=True)
-    release_date = Column(Date, nullable=True)
 
     # Relationships
     vendor = db.relationship(
@@ -31,6 +29,10 @@ class Product(db.Model):
     )
     version_references = db.relationship(
         'VersionReference', back_populates='product',
+        cascade='all, delete-orphan'
+    )
+    affected_products = db.relationship(
+        'AffectedProduct', back_populates='product',
         cascade='all, delete-orphan'
     )
 

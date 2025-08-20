@@ -3,7 +3,7 @@
 from flask_wtf import FlaskForm
 from wtforms import DateField, SelectField, StringField, SubmitField
 from wtforms.validators import Optional, ValidationError
-from ..models.enums import severity_levels
+from models.enums import severity_levels
 
 class ReportFilterForm(FlaskForm):
     """

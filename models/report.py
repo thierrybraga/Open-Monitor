@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from ..extensions.db import db
+from extensions.db import db
 from datetime import datetime
 
 class Report(db.Model):
@@ -12,7 +12,7 @@ class Report(db.Model):
     # Foreign key to User
     user_id = Column(
         Integer,
-        ForeignKey('user.id', ondelete='CASCADE'),
+        ForeignKey('users.id', ondelete='CASCADE'),
         nullable=False,
         index=True
     )

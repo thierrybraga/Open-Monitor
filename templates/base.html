@@ -3,16 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  {# Descrição mais genérica se o app_name for dinâmico #}
-  <meta name="description" content="{{ app_name | default('Sistema de monitoramento de segurança e relatórios') }} oferece ferramentas abrangentes para monitoramento de vulnerabilidades, análises e relatórios.">
+  {# Meta description otimizada para SEO #}
+  <meta name="description" content="{% block meta_description %}{{ app_name | default('Open Monitor') }} - Plataforma completa de monitoramento de segurança, análise de vulnerabilidades e geração de relatórios técnicos. Mantenha seus sistemas seguros com nossa solução abrangente.{% endblock %}">
+  
+  {# Keywords para SEO (usar com moderação) #}
+  <meta name="keywords" content="{% block meta_keywords %}segurança, vulnerabilidades, CVE, monitoramento, relatórios, cybersecurity, security monitoring, vulnerability assessment{% endblock %}">
+  
+  {# Theme colors otimizadas #}
   <meta name="theme-color" content="#3b82f6" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#1e40af" media="(prefers-color-scheme: dark)">
-  <meta property="og:title" content="{% block og_title %}{{ app_name | default('Nome do Sistema') }}{% endblock %}"> {# Usar default #}
-  <meta property="og:description" content="Explore insights de segurança com {{ app_name | default('Nome do Sistema') }} - Seu companheiro de segurança."> {# Usar default #}
-  <meta property="og:type" content="website">
-  {# CSP Header - Garante segurança. Certifique-se de que a variável 'csp_header' esteja definida no seu backend. #}
+  
+  {# Open Graph otimizado #}
+  <meta property="og:title" content="{% block og_title %}{{ app_name | default('Open Monitor') }} - Monitoramento de Segurança{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}{{ app_name | default('Open Monitor') }} - Plataforma completa de monitoramento de segurança, análise de vulnerabilidades e geração de relatórios técnicos. Mantenha seus sistemas seguros com nossa solução abrangente.{% endblock %}">
+  <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+  
+  {# CSP Header - Garante segurança #}
+  {% if csp_header %}
   <meta http-equiv="Content-Security-Policy" content="{{ csp_header }}">
-  <title>{% block title %}{{ app_name | default('Nome do Sistema') }}{% endblock %}</title> {# Usar default #}
+  {% endif %}
+  
+  {# Title otimizado para SEO #}
+  <title>{% block title %}{{ app_name | default('Open Monitor') }} - Monitoramento de Segurança{% endblock %}</title>
+  
+  {# Incluir meta tags SEO otimizadas #}
+  {% include 'seo/seo_meta.html' %}
 
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
 
@@ -43,9 +58,14 @@
   <link href="{{ url_for('static', filename='css/typography.css') }}" rel="stylesheet"> {# Estilos de tipografia #}
   <link href="{{ url_for('static', filename='css/components.css') }}" rel="stylesheet"> {# Estilos para componentes reutilizáveis (cards, botões customizados, etc.) #}
   <link href="{{ url_for('static', filename='css/layout.css') }}" rel="stylesheet"> {# **Arquivo crucial para definir o layout principal (navbar, sidebar, content)** #}
+  <link href="{{ url_for('static', filename='css/responsive.css') }}" rel="stylesheet"> {# Estilos responsivos #}
+  <link href="{{ url_for('static', filename='css/notifications.css') }}" rel="stylesheet"> {# Estilos para notificações #}
+  <link href="{{ url_for('static', filename='css/loading.css') }}" rel="stylesheet"> {# Estilos para estados de carregamento #}
   <link href="{{ url_for('static', filename='css/utilities.css') }}" rel="stylesheet"> {# Classes utilitárias customizadas #}
   <link href="{{ url_for('static', filename='css/accessibility.css') }}" rel="stylesheet"> {# Estilos relacionados à acessibilidade #}
+  <link href="{{ url_for('static', filename='css/loading-states.css') }}" rel="stylesheet"> {# Estilos para estados de carregamento #}
   <link href="{{ url_for('static', filename='css/base.css') }}" rel="stylesheet"> {# Estilos base da aplicação ou de componentes globais #}
+  <link href="{{ url_for('static', filename='css/charts.css') }}" rel="stylesheet"> {# Estilos específicos para gráficos Chart.js #}
   {# TODO: Se main.css contém estilos globais importantes, garanta que seja importado #}
   {# <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet"> #}
 
@@ -121,6 +141,9 @@
   {# Este script pode conter lógica global, como remover a classe 'no-js', inicializar tooltips, etc. #}
   {# Usar nonce para CSP #}
   <script defer src="{{ url_for('static', filename='js/base.js') }}" nonce="{{ nonce }}"></script> {# Adicionado nonce #}
+  <script defer src="{{ url_for('static', filename='js/responsive.js') }}" nonce="{{ nonce }}"></script>
+  <script defer src="{{ url_for('static', filename='js/notifications.js') }}" nonce="{{ nonce }}"></script>
+  <script defer src="{{ url_for('static', filename='js/loading.js') }}" nonce="{{ nonce }}"></script>
 
   {# Bloco para scripts adicionais de páginas específicas (injetado pelos templates filhos) #}
   {# Usar nonce para CSP se os scripts inline forem colocados aqui #}
@@ -198,6 +221,21 @@
        // Pode usar o toast-container já definido.
      });
    </script>
+
+   {# Sistema de Tema Claro/Escuro #}
+   <script src="{{ url_for('static', filename='js/theme.js') }}" defer></script>
+   
+   {# Loading Manager - Estados de carregamento globais #}
+   <script src="{{ url_for('static', filename='js/loading-manager.js') }}" defer></script>
+   
+   {# Performance Optimizer - Lazy loading e otimizações #}
+   <script src="{{ url_for('static', filename='js/performance-optimizer.js') }}" defer></script>
+   
+   {# Bundle Config - Carregamento dinâmico de módulos #}
+   <script src="{{ url_for('static', filename='js/bundle-config.js') }}" defer></script>
+   
+   {# Performance Metrics - Monitoramento de performance #}
+   <script src="{{ url_for('static', filename='js/performance-metrics.js') }}" defer></script>
 
 </body>
 </html>

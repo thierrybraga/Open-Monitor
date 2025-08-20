@@ -1,0 +1,308 @@
+/* Loading States CSS */
+/* Global styles for button loading states and feedback */
+
+/* Button Loading States */
+.btn .btn-loading {
+  display: none;
+}
+
+.btn.loading .btn-text {
+  display: none !important;
+}
+
+.btn.loading .btn-loading {
+  display: inline-flex !important;
+  align-items: center;
+}
+
+.btn.loading {
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+/* Spinner Animations */
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+  border-width: 0.125em;
+}
+
+@keyframes spinner-border {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner-border {
+  display: inline-block;
+  width: 2rem;
+  height: 2rem;
+  vertical-align: -0.125em;
+  border: 0.25em solid currentcolor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spinner-border 0.75s linear infinite;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  border-radius: inherit;
+}
+
+.loading-overlay.dark {
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+}
+
+/* Pulse Animation for Loading Elements */
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Skeleton Loading */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Dark mode skeleton */
+[data-bs-theme="dark"] .skeleton {
+  background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
+  background-size: 200% 100%;
+}
+
+/* Loading Text */
+.loading-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.loading-text .spinner-border-sm {
+  margin-right: 0.25rem;
+}
+
+/* Form Loading States */
+.form-loading {
+  position: relative;
+  pointer-events: none;
+}
+
+.form-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.7);
+  z-index: 10;
+  border-radius: inherit;
+}
+
+[data-bs-theme="dark"] .form-loading::after {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+/* Progress Indicators */
+.progress-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: transparent;
+  z-index: 9999;
+}
+
+.progress-indicator .progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #007bff, #0056b3);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+/* Button Ripple Effect for Loading */
+.btn.ripple-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn.ripple-effect::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.btn.ripple-effect:active::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* Loading States for Different Button Variants */
+.btn-primary.loading {
+  background-color: #0056b3;
+  border-color: #0056b3;
+}
+
+.btn-secondary.loading {
+  background-color: #5a6268;
+  border-color: #5a6268;
+}
+
+.btn-success.loading {
+  background-color: #1e7e34;
+  border-color: #1e7e34;
+}
+
+.btn-danger.loading {
+  background-color: #bd2130;
+  border-color: #bd2130;
+}
+
+.btn-warning.loading {
+  background-color: #d39e00;
+  border-color: #d39e00;
+}
+
+.btn-info.loading {
+  background-color: #117a8b;
+  border-color: #117a8b;
+}
+
+/* Responsive Loading States */
+@media (max-width: 576px) {
+  .btn .btn-loading span:not(.spinner-border-sm) {
+    display: none;
+  }
+  
+  .loading-overlay {
+    font-size: 0.875rem;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .spinner-border,
+  .pulse,
+  .skeleton {
+    animation: none;
+  }
+  
+  .btn.ripple-effect::before {
+    transition: none;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .loading-overlay {
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+  }
+  
+  .skeleton {
+    background: #000;
+  }
+}
+
+/* Focus States for Loading Buttons */
+.btn.loading:focus {
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Loading Animation Delays */
+.loading-delay-1 { animation-delay: 0.1s; }
+.loading-delay-2 { animation-delay: 0.2s; }
+.loading-delay-3 { animation-delay: 0.3s; }
+.loading-delay-4 { animation-delay: 0.4s; }
+.loading-delay-5 { animation-delay: 0.5s; }
+
+/* Toast Loading States */
+.toast.loading {
+  opacity: 0.8;
+}
+
+.toast.loading .toast-body::before {
+  content: '';
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.5rem;
+  border: 0.125em solid currentcolor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spinner-border 0.75s linear infinite;
+  vertical-align: -0.125em;
+}
+
+/* Card Loading States */
+.card.loading {
+  position: relative;
+}
+
+.card.loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: inherit;
+}
+
+[data-bs-theme="dark"] .card.loading::after {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.card.loading::after {
+  content: '';
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cpath fill='%23007bff' d='M20 0c11.046 0 20 8.954 20 20s-8.954 20-20 20S0 31.046 0 20 8.954 0 20 0zm0 4c-8.837 0-16 7.163-16 16s7.163 16 16 16 16-7.163 16-16S28.837 4 20 4z' opacity='0.2'/%3E%3Cpath fill='%23007bff' d='M36 20c0-8.837-7.163-16-16-16S4 11.163 4 20h4c0-6.627 5.373-12 12-12s12 5.373 12 12h4z'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 20 20' to='360 20 20' dur='1s' repeatCount='indefinite'/%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 40px 40px;
+}

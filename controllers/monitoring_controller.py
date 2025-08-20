@@ -6,9 +6,9 @@ from flask import (
 )
 from flask_login import login_required, current_user
 from sqlalchemy.exc import SQLAlchemyError
-from ..extensions import db
-from ..models.monitoring_rule import MonitoringRule
-from ..forms.monitoring_form import MonitoringRuleForm  # novo Flask-WTF form
+from extensions import db
+from models.monitoring_rule import MonitoringRule
+from forms.monitoring_form import MonitoringRuleForm
 from typing import Any
 
 monitoring_bp = Blueprint('monitoring', __name__, url_prefix='/monitoring')

@@ -1,7 +1,7 @@
 # affected_product.py
 from sqlalchemy import Column, String, Integer, ForeignKey, PrimaryKeyConstraint
 from sqlalchemy.orm import relationship
-from ..models.base_model import db
+from extensions.db import db
 
 class AffectedProduct(db.Model):
     __tablename__ = 'affected_products'

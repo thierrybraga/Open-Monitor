@@ -40,7 +40,11 @@
   transition: color var(--animation-duration-fast) var(--ease-standard),
               background-color var(--animation-duration-fast) var(--ease-standard),
               border-color var(--animation-duration-fast) var(--ease-standard),
-              box-shadow var(--animation-duration-fast) var(--ease-standard);
+              box-shadow var(--animation-duration-fast) var(--ease-standard),
+              transform var(--animation-duration-fast) var(--ease-standard);
+  /* Micro-interação: leve elevação no hover */
+  position: relative;
+  overflow: hidden;
 }
 
 /* Variantes de Botão (Exemplos - adaptar conforme as classes do HTML) */
@@ -55,11 +59,15 @@
   color: var(--color-on-primary);
   background-color: var(--color-primary-hover); /* Cor primária no hover (de variables.css) */
   border-color: var(--color-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 .btn-primary:active {
    background-color: var(--color-primary-active); /* Cor primária no ativo (de variables.css) */
    border-color: var(--color-primary-active);
+   transform: translateY(0);
+   box-shadow: var(--shadow-sm);
 }
 
 
@@ -74,12 +82,16 @@
   color: var(--content-strong); /* Cor do texto mais forte no hover (de variables.css) */
   background-color: var(--ui-bg-hover); /* Fundo sutil no hover (de variables.css) */
   border-color: var(--border-strong); /* Borda mais forte no hover (de variables.css) */
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-outline-secondary:active {
   color: var(--content-strongest); /* Cor do texto mais forte no ativo (de variables.css) */
   background-color: var(--ui-bg-active); /* Fundo sutil no ativo (de variables.css) */
   border-color: var(--border-strong);
+  transform: translateY(0);
+  box-shadow: none;
 }
 
 
@@ -129,7 +141,9 @@
   border-radius: var(--form-control-border-radius, var(--radius-md));
   /* Usar variáveis de transição e easing de variables.css */
   transition: border-color var(--animation-duration-fast) var(--ease-standard),
-              box-shadow var(--animation-duration-fast) var(--ease-standard);
+              box-shadow var(--animation-duration-fast) var(--ease-standard),
+              transform var(--animation-duration-fast) var(--ease-standard),
+              background-color var(--animation-duration-fast) var(--ease-standard);
 }
 
 .form-control:focus {
@@ -140,6 +154,7 @@
   /* Usar variáveis de sombra de variables.css e cor primária com transparência */
   box-shadow: var(--shadow-inset, inset 0 1px 2px rgba(0, 0, 0, 0.075)),
               0 0 0 var(--form-control-focus-ring-width, 0.25rem) hsla(var(--color-primary-rgb), 0.25); /* Usar hsla com RGB da variável */
+  transform: translateY(-1px);
 }
 
 /* Estilos de placeholder */
@@ -174,6 +189,29 @@
   /* Usar variáveis de espaçamento de variables.css */
   padding: var(--space-md); /* Padding interno do card */
   margin-bottom: var(--space-md); /* Margem inferior */
+  /* Animações de entrada e interação */
+  transition: transform var(--animation-duration-normal) var(--ease-standard),
+              box-shadow var(--animation-duration-normal) var(--ease-standard),
+              border-color var(--animation-duration-fast) var(--ease-standard);
+  animation: card-fade-in var(--animation-duration-normal) var(--ease-standard);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
+}
+
+/* Animação de entrada para cards */
+@keyframes card-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .card-header {
@@ -206,6 +244,42 @@
 }
 
 /* --------------------------------------------------------------------------
+   Animations - Animações e micro-interações globais
+   -------------------------------------------------------------------------- */
+
+/* Animação de ripple para botões */
+@keyframes ripple {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width var(--animation-duration-fast) var(--ease-standard),
+              height var(--animation-duration-fast) var(--ease-standard);
+}
+
+.btn:active::before {
+  width: 300px;
+  height: 300px;
+  animation: ripple var(--animation-duration-normal) var(--ease-standard);
+}
+
+/* --------------------------------------------------------------------------
    Breadcrumbs - Estilos para a navegação de "migalhas de pão"
    -------------------------------------------------------------------------- */
 
@@ -235,12 +309,18 @@
   color: var(--content-medium); /* Cor do texto médio (de variables.css) */
   text-decoration: none;
   /* Usar variáveis de transição e easing de variables.css */
-  transition: color var(--animation-duration-fast) var(--ease-standard);
+  transition: color var(--animation-duration-fast) var(--ease-standard),
+              transform var(--animation-duration-fast) var(--ease-standard);
+  position: relative;
+  padding: var(--space-xs);
+  border-radius: var(--radius-sm);
 }
 
 .breadcrumb-item a:hover {
   color: var(--color-primary); /* Cor primária no hover (de variables.css) */
   text-decoration: underline;
+  transform: translateY(-1px);
+  background-color: var(--ui-bg-hover);
 }
 
 .breadcrumb-item.active {
@@ -254,6 +334,19 @@
 
 .dashboard-wrapper {
   padding: var(--space-lg); /* Padding interno usando variável de espaço (de variables.css) */
+  animation: dashboard-fade-in var(--animation-duration-slow) var(--ease-standard);
+}
+
+/* Animação de entrada para o dashboard */
+@keyframes dashboard-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 

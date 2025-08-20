@@ -9,7 +9,8 @@ interacting with the database via SQLAlchemy and supporting Flask-Login for auth
 from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 from flask_login import current_user
-from ..models.user import User
+from models.user import User
+from extensions import db
 
 
 class UserService:
@@ -56,7 +57,14 @@ class UserService:
                 'email': user.email,
                 'first_name': user.first_name,
                 'last_name': user.last_name,
-                # Add other fields as needed
+                'phone': user.phone,
+                'address': user.address,
+                'bio': user.bio,
+                'profile_picture': user.profile_picture,
+                'is_active': user.is_active,
+                'is_admin': user.is_admin,
+                'created_at': user.created_at.isoformat() if user.created_at else None,
+                'updated_at': user.updated_at.isoformat() if user.updated_at else None
             }
         except Exception as e:
             raise RuntimeError(f"Error fetching user data for ID {user_id}: {e}")
@@ -87,7 +95,14 @@ class UserService:
                 user.first_name = data['first_name']
             if 'last_name' in data:
                 user.last_name = data['last_name']
-            # Add other fields as needed
+            if 'phone' in data:
+                user.phone = data['phone']
+            if 'address' in data:
+                user.address = data['address']
+            if 'bio' in data:
+                user.bio = data['bio']
+            if 'profile_picture' in data:
+                user.profile_picture = data['profile_picture']
 
             self.session.commit()
             return True

@@ -2,7 +2,7 @@
 
 from sqlalchemy import Column, String, Integer, ForeignKey, PrimaryKeyConstraint, Index
 from sqlalchemy.orm import relationship
-from ..extensions import db
+from extensions import db
 from .base_model import BaseModel
 from .vulnerability import Vulnerability # <-- Adicionado: Importa a classe Vulnerability
 from typing import TYPE_CHECKING

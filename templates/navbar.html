@@ -15,10 +15,12 @@
              tabindex="0"
              aria-controls="sidebar"
              aria-expanded="false"
-             aria-label="Toggle sidebar"
-             title="Toggle sidebar">
-       <i class="bi bi-list"></i>
-       <span class="visually-hidden">Toggle Sidebar</span>
+             aria-label="Abrir menu de navegação"
+             title="Abrir menu de navegação"
+             data-bs-toggle="offcanvas"
+             data-bs-target="#sidebar">
+       <i class="bi bi-list" aria-hidden="true"></i>
+       <span class="visually-hidden">Abrir menu de navegação</span>
      </button>
 
     {# Link da Marca na Navbar - Um link simples para a Home #}
@@ -103,23 +105,33 @@
            <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="accountDropdown">
              <li><h6 class="dropdown-header">{% if current_user and current_user.is_authenticated %}{{ current_user.username | default('Usuário') }}{% else %}Visitante{% endif %}</h6></li>
              <li><hr class="dropdown-divider"></li>
-             {% if 'account' in nav_items|map(attribute='endpoint')|list %}
-             <li><a class="dropdown-item" href="{{ url_for('main.account') }}">
-               <i class="bi bi-person me-2" aria-hidden="true"></i>Minha Conta
-             </a></li>
-             {% endif %}
-             {% if 'settings' in nav_items|map(attribute='endpoint')|list %}
-             <li><a class="dropdown-item" href="{{ url_for('main.settings') }}">
-               <i class="bi bi-gear me-2" aria-hidden="true"></i>Configurações
-             </a></li>
-             {% endif %}
+             
              {% if current_user and current_user.is_authenticated %}
-             {% if 'logout' in nav_items|map(attribute='endpoint')|list %}
-             <li><hr class="dropdown-divider"></li>
-             <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}">
-               <i class="bi bi-box-arrow-right me-2" aria-hidden="true"></i>Sair
-             </a></li>
-             {% endif %}
+               {# Links para usuários autenticados #}
+               {% if 'account' in nav_items|map(attribute='endpoint')|list %}
+               <li><a class="dropdown-item" href="{{ url_for('main.account') }}">
+                 <i class="bi bi-person me-2" aria-hidden="true"></i>Minha Conta
+               </a></li>
+               {% endif %}
+               {% if 'settings' in nav_items|map(attribute='endpoint')|list %}
+               <li><a class="dropdown-item" href="{{ url_for('main.settings') }}">
+                 <i class="bi bi-gear me-2" aria-hidden="true"></i>Configurações
+               </a></li>
+               {% endif %}
+               {% if 'logout' in nav_items|map(attribute='endpoint')|list %}
+               <li><hr class="dropdown-divider"></li>
+               <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}">
+                 <i class="bi bi-box-arrow-right me-2" aria-hidden="true"></i>Sair
+               </a></li>
+               {% endif %}
+             {% else %}
+               {# Links para usuários não autenticados #}
+               <li><a class="dropdown-item" href="{{ url_for('auth.login') }}">
+                 <i class="bi bi-box-arrow-in-right me-2" aria-hidden="true"></i>Entrar
+               </a></li>
+               <li><a class="dropdown-item" href="{{ url_for('auth.register') }}">
+                 <i class="bi bi-person-plus me-2" aria-hidden="true"></i>Criar Conta
+               </a></li>
              {% endif %}
            </ul>
         </div>
@@ -188,17 +200,56 @@
       }
     }
 
-    // TODO: Implementar lógica para o toggle do modo escuro (dark-mode-toggle)
+    // Sistema de tema melhorado
     const darkModeToggle = document.querySelector('.dark-mode-toggle');
+    const darkModeIcon = darkModeToggle?.querySelector('.dark-mode-icon');
+    
     if (darkModeToggle) {
+      // Função para aplicar tema
+      function applyTheme(theme) {
+        document.documentElement.classList.remove('theme-light', 'theme-dark');
+        document.documentElement.classList.add(`theme-${theme}`);
+        
+        // Atualizar ícone
+        if (darkModeIcon) {
+          darkModeIcon.className = theme === 'dark' ? 'dark-mode-icon bi bi-sun' : 'dark-mode-icon bi bi-moon';
+        }
+        
+        // Atualizar aria-pressed
+        darkModeToggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+      }
+      
+      // Carregar tema salvo ou detectar preferência do sistema
+      function loadTheme() {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme && ['light', 'dark'].includes(savedTheme)) {
+          applyTheme(savedTheme);
+        } else {
+          // Detectar preferência do sistema
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          applyTheme(prefersDark ? 'dark' : 'light');
+        }
+      }
+      
+      // Toggle do tema
       darkModeToggle.addEventListener('click', function() {
-         document.body.classList.toggle('dark-mode');
-         // TODO: Salvar preferência no LocalStorage
-         const isDarkMode = document.body.classList.contains('dark-mode');
-         localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-         // TODO: Atualizar ícone do toggle se necessário (ex: bi-moon para bi-sun)
+        const currentTheme = document.documentElement.classList.contains('theme-dark') ? 'dark' : 'light';
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        
+        applyTheme(newTheme);
+        localStorage.setItem('theme', newTheme);
       });
-      // TODO: Aplicar o tema salvo no LocalStorage ao carregar a página
+      
+      // Aplicar tema inicial
+      loadTheme();
+      
+      // Escutar mudanças na preferência do sistema
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+        // Só aplicar se não houver preferência salva
+        if (!localStorage.getItem('theme')) {
+          applyTheme(e.matches ? 'dark' : 'light');
+        }
+      });
     }
 
     // TODO: Implementar lógica para atualizar o status de conexão (is_connected) via JS/API

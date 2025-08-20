@@ -9,7 +9,7 @@ interacting with the database via SQLAlchemy.
 from typing import List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
-from ..models.vulnerability import Vulnerability
+from models.vulnerability import Vulnerability
 
 
 class SearchService:

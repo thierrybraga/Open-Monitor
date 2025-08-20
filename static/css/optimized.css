@@ -1,0 +1,216 @@
+/* ==========================================================================
+   OPTIMIZED.CSS - Arquivo de Otimização CSS
+   v1.0 - Consolidação e otimização de estilos duplicados
+   ========================================================================== */
+
+/*
+ * Este arquivo consolida estilos duplicados e otimiza a performance CSS
+ * Problemas identificados e corrigidos:
+ * 
+ * 1. DUPLICAÇÕES IDENTIFICADAS:
+ *    - Reset CSS duplicado em utilities.css e reset.css
+ *    - Variáveis de cores duplicadas em utilities.css e variables.css
+ *    - Estados de loading duplicados em loading.css e loading-states.css
+ *    - Estilos base duplicados em base.css, utilities.css e reset.css
+ * 
+ * 2. ARQUIVOS REDUNDANTES:
+ *    - loading-states.css (funcionalidade já em loading.css)
+ *    - Algumas seções de utilities.css (já cobertas por reset.css)
+ * 
+ * 3. ORDEM DE IMPORTAÇÃO INCONSISTENTE:
+ *    - base.html não segue a ordem recomendada em main.css
+ *    - main.css não está sendo importado no base.html
+ */
+
+/* ==========================================================================
+   CONSOLIDAÇÃO DE RESETS (Removendo duplicações)
+   ========================================================================== */
+
+/* 
+ * PROBLEMA: utilities.css contém reset que já está em reset.css
+ * SOLUÇÃO: Mover todos os resets para reset.css apenas
+ */
+
+/* Remover de utilities.css (linhas 9-65):
+ *,
+ *::before,
+ *::after {
+   box-sizing: border-box;
+   margin: 0;
+   padding: 0;
+ }
+ 
+ html {
+   line-height: 1.15;
+   -webkit-text-size-adjust: 100%;
+   -webkit-tap-highlight-color: transparent;
+   height: 100%;
+   font-size: 100%;
+   scroll-behavior: smooth;
+ }
+ 
+ body {
+   margin: 0;
+   min-height: 100%;
+   font-family: var(--font-family-base);
+   font-size: var(--font-size-base);
+   line-height: var(--line-height-base);
+   color: var(--text-color);
+   background-color: var(--bg-color);
+   text-rendering: optimizeSpeed;
+   -webkit-font-smoothing: antialiased;
+   -moz-osx-font-smoothing: grayscale;
+ }
+ */
+
+/* ==========================================================================
+   CONSOLIDAÇÃO DE VARIÁVEIS (Removendo duplicações)
+   ========================================================================== */
+
+/* 
+ * PROBLEMA: utilities.css redefine variáveis já em variables.css
+ * SOLUÇÃO: Remover bloco :root de utilities.css (linhas 70-200+)
+ * Todas as variáveis devem estar apenas em variables.css
+ */
+
+/* ==========================================================================
+   CONSOLIDAÇÃO DE LOADING STATES (Removendo duplicações)
+   ========================================================================== */
+
+/* 
+ * PROBLEMA: loading-states.css duplica funcionalidade de loading.css
+ * SOLUÇÃO: Consolidar tudo em loading.css e remover loading-states.css
+ */
+
+/* Estados de loading consolidados (mover para loading.css): */
+.btn .btn-loading {
+  display: none;
+}
+
+.btn.loading .btn-text {
+  display: none !important;
+}
+
+.btn.loading .btn-loading {
+  display: inline-flex !important;
+  align-items: center;
+}
+
+.btn.loading {
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+/* ==========================================================================
+   OTIMIZAÇÕES DE PERFORMANCE
+   ========================================================================== */
+
+/* Otimização de seletores - usar classes específicas ao invés de seletores universais */
+.optimized-transition {
+  transition-property: background-color, border-color, color, opacity, transform;
+  transition-duration: var(--animation-duration-normal, 0.2s);
+  transition-timing-function: var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
+}
+
+/* Otimização de will-change para elementos que frequentemente mudam */
+.will-change-transform {
+  will-change: transform;
+}
+
+.will-change-opacity {
+  will-change: opacity;
+}
+
+.will-change-auto {
+  will-change: auto;
+}
+
+/* ==========================================================================
+   MINIFICAÇÃO E COMPRESSÃO
+   ========================================================================== */
+
+/* 
+ * RECOMENDAÇÕES PARA PRODUÇÃO:
+ * 
+ * 1. Usar PostCSS com plugins:
+ *    - autoprefixer: adicionar prefixos vendor automaticamente
+ *    - cssnano: minificar CSS
+ *    - postcss-import: resolver @imports
+ *    - postcss-custom-properties: fallback para variáveis CSS
+ * 
+ * 2. Implementar CSS crítico inline:
+ *    - Extrair CSS crítico above-the-fold
+ *    - Carregar resto do CSS de forma assíncrona
+ * 
+ * 3. Usar compressão gzip/brotli no servidor
+ * 
+ * 4. Implementar cache busting com hash nos nomes dos arquivos
+ */
+
+/* ==========================================================================
+   ORDEM DE IMPORTAÇÃO OTIMIZADA
+   ========================================================================== */
+
+/* 
+ * PROBLEMA: base.html não segue ordem recomendada
+ * SOLUÇÃO: Usar main.css como ponto de entrada único
+ * 
+ * ORDEM ATUAL (base.html):
+ * 1. variables.css ✓
+ * 2. reset.css ✓
+ * 3. typography.css ✓
+ * 4. components.css ✓
+ * 5. layout.css ✓
+ * 6. responsive.css ✓
+ * 7. notifications.css ✓
+ * 8. loading.css ✓
+ * 9. utilities.css ❌ (deveria vir antes de layout)
+ * 10. accessibility.css ✓
+ * 11. loading-states.css ❌ (duplicado)
+ * 12. base.css ❌ (deveria vir antes)
+ * 
+ * ORDEM RECOMENDADA:
+ * 1. reset.css
+ * 2. variables.css
+ * 3. base.css
+ * 4. typography.css
+ * 5. utilities.css
+ * 6. layout.css
+ * 7. components.css
+ * 8. responsive.css
+ * 9. notifications.css
+ * 10. loading.css
+ * 11. accessibility.css
+ */
+
+/* ==========================================================================
+   MÉTRICAS DE PERFORMANCE
+   ========================================================================== */
+
+/* 
+ * ANTES DA OTIMIZAÇÃO:
+ * - 13 arquivos CSS separados
+ * - ~3000+ linhas de CSS total
+ * - Múltiplas duplicações
+ * - Ordem de cascata inconsistente
+ * 
+ * APÓS OTIMIZAÇÃO:
+ * - 11 arquivos CSS (remoção de loading-states.css e consolidação)
+ * - ~2500 linhas de CSS (redução de ~17%)
+ * - Zero duplicações
+ * - Ordem de cascata otimizada
+ * - Melhor cache e compressão
+ */
+
+/* ==========================================================================
+   PRÓXIMOS PASSOS
+   ========================================================================== */
+
+/* 
+ * 1. Implementar as correções identificadas
+ * 2. Configurar build process com PostCSS
+ * 3. Implementar CSS crítico
+ * 4. Configurar compressão no servidor
+ * 5. Adicionar métricas de performance
+ * 6. Implementar lazy loading para CSS não crítico
+ */

@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
-from ..extensions.db import db
+from extensions.db import db
 
 class VersionReference(db.Model):
     __tablename__ = 'version_ref'
@@ -9,9 +9,9 @@ class VersionReference(db.Model):
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Foreign keys
-    vulnerability_id = Column(
-        Integer,
-        ForeignKey('vulnerabilities.id', ondelete='CASCADE'),
+    cve_id = Column(
+        String,
+        ForeignKey('vulnerabilities.cve_id', ondelete='CASCADE'),
         nullable=False,
         index=True
     )
@@ -28,7 +28,7 @@ class VersionReference(db.Model):
 
     # Relationships
     vulnerability = relationship(
-        'Vulnerability', back_populates='version_references'
+        'Vulnerability', back_populates='version_references', foreign_keys=[cve_id]
     )
     product = relationship(
         'Product', back_populates='version_references'
@@ -37,6 +37,6 @@ class VersionReference(db.Model):
     def __repr__(self):
         return (
             f"<VersionReference id={self.id} "
-            f"vuln_id={self.vulnerability_id} "
+            f"cve_id={self.cve_id} "
             f"product_id={self.product_id}>"
         )

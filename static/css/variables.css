@@ -195,7 +195,7 @@
 
   /* Variáveis Semânticas Específicas de Componentes/Layout (Exemplos, podem ser refinadas) */
   --navbar-bg: var(--surface-0); /* Fundo da navbar */
-  --navbar-text: var(--content-strong); /* Cor do texto/ícones da navbar */
+  --navbar-text: var(--content-strongest); /* Cor do texto/ícones da navbar - melhor contraste */
   --navbar-text-hover: var(--color-primary); /* Cor do texto/ícones da navbar no hover (exemplo) */
   --sidebar-bg: var(--surface-0); /* Fundo da sidebar */
   --sidebar-text: var(--content-strong); /* Cor do texto/ícones da sidebar */
@@ -214,10 +214,107 @@
    🌓 TEMAS - AJUSTES DE VARIÁVEIS POR TEMA
    ======================================== */
 
+  /* Tema Claro Forçado (classe .theme-light) */
+  .theme-light {
+    /* Cores de Superfície e Background */
+    --surface-0: var(--neutral-0);
+    --surface-50: var(--neutral-50);
+    --surface-100: var(--neutral-100);
+    --surface-inverted: var(--neutral-900);
+
+    /* Cores de Conteúdo (Texto e Ícones) */
+    --content-strongest: var(--neutral-1000);
+    --content-strong: var(--neutral-900);
+    --content-medium: var(--neutral-700);
+    --content-weak: var(--neutral-600);
+    --content-disabled: var(--neutral-500);
+
+    /* Cores de Borda e Divisores */
+    --border-light: var(--neutral-200);
+    --border-medium: var(--neutral-400);
+    --border-strong: var(--neutral-600);
+
+    /* Cores de UI Interativa */
+    --ui-bg-hover: rgba(var(--primary-500-rgb), 0.08);
+    --ui-bg-active: rgba(var(--primary-500-rgb), 0.15);
+    --ui-bg-selected: rgba(var(--primary-500-rgb), 0.1);
+    --ui-border-interactive: var(--color-primary);
+    --ui-text-interactive: var(--color-primary);
+    --focus-visible-outline: 2px solid var(--color-primary);
+
+    /* Variáveis Semânticas Específicas de Componentes/Layout */
+    --navbar-bg: var(--surface-0);
+    --navbar-text: var(--content-strongest); /* Melhor contraste no tema claro */
+    --navbar-text-hover: var(--color-primary);
+    --sidebar-bg: var(--surface-0);
+    --sidebar-text: var(--content-strong);
+    --sidebar-text-hover: var(--color-primary);
+    --sidebar-hover-bg: var(--ui-bg-hover);
+    --sidebar-active-bg: var(--ui-bg-active);
+    --sidebar-active-text: var(--color-primary);
+    --sidebar-muted: var(--content-weak);
+    --footer-bg: var(--surface-0);
+    --footer-text: var(--content-medium);
+    --footer-text-hover: var(--color-primary);
+    --footer-hover-bg: var(--ui-bg-hover);
+  }
+
+  /* Tema Escuro Forçado (classe .theme-dark) */
+  .theme-dark {
+    /* Cores de Superfície e Background */
+    --surface-0: var(--neutral-900);
+    --surface-50: var(--neutral-800);
+    --surface-100: var(--neutral-700);
+    --surface-inverted: var(--neutral-0);
+
+    /* Cores de Conteúdo (Texto e Ícones) */
+    --content-strongest: var(--neutral-0);
+    --content-strong: var(--neutral-50);
+    --content-medium: var(--neutral-300);
+    --content-weak: var(--neutral-400);
+    --content-disabled: var(--neutral-500);
+
+    /* Cores de Borda e Divisores */
+    --border-light: var(--neutral-700);
+    --border-medium: var(--neutral-600);
+    --border-strong: var(--neutral-500);
+
+    /* Cores de UI Interativa */
+    --ui-bg-hover: rgba(var(--primary-200-rgb), 0.08);
+    --ui-bg-active: rgba(var(--primary-200-rgb), 0.15);
+    --ui-bg-selected: rgba(var(--primary-200-rgb), 0.1);
+    --ui-border-interactive: var(--primary-300);
+    --ui-text-interactive: var(--primary-300);
+    --focus-visible-outline: 2px solid var(--primary-300);
+
+    /* Variáveis Semânticas Específicas de Componentes/Layout */
+    --navbar-bg: var(--surface-50);
+    --navbar-text: var(--content-strongest); /* Melhor contraste no tema escuro */
+    --navbar-text-hover: var(--primary-200); /* Cor mais clara para melhor contraste */
+    --sidebar-bg: var(--surface-50);
+    --sidebar-text: var(--content-strong);
+    --sidebar-text-hover: var(--primary-300);
+    --sidebar-hover-bg: var(--ui-bg-hover);
+    --sidebar-active-bg: var(--ui-bg-active);
+    --sidebar-active-text: var(--primary-300);
+    --sidebar-muted: var(--content-medium);
+    --footer-bg: var(--surface-50);
+    --footer-text: var(--content-medium);
+    --footer-text-hover: var(--primary-300);
+    --footer-hover-bg: var(--ui-bg-hover);
+  }
+
   /* Valores RGB para cálculos de transparência (usados acima para ui-bg-hover, etc.) */
   --primary-500-rgb: 33, 150, 243;
+  --primary-200-rgb: 144, 202, 249;
+  --primary-300-rgb: 100, 181, 246;
+  --primary-700-rgb: 25, 118, 210;
   --neutral-0-rgb: 255, 255, 255;
   --neutral-1000-rgb: 0, 0, 0;
+  --success-500-rgb: 76, 175, 80;
+  --error-500-rgb: 244, 67, 54;
+  --alert-500-rgb: 255, 152, 0;
+  --info-500-rgb: 0, 188, 212;
 
 
   /* Tema Escuro */
@@ -252,8 +349,8 @@
 
       /* Variáveis Semânticas Específicas de Componentes/Layout (Ajustes para tema escuro) */
       --navbar-bg: var(--surface-50); /* Fundo da navbar no tema escuro */
-      --navbar-text: var(--content-strong); /* Cor do texto/ícones da navbar no tema escuro */
-      --navbar-text-hover: var(--color-primary); /* Manter color-primary ou ajustar se necessário */
+      --navbar-text: var(--content-strongest); /* Melhor contraste no tema escuro */
+      --navbar-text-hover: var(--primary-200); /* Cor mais clara para melhor contraste no escuro */
       --sidebar-bg: var(--surface-50); /* Fundo da sidebar no tema escuro */
       --sidebar-text: var(--content-strong); /* Cor do texto/ícones da sidebar no tema escuro */
       --sidebar-text-hover: var(--color-primary); /* Manter color-primary ou ajustar se necessário */

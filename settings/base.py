@@ -37,6 +37,12 @@ class BaseConfig:
         'script-src':  ["'self'", "'nonce-{{ csp_nonce }}'"],
         'style-src':   ["'self'"],
     }
+    
+    # OpenAI Configuration
+    OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+    OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-3.5-turbo')
+    OPENAI_MAX_TOKENS = getenv_typed('OPENAI_MAX_TOKENS', int, 1000)
+    OPENAI_TEMPERATURE = getenv_typed('OPENAI_TEMPERATURE', float, 0.7)
 
     @classmethod
     def init_app(cls, app):

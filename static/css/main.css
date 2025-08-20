@@ -60,11 +60,13 @@
 /* f. Componentes - Estilos para componentes específicos da UI (botões, cards, formulários, etc.) */
 /* Estes arquivos estilizam os elementos DENTRO da estrutura definida por layout.css, usando variáveis */
 /* Importar components.css se ele for um arquivo agregado para componentes menores */
-/* @import 'components.css'; */
+@import 'components.css'; /* Componentes base do sistema */
+@import 'forms.css'; /* Componentes modernos de formulários */
 @import 'navbar.css'; /* Estilos visuais e específicos da Navbar */
 @import 'sidebar.css'; /* Estilos visuais e específicos da Sidebar */
 @import 'footer.css'; /* Estilos visuais e específicos do Footer */
-/* @import 'forms.css'; */ /* Estilos específicos de Formulários (se não estiverem em components.css) */
+@import 'dashboard.css'; /* Estilos específicos do Dashboard */
+@import 'vulnerabilities.css'; /* Estilos específicos das Vulnerabilidades */
 /* @import 'buttons.css'; */ /* Estilos específicos de Botões (se não estiverem em components.css ou components.css) */
 /* @import 'cards.css'; */ /* Estilos específicos de Cards (se não estiverem em components.css) */
 

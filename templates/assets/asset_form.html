@@ -1,0 +1,278 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ action|capitalize }} Asset{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/assets.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 fade-in">
+  <!-- Page Header -->
+  <header class="page-header mb-5">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+      <div>
+        <h1 class="h3 fw-semibold mb-2">
+          <i class="bi bi-{{ 'pencil' if action == 'editar' else 'plus-circle' }} me-2 text-primary"></i>
+          {{ action|capitalize }} Asset
+        </h1>
+        <p class="text-muted fs-6 mb-0">
+          {% if action == 'editar' %}
+            Atualize as informações do asset
+          {% else %}
+            Adicione um novo asset ao inventário
+          {% endif %}
+        </p>
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{{ url_for('assets.list_assets') }}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i>Voltar aos Assets
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="row justify-content-center mb-4">
+        <div class="col-lg-8">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+              <i class="bi bi-{{ 'exclamation-triangle' if category == 'error' else 'info-circle' }} me-2"></i>
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="form-card">
+        <div class="form-card-header">
+          <h3 class="form-card-title">
+            <i class="bi bi-server me-2"></i>
+            Informações do Asset
+          </h3>
+          <p class="form-card-subtitle">
+            Preencha os dados do asset para adicionar ao inventário
+          </p>
+        </div>
+
+        <form method="POST" novalidate class="form" id="asset-form">
+          {{ form.csrf_token }}
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="name" class="form-label required">
+                  <i class="bi bi-tag me-1"></i>
+                  Nome do Asset
+                </label>
+                {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else ""), id="name", placeholder="Ex: Servidor Web Principal") }}
+                {% if form.name.errors %}
+                  <div class="invalid-feedback">
+                    {{ form.name.errors[0] }}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+            
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="ip_address" class="form-label required">
+                  <i class="bi bi-globe me-1"></i>
+                  Endereço IP
+                </label>
+                {{ form.ip_address(class="form-control" + (" is-invalid" if form.ip_address.errors else ""), id="ip_address", placeholder="Ex: 192.168.1.100") }}
+                {% if form.ip_address.errors %}
+                  <div class="invalid-feedback">
+                    {{ form.ip_address.errors[0] }}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="hostname" class="form-label">
+                  <i class="bi bi-pc-display me-1"></i>
+                  Hostname
+                </label>
+                {{ form.hostname(class="form-control" + (" is-invalid" if form.hostname.errors else ""), id="hostname", placeholder="Ex: web-server-01") }}
+                {% if form.hostname.errors %}
+                  <div class="invalid-feedback">
+                    {{ form.hostname.errors[0] }}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+            
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="location" class="form-label">
+                  <i class="bi bi-geo-alt me-1"></i>
+                  Localização
+                </label>
+                {{ form.location(class="form-control" + (" is-invalid" if form.location.errors else ""), id="location", placeholder="Ex: Data Center A - Rack 15") }}
+                {% if form.location.errors %}
+                  <div class="invalid-feedback">
+                    {{ form.location.errors[0] }}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="owner" class="form-label">
+              <i class="bi bi-person me-1"></i>
+              Proprietário
+            </label>
+            {{ form.owner(class="form-control" + (" is-invalid" if form.owner.errors else ""), id="owner", placeholder="Ex: Equipe de Infraestrutura") }}
+            {% if form.owner.errors %}
+              <div class="invalid-feedback">
+                {{ form.owner.errors[0] }}
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="form-group">
+            <label for="description" class="form-label">
+              <i class="bi bi-file-text me-1"></i>
+              Descrição
+            </label>
+            {{ form.description(class="form-control" + (" is-invalid" if form.description.errors else ""), id="description", placeholder="Descreva o propósito e características do asset...", rows="4") }}
+            {% if form.description.errors %}
+              <div class="invalid-feedback">
+                {{ form.description.errors[0] }}
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" id="submit-btn">
+              <i class="bi bi-{{ 'check-circle' if action == 'editar' else 'plus-circle' }} me-1"></i>
+              <span class="btn-text">{{ action|capitalize }} Asset</span>
+              <span class="btn-loading d-none">
+                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                Processando...
+              </span>
+            </button>
+            <a href="{{ url_for('assets.list_assets') }}" class="btn btn-outline-secondary">
+              <i class="bi bi-x-circle me-1"></i>
+              Cancelar
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1055;"></div>
+
+<script>
+// Form validation and submission
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('asset-form');
+  const submitBtn = document.getElementById('submit-btn');
+  const btnText = submitBtn.querySelector('.btn-text');
+  const btnLoading = submitBtn.querySelector('.btn-loading');
+
+  // Form submission with loading state
+  form.addEventListener('submit', function(e) {
+    if (form.checkValidity()) {
+      submitBtn.disabled = true;
+      btnText.classList.add('d-none');
+      btnLoading.classList.remove('d-none');
+    }
+  });
+
+  // IP address validation
+  const ipInput = document.getElementById('ip_address');
+  ipInput.addEventListener('blur', function() {
+    const ipPattern = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    const value = this.value.trim();
+    
+    if (value && !ipPattern.test(value)) {
+      this.classList.add('is-invalid');
+      this.classList.remove('is-valid');
+      
+      let feedback = this.parentNode.querySelector('.invalid-feedback');
+      if (!feedback) {
+        feedback = document.createElement('div');
+        feedback.className = 'invalid-feedback';
+        this.parentNode.appendChild(feedback);
+      }
+      feedback.textContent = 'Por favor, insira um endereço IP válido';
+    } else if (value) {
+      this.classList.remove('is-invalid');
+      this.classList.add('is-valid');
+    }
+  });
+
+  // Real-time validation feedback
+  const inputs = form.querySelectorAll('input, select, textarea');
+  inputs.forEach(input => {
+    input.addEventListener('blur', function() {
+      validateField(this);
+    });
+
+    input.addEventListener('input', function() {
+      if (this.classList.contains('is-invalid')) {
+        validateField(this);
+      }
+    });
+  });
+
+  function validateField(field) {
+    const value = field.value.trim();
+    const isRequired = field.hasAttribute('required') || field.labels[0]?.classList.contains('required');
+    
+    if (isRequired && !value) {
+      field.classList.add('is-invalid');
+      field.classList.remove('is-valid');
+    } else if (value) {
+      field.classList.remove('is-invalid');
+      field.classList.add('is-valid');
+    } else {
+      field.classList.remove('is-invalid', 'is-valid');
+    }
+  }
+
+  // Show success toast on form submission
+  function showToast(message, type = 'success') {
+    const toastContainer = document.querySelector('.toast-container');
+    const toastId = 'toast-' + Date.now();
+    
+    const toastHTML = `
+      <div class="toast align-items-center text-bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true" id="${toastId}">
+        <div class="d-flex">
+          <div class="toast-body">
+            <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+            ${message}
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+      </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
+    toast.show();
+    
+    toastElement.addEventListener('hidden.bs.toast', function() {
+      this.remove();
+    });
+  }
+});
+</script>
+{% endblock %}

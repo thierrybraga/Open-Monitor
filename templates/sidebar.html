@@ -3,7 +3,10 @@
 {# Importando o arquivo CSS principal. Garanta que este importe os arquivos de variáveis, typography, layout, components, utilities, etc. #}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 
-<nav id="sidebar" class="sidebar d-flex flex-column flex-shrink-0 py-3" aria-label="Navegação principal do sistema">
+<nav id="sidebar" class="sidebar d-flex flex-column flex-shrink-0 py-3" 
+     aria-label="Navegação principal do sistema"
+     role="navigation"
+     tabindex="-1">
 
   {# Sidebar Header: Brand/Logo and Collapse Button #}
   <div class="sidebar-header d-flex align-items-center justify-content-between px-3 mb-3">
@@ -70,9 +73,9 @@
 
       {# Reports Link #}
       <li class="sidebar-item">
-        <a href="{{ url_for('main.reports') }}"
-           class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2 {% if request.endpoint == 'main.reports' %}active{% endif %}"
-           {% if request.endpoint == 'main.reports' %}aria-current="page"{% endif %}
+        <a href="{{ url_for('report.list_reports') }}"
+         class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2 {% if request.endpoint == 'report.list_reports' %}active{% endif %}"
+         {% if request.endpoint == 'report.list_reports' %}aria-current="page"{% endif %}
            title="Visualizar Relatórios Gerados"
            data-bs-toggle="tooltip" data-bs-placement="right">
           <i class="bi bi-file-earmark-text fs-5"></i>
@@ -142,21 +145,39 @@
   <div class="sidebar-footer px-3 py-3 border-top mt-auto"> {# mt-auto pushes to bottom #}
 
     {# User Account Link #}
-    <a href="{{ url_for('main.account') if 'account' in nav_items|map(attribute='endpoint')|list else '#' }}"
-       class="sidebar-link d-flex align-items-center gap-2 py-2 text-decoration-none"
-       title="Acessar configurações da conta">
-      <div class="user-avatar rounded-circle bg-light d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
-        <i class="bi bi-person fs-5 text-dark"></i>
-      </div>
-      <div class="user-info flex-grow-1 overflow-hidden">
-        <div class="text-sm fw-medium text-white text-truncate sidebar-label">
-          {{ current_user.name if current_user and current_user.is_authenticated else 'Usuário Não Autenticado' }}
+    {% if current_user and current_user.is_authenticated %}
+      <a href="{{ url_for('main.account') if 'account' in nav_items|map(attribute='endpoint')|list else '#' }}"
+         class="sidebar-link d-flex align-items-center gap-2 py-2 text-decoration-none"
+         title="Acessar configurações da conta">
+        <div class="user-avatar rounded-circle bg-light d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+          <i class="bi bi-person fs-5 text-dark"></i>
         </div>
-        <div class="text-muted text-xs text-truncate sidebar-label">
-          {{ current_user.email if current_user and current_user.is_authenticated else 'Clique para Fazer Login' }}
+        <div class="user-info flex-grow-1 overflow-hidden">
+          <div class="text-sm fw-medium text-white text-truncate sidebar-label">
+            {{ current_user.name if current_user.name else current_user.username }}
+          </div>
+          <div class="text-muted text-xs text-truncate sidebar-label">
+            {{ current_user.email }}
+          </div>
         </div>
-      </div>
-    </a>
+      </a>
+    {% else %}
+      <a href="{{ url_for('auth.login') }}"
+         class="sidebar-link d-flex align-items-center gap-2 py-2 text-decoration-none"
+         title="Fazer login">
+        <div class="user-avatar rounded-circle bg-light d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+          <i class="bi bi-person fs-5 text-dark"></i>
+        </div>
+        <div class="user-info flex-grow-1 overflow-hidden">
+          <div class="text-sm fw-medium text-white text-truncate sidebar-label">
+            Usuário Não Autenticado
+          </div>
+          <div class="text-muted text-xs text-truncate sidebar-label">
+            Clique para Fazer Login
+          </div>
+        </div>
+      </a>
+    {% endif %}
 
     {# Optional: Dedicated Settings Link #}
     {% if 'settings' in nav_items|map(attribute='endpoint')|list %}

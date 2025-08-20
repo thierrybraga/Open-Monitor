@@ -10,7 +10,10 @@ from typing import Dict, Any, List
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 from datetime import datetime, timedelta
-from ..models.vulnerability import Vulnerability
+from models.vulnerability import Vulnerability
+from models.asset import Asset
+from models.report import Report
+from extensions import db
 
 
 class ReportService:

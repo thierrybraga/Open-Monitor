@@ -20,7 +20,7 @@ from flask_migrate import Migrate
 from inflection import underscore
 
 from .base_model import BaseModel
-from ..extensions import db, migrate
+from extensions import db, migrate
 
 logger = logging.getLogger(__name__)
 
