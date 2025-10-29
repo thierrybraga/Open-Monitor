@@ -1,0 +1,459 @@
+/* layout.css - Layout Responsivo Moderno
+ * Versão 3.0 - Sistema de layout otimizado para tema claro
+ * Responsividade aprimorada com breakpoints fluidos e design adaptativo
+ */
+
+/* ==========================================================================\
+   Layout Estrutural Principal
+   ========================================================================== */
+
+/*
+ * NOTA: Estilos base para body, html, e resets NÃO devem estar aqui.
+ * Eles devem ser definidos em arquivos como reset.css ou base.css.
+ * Certifique-se de que as variáveis CSS globais (cores, espaçamento, tipografia, breakpoints)
+ * estão definidas em variables.css e importadas ANTES deste arquivo em main.css.
+ */
+
+/* Definir variáveis de layout críticas se não estiverem já em variables.css */
+/* É ALTAMENTE recomendado definir estas variáveis em variables.css e importá-lo primeiro */
+/* Exemplo (se não estiverem em variables.css):
+:root {
+    --layout-navbar-height: 60px; // Altura da navbar fixa
+    --layout-sidebar-width-expanded: 250px; // Largura da sidebar quando expandida
+    --layout-sidebar-width-collapsed: 60px; // Largura da sidebar quando colapsada (apenas ícone + padding)
+    --z-index-navbar: 1000; // Z-index para a navbar (acima de tudo)
+    --z-index-sidebar: 999; // Z-index para a sidebar (abaixo da navbar)
+    --z-index-backdrop: 990; // Z-index para o scrim/overlay (abaixo da sidebar)
+    --logo-size: 32px; /* Variável para o tamanho do logo */
+    /* Variáveis de breakpoint devem vir de variables.css */
+    /* --breakpoint-md: 768px; // Exemplo */
+/* } */
+
+
+/* ========================================\
+   📱 LAYOUT RESPONSIVO MODERNO
+   ======================================== */
+
+/* Navbar responsiva */
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: var(--layout-navbar-height);
+    z-index: var(--z-navbar);
+    transition: var(--transition-standard);
+}
+
+/* Container responsivo com max-width fluido */
+.container-fluid {
+    max-width: 100%;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    margin: 0 auto;
+}
+
+@media (min-width: 576px) {
+    .container-fluid {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .container-fluid {
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .container-fluid {
+        max-width: 1200px;
+        padding-left: 2.5rem;
+        padding-right: 2.5rem;
+    }
+}
+
+@media (min-width: 1440px) {
+    .container-fluid {
+        max-width: 1400px;
+        padding-left: 3rem;
+        padding-right: 3rem;
+    }
+}
+
+/* REMOVIDO: Ajuste da posição da navbar quando a sidebar está expandida/colapsada */
+/* A navbar agora é sempre full width, então estas regras são desnecessárias */
+/*
+body.sidebar-expanded .navbar {
+  left: var(--layout-sidebar-width-expanded);
+  width: calc(100% - var(--layout-sidebar-width-expanded));
+}
+body.sidebar-collapsed .navbar {
+  left: var(--layout-sidebar-width-collapsed);
+  width: calc(100% - var(--layout-sidebar-width-collapsed));
+}
+*/
+
+
+/* ========================================\
+   🏗️ SISTEMA DE GRID RESPONSIVO
+   ======================================== */
+
+/* Container principal adaptativo */
+.main-content-area-wrapper {
+    margin-top: var(--layout-navbar-height);
+    min-height: calc(100vh - var(--layout-navbar-height));
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas: "sidebar content";
+    transition: var(--transition-standard);
+}
+
+/* Layout móvel */
+@media (max-width: 768px) {
+    .main-content-area-wrapper {
+        grid-template-columns: 1fr;
+        grid-template-areas: "content";
+    }
+    
+    .sidebar {
+        position: fixed;
+        top: var(--layout-navbar-height);
+        left: -100%;
+        width: 280px;
+        height: calc(100vh - var(--layout-navbar-height));
+        z-index: var(--z-sidebar);
+        transition: var(--transition-standard);
+    }
+    
+    .sidebar.open {
+        left: 0;
+    }
+}
+
+/* Grid responsivo moderno */
+.grid-responsive {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+@media (min-width: 768px) {
+    .grid-responsive {
+        gap: 2rem;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .grid-responsive {
+        gap: 2.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .grid-responsive {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+}
+
+/* Grid para 2 colunas */
+.grid-2-cols {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+    .grid-2-cols {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 2rem;
+    }
+}
+
+/* Grid para 3 colunas */
+.grid-3-cols {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+    .grid-3-cols {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .grid-3-cols {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2rem;
+    }
+}
+
+/* Flexbox utilitários responsivos */
+.flex-responsive {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+@media (min-width: 768px) {
+    .flex-responsive {
+        gap: 1.5rem;
+    }
+}
+
+@media (max-width: 767px) {
+    .flex-responsive {
+        flex-direction: column;
+    }
+}
+
+
+/* Estilo para a sidebar */
+/* A sidebar agora é definida principalmente em sidebar.css */
+/* Mantemos apenas as regras de layout essenciais aqui */
+
+/* Estilo para o scrim que cobre o conteúdo quando a sidebar mobile está aberta */
+/* Gerenciado com JS, este scrim ajuda a focar na sidebar e impede interação com o conteúdo por baixo */
+.sidebar-scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--glass-bg-strong);
+  z-index: var(--z-index-backdrop);
+  opacity: 0;
+  visibility: hidden;
+  transition: var(--transition-soft-normal);
+  backdrop-filter: var(--glass-blur-strong);
+  pointer-events: none;
+}
+
+/* Estado ativo do scrim (classe adicionada/removida via JS) */
+.sidebar-scrim.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto; /* Permite que o scrim capture cliques para fechar a sidebar */
+}
+
+
+/* Estilo para a área de conteúdo principal */
+.main-content {
+    /* flex-grow: 1 já deve estar no HTML desta div */
+    flex-grow: 1;
+
+    /* Adiciona uma margem esquerda igual à largura da sidebar colapsada no desktop */
+    /* Isso garante que o conteúdo não fique por baixo da sidebar fixa */
+    margin-left: var(--layout-sidebar-width-collapsed); /* Margem inicial - sidebar colapsada por padrão */
+
+    /* Adiciona padding interno (ajuste conforme necessário para o conteúdo não colar na navbar/sidebar) */
+    padding-top: var(--space-md, 1rem); /* Padding superior dentro da área de conteúdo */
+    padding-left: var(--space-md, 1rem); /* Padding lateral padrão */
+    padding-right: var(--space-md, 1rem); /* Padding lateral padrão */
+    padding-bottom: var(--space-md, 1rem); /* Padding inferior padrão */
+
+
+    /* Permite rolagem interna se o conteúdo exceder a altura */
+    overflow-y: auto;
+    overflow-x: hidden; /* Evita scroll horizontal no conteúdo */
+
+    /* A transição para margin-left e width (quando a sidebar colapsa/expande) deve estar aqui */
+    transition: margin-left var(--animation-duration-normal) var(--ease-standard),
+                padding var(--animation-duration-fast) var(--ease-standard);
+    /* Animação de entrada do conteúdo principal */
+    animation: content-fade-in var(--animation-duration-slow) var(--ease-standard);
+
+    /* A largura é implicitamente 100% menos a margem esquerda no layout flexbox */
+    /* width: calc(100% - var(--layout-sidebar-width-expanded)); */ /* Esta regra pode ser redundante com flex-grow: 1 e margin-left */
+}
+
+/* Ajuste da margem esquerda do main content quando a sidebar está expandida (no desktop) */
+/* Esta regra é aplicada quando a classe 'sidebar-expanded' está no body/html */
+body.sidebar-expanded .main-content {
+   margin-left: var(--layout-sidebar-width-expanded); /* Mantém a margem igual à largura expandida */
+   /* width: calc(100% - var(--layout-sidebar-width-expanded)); */ /* Ajusta largura se necessário */
+}
+/* Ajuste da margem esquerda do main content quando a sidebar está colapsada (no desktop) */
+/* Esta regra é aplicada quando a classe 'sidebar-collapsed' está no body/html */
+body.sidebar-collapsed .main-content {
+   margin-left: var(--layout-sidebar-width-collapsed); /* A margem esquerda é menor */
+   /* width: calc(100% - var(--layout-sidebar-width-collapsed)); */ /* Ajusta largura se necessário */
+}
+
+
+/* Footer - Define a posição no layout */
+/* O footer está fora do main-content-area-wrapper, dentro do app-container flex column */
+.footer {
+  /* margin-top: auto; */ /* Esta propriedade já deve estar no HTML para empurrar o footer para baixo no layout flex column */
+  flex-shrink: 0; /* Impede que o footer encolha */
+  width: 100%; /* Ocupa a largura total */
+  /* Estilos visuais (background, cor, padding) devem estar em footer.css */
+  /* Exemplo (movido para footer.css):
+  background: var(--footer-bg);
+  color: var(--footer-text);
+  padding: var(--space-md) var(--space-lg);
+  */
+}
+
+
+/* ==========================================================================\
+   Responsividade
+   ========================================================================== */
+
+/* Ajustes para telas médias e menores (sidebar colapsável/móvel) */
+@media (max-width: var(--breakpoint-md)) { /* Use a variável de breakpoint médio */
+
+    /* Navbar - Estilos específicos para mobile estão em navbar.css */
+
+
+    /* Sidebar - Comportamento móvel em telas menores */
+    .sidebar {
+        position: fixed; /* Essencial para mobile: flutua acima do conteúdo */
+        top: var(--layout-navbar-height); /* Começa APENAS abaixo da navbar fixa em mobile */
+        bottom: 0; /* Ocupa a altura restante */
+        left: 0; /* Posição inicial escondida */
+        width: var(--layout-sidebar-width-expanded); /* Largura padrão quando expandida em mobile */
+        transform: translateX(-100%); /* Esconde a sidebar por padrão (fora da tela) */
+        transition: transform var(--theme-transition-duration, 0.3s) var(--ease-standard, ease); /* Transição apenas para o slide-in/out */
+        box-shadow: none; /* Remover sombra quando escondida */
+        /* z-index: var(--z-index-sidebar); */ /* Já definido acima */
+    }
+
+    /* Estado expandido da sidebar em mobile (classe adicionada/removida via JS) */
+    body.sidebar-expanded .sidebar {
+        transform: translateX(0); /* Mostra a sidebar (slide-in) */
+        box-shadow: var(--shadow-lg, 0 0.5rem 1rem rgba(0, 0, 0, 0.15)); /* Adicionar sombra quando expandida */
+        /* Opcional: Limitar a largura máxima em viewports muito estreitas */
+        width: min(var(--layout-sidebar-width-expanded), 85vw); /* Exemplo: 85% da largura da viewport ou a largura expandida */
+    }
+    /* O estado colapsado em mobile é o estado escondido padrão (transform: translateX(-100%)) */
+
+
+    /* Main content area - Ajustes para mobile */
+    .main-content {
+        margin-left: 0; /* Em mobile, o conteúdo principal NÃO tem margem esquerda para a sidebar */
+        width: 100%; /* Ocupa toda a largura disponível */
+        /* Ajustar padding superior para levar em conta a navbar fixa em mobile */
+        padding-top: var(--space-md, 1rem); /* Padding superior (ajuste conforme necessário para o conteúdo não colar na navbar) */
+        /* Padding lateral pode ser ajustado em media queries menores */
+        transition: none; /* Remover transições de margin-left e width em mobile */
+    }
+
+    /* O conteúdo principal em mobile não se move quando a sidebar é expandida/colapsada */
+     body.sidebar-expanded .main-content,
+     body.sidebar-collapsed .main-content {
+          margin-left: 0;
+          width: 100%;
+     }
+
+    /* Ajustes de espaçamento para o footer em telas menores */
+    .footer {
+        /* Pode ajustar padding ou remover margin-top: auto se o layout do footer mudar */
+    }
+
+    /* Exemplo de ajuste para o container principal em telas muito pequenas (se necessário) */
+    /* .main-content .container-fluid { padding-left: var(--space-sm); padding-right: var(--space-sm); } */
+
+}
+
+/* Ajustes para telas muito pequenas (mobile pequeno) */
+@media (max-width: var(--breakpoint-sm)) {
+   /* Estilos da navbar para telas pequenas estão em navbar.css */
+
+   .main-content {
+       padding: var(--space-xs) var(--space-xs);
+       padding-top: calc(var(--layout-navbar-height) + var(--space-xs));
+   }
+   
+   .sidebar-scrim {
+       backdrop-filter: blur(4px);
+   }
+}
+
+/* Ajustes para tablets */
+@media (min-width: var(--breakpoint-sm)) and (max-width: var(--breakpoint-lg)) {
+   .main-content {
+       padding: var(--space-sm) var(--space-md);
+   }
+   
+   .sidebar-scrim {
+       backdrop-filter: blur(6px);
+   }
+}
+
+/* Ajustes para desktop grande */
+@media (min-width: var(--breakpoint-lg)) {
+   .main-content {
+       padding: var(--space-md) var(--space-lg);
+       transition: margin-left var(--animation-duration-normal) var(--ease-standard),
+                   padding var(--animation-duration-fast) var(--ease-standard),
+                   transform var(--animation-duration-fast) var(--ease-standard);
+   }
+   
+   .sidebar {
+       box-shadow: var(--shadow-lg);
+   }
+   
+   /* Estilos da navbar para desktop grande estão em navbar.css */
+}
+
+/* ==========================================================================\
+   Animações de Layout
+   ========================================================================== */
+
+/* Animação de entrada da sidebar */
+@keyframes sidebar-slide-in {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Animação de entrada do conteúdo principal */
+@keyframes content-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Animação da navbar está em navbar.css */
+
+/* ==========================================================================\
+   Acessibilidade e Preferências do Usuário
+   ========================================================================== */
+
+/* Estilos para usuários com preferência por movimento reduzido */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .main-content,
+  .sidebar-scrim {
+    transition: none !important; /* Desabilita transições para quem não gosta de animações */
+  }
+  /* Transições da navbar desabilitadas em navbar.css */
+  /* Desabilita keyframe animations específicas se houverem */
+  .refresh-button.refreshing i {
+      animation: none !important;
+  }
+}
+
+/* Estilos para foco visível para navegação por teclado (se não estiver em accessibility.css) */
+/*
+:focus-visible {
+  outline: var(--focus-visible-outline);
+  outline-offset: var(--focus-visible-outline-offset);
+}
+*/

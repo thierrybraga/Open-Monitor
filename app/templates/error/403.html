@@ -1,0 +1,8 @@
+{% extends "error/base_error.html" %}
+
+{% block title %}403 - Acesso Negado{% endblock %}
+
+{% set error_code = "403" %}
+{% set error_title = "Acesso Negado" %}
+{% set error_message = "Você não tem permissão para acessar este recurso." %}
+{% set error_type = "warning" %}

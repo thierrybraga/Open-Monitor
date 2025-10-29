@@ -1,0 +1,59 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="error-page">
+                <h1 class="display-1 text-{{ error_type | default('danger') }}">{{ error_code }}</h1>
+                <h2 class="mb-4">{{ error_title }}</h2>
+                <p class="lead mb-4">{{ error_message }}</p>
+                
+                {% if error_details %}
+                <div class="alert alert-warning" role="alert">
+                    <strong>Detalhes do erro:</strong> {{ error_details }}
+                </div>
+                {% endif %}
+                
+                <div class="mt-4">
+                    <a href="{{ url_for('main.index') }}" class="btn btn-primary me-2">
+                        <i class="fas fa-home"></i> Voltar ao Início
+                    </a>
+                    <button onclick="history.back()" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </button>
+                </div>
+                
+                {% block additional_actions %}{% endblock %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style nonce="{{ csp_nonce }}">
+.error-page {
+    padding: 2rem;
+    background: var(--card-bg, #ffffff);
+    border-radius: 0.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.error-page h1 {
+    font-size: 6rem;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.error-page h2 {
+    color: var(--text-color, #333);
+}
+
+.error-page .lead {
+    color: var(--text-muted, #666);
+}
+
+.btn {
+    margin: 0.25rem;
+}
+</style>
+{% endblock %}

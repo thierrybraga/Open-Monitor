@@ -1,0 +1,160 @@
+{% extends "core/base.html" %}
+
+{% block title %}Insights - Open Monitor{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0 text-gray-800">
+                    <i class="bi bi-lightbulb me-2"></i>
+                    Insights de Segurança
+                </h1>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards de Insights -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Vulnerabilidades Críticas
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ insights_data.critical_count or 0 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-exclamation-triangle-fill fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Assets Monitorados
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ insights_data.assets_count or 0 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-server fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Regras de Monitoramento
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ insights_data.monitoring_rules_count or 0 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-activity fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos e Análises -->
+    <div class="row">
+        <div class="col-xl-8 col-lg-7">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Tendências de Vulnerabilidades</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <canvas id="vulnerabilityTrendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Distribuição por Severidade</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-pie pt-4 pb-2">
+                        <canvas id="severityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Insights Recentes -->
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Insights Recentes</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Tipo</th>
+                                    <th>Descrição</th>
+                                    <th>Severidade</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if insights_data.recent_insights %}
+                                    {% for insight in insights_data.recent_insights %}
+                                    <tr>
+                                        <td>{{ insight.date }}</td>
+                                        <td>{{ insight.type }}</td>
+                                        <td>{{ insight.description }}</td>
+                                        <td>
+                                            <span class="badge badge-{{ 'danger' if insight.severity == 'CRITICAL' else 'warning' if insight.severity == 'HIGH' else 'info' }}">
+                                                {{ insight.severity }}
+                                            </span>
+                                        </td>
+                                        <td>{{ insight.status }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">
+                                            Nenhum insight disponível no momento.
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Placeholder para gráficos - pode ser implementado com Chart.js
+console.log('Insights page loaded');
+</script>
+{% endblock %}

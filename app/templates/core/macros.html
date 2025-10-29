@@ -1,0 +1,161 @@
+{% macro severity_badge(severity) %}
+  <span class="badge severity-badge severity-badge-{{ severity | default('N/A') | lower }}"
+        aria-label="Severidade: {{ severity | default('N/A') | capitalize }}">
+    {{ severity | default('N/A') | capitalize }}
+  </span>
+{% endmacro %}
+
+{% macro render_pagination(pagination, endpoint, route_severity=None, variant=None) %}
+    {# Preservar demais query params #}
+    {% set args = request.args.to_dict(flat=False) %}
+    {% set _ = args.pop('page', None) %}
+    {% if route_severity is not none %}
+      {% set _ = args.pop('severity', None) %}
+    {% endif %}
+
+    {% if variant == 'minimal' %}
+      <div class="pagination-min d-flex justify-content-between align-items-center mt-3">
+        <nav aria-label="Paginação" class="pagination-controls d-flex align-items-center gap-2">
+          {% if pagination.has_prev %}
+            {% if route_severity is not none %}
+              <a class="btn btn-sm btn-outline-primary page-link page-link-prev" href="{{ url_for(endpoint, page=pagination.prev_num, severity=route_severity, **args) }}" aria-label="Anterior">
+                <i class="bi bi-chevron-left"></i> Anterior
+              </a>
+            {% else %}
+              <a class="btn btn-sm btn-outline-primary page-link page-link-prev" href="{{ url_for(endpoint, page=pagination.prev_num, **args) }}" aria-label="Anterior">
+                <i class="bi bi-chevron-left"></i> Anterior
+              </a>
+            {% endif %}
+          {% else %}
+            <button class="btn btn-sm btn-outline-primary page-link page-link-prev" disabled aria-label="Anterior">
+              <i class="bi bi-chevron-left"></i> Anterior
+            </button>
+          {% endif %}
+
+          <span class="mx-2 pagination-text">Página <strong>{{ pagination.page }}</strong> de <strong>{{ pagination.pages }}</strong></span>
+
+          {% if pagination.has_next %}
+            {% if route_severity is not none %}
+              <a class="btn btn-sm btn-outline-primary page-link page-link-next" href="{{ url_for(endpoint, page=pagination.next_num, severity=route_severity, **args) }}" aria-label="Próxima">
+                Próxima <i class="bi bi-chevron-right"></i>
+              </a>
+            {% else %}
+              <a class="btn btn-sm btn-outline-primary page-link page-link-next" href="{{ url_for(endpoint, page=pagination.next_num, **args) }}" aria-label="Próxima">
+                Próxima <i class="bi bi-chevron-right"></i>
+              </a>
+            {% endif %}
+          {% else %}
+            <button class="btn btn-sm btn-outline-primary page-link page-link-next" disabled aria-label="Próxima">
+              Próxima <i class="bi bi-chevron-right"></i>
+            </button>
+          {% endif %}
+        </nav>
+
+        <div class="d-flex align-items-center gap-2 page-size-controls">
+          <label for="per-page-select" class="form-label mb-0 small">Itens por página:</label>
+          <select id="per-page-select" class="form-select form-select-sm" style="width: auto;" onchange="changePerPage(this.value)">
+            {% set current_per_page = request.args.get('per_page', '20')|int %}
+            {% for option in [10, 20, 50, 100] %}
+              <option value="{{ option }}" {{ 'selected' if option == current_per_page else '' }}>{{ option }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    {% else %}
+      <div class="pagination-nav d-flex justify-content-between align-items-center mt-3">
+        <nav aria-label="Paginação" class="pagination-controls">
+          <ul class="pagination pagination-modern justify-content-center mb-0">
+            {# Previous #}
+            {% if pagination.has_prev %}
+              <li class="page-item">
+                {% if route_severity is not none %}
+                  <a class="page-link" href="{{ url_for(endpoint, page=pagination.prev_num, severity=route_severity, **args) }}" aria-label="Anterior">
+                    <span aria-hidden="true">&laquo;</span>
+                  </a>
+                {% else %}
+                  <a class="page-link" href="{{ url_for(endpoint, page=pagination.prev_num, **args) }}" aria-label="Anterior">
+                    <span aria-hidden="true">&laquo;</span>
+                  </a>
+                {% endif %}
+              </li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link" aria-hidden="true">&laquo;</span></li>
+            {% endif %}
+
+            {# Page numbers with ellipsis #}
+            {% for num in pagination.iter_pages() %}
+              {% if num %}
+                {% if num == pagination.page %}
+                  <li class="page-item active" aria-current="page"><span class="page-link">{{ num }}</span></li>
+                {% else %}
+                  {% if route_severity is not none %}
+                    <li class="page-item"><a class="page-link" href="{{ url_for(endpoint, page=num, severity=route_severity, **args) }}">{{ num }}</a></li>
+                  {% else %}
+                    <li class="page-item"><a class="page-link" href="{{ url_for(endpoint, page=num, **args) }}">{{ num }}</a></li>
+                  {% endif %}
+                {% endif %}
+              {% else %}
+                <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+              {% endif %}
+            {% endfor %}
+
+            {# Next #}
+            {% if pagination.has_next %}
+              <li class="page-item">
+                {% if route_severity is not none %}
+                  <a class="page-link" href="{{ url_for(endpoint, page=pagination.next_num, severity=route_severity, **args) }}" aria-label="Próximo">
+                    <span aria-hidden="true">&raquo;</span>
+                  </a>
+                {% else %}
+                  <a class="page-link" href="{{ url_for(endpoint, page=pagination.next_num, **args) }}" aria-label="Próximo">
+                    <span aria-hidden="true">&raquo;</span>
+                  </a>
+                {% endif %}
+              </li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link" aria-hidden="true">&raquo;</span></li>
+            {% endif %}
+          </ul>
+        </nav>
+
+        <div class="d-flex align-items-center gap-2 page-size-controls">
+          <label for="per-page-select" class="form-label mb-0 small">Itens por página:</label>
+          <select id="per-page-select" class="form-select form-select-sm" style="width: auto;" onchange="changePerPage(this.value)">
+            {% set current_per_page = request.args.get('per_page', '20')|int %}
+            {% for option in [10, 20, 50, 100] %}
+              <option value="{{ option }}" {{ 'selected' if option == current_per_page else '' }}>{{ option }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    {% endif %}
+
+    <script nonce="{{ nonce }}">
+      function changePerPage(perPage) {
+        var url = new URL(window.location);
+        url.searchParams.set('per_page', perPage);
+        url.searchParams.set('page', 1);
+        if (window.VulnerabilitiesPage && typeof window.VulnerabilitiesPage.loadPage === 'function') {
+          window.VulnerabilitiesPage.loadPage(url.toString());
+        } else if (window.modernPagination && typeof window.modernPagination.loadPage === 'function') {
+          window.modernPagination.loadPage(url.toString());
+        } else {
+          window.location.href = url.toString();
+        }
+      }
+    </script>
+{% endmacro %}
+
+{% macro action_button(icon, label, classes, tooltip, disabled=false, id='') %}
+  <button type="button"
+          class="btn btn-sm {{ classes }}"
+          {% if id %}id="{{ id }}"{% endif %}
+          data-bs-toggle="tooltip"
+          title="{{ tooltip }}"
+          aria-label="{{ label }}"
+          {% if disabled %}disabled{% endif %}
+          role="button"
+          tabindex="0">
+    <i class="bi bi-{{ icon }} me-1" aria-hidden="true"></i>{{ label }}
+  </button>
+{% endmacro %}

@@ -1,0 +1,161 @@
+/* Assets Page Styles */
+
+.assets-container {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+
+/* Vulnerability cards */
+.vuln-card {
+    transition: box-shadow var(--transition-duration-fast) var(--transition-easing-standard),
+                transform var(--transition-duration-fast) var(--transition-easing-standard);
+}
+.vuln-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.btn-group[aria-label="Filtro Severidade"] .btn,
+.btn-group[aria-label="Visualização"] .btn {
+    border-radius: var(--border-radius-sm);
+}
+
+.assets-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.assets-title {
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.assets-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.asset-card {
+    background: var(--surface-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    transition: all var(--transition-duration-fast) var(--transition-easing-standard);
+}
+
+.asset-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.asset-info {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1rem;
+    align-items: center;
+}
+
+.asset-details h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+}
+
+.asset-details p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.asset-status {
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.asset-status.active {
+    background-color: var(--success-light);
+    color: var(--success-dark);
+}
+
+.asset-status.inactive {
+    background-color: var(--warning-light);
+    color: var(--warning-dark);
+}
+
+.asset-status.error {
+    background-color: var(--error-light);
+    color: var(--error-dark);
+}
+
+.assets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.asset-form {
+    background: var(--surface-primary);
+    padding: 2rem;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    font-size: 1rem;
+    transition: border-color var(--transition-duration-fast);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+@media (max-width: 768px) {
+    .assets-container {
+        padding: 1rem;
+    }
+    
+    .assets-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    
+    .assets-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .asset-info {
+        grid-template-columns: 1fr;
+    }
+}

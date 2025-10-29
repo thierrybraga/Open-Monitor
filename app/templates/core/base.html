@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="{{ config.get('HTML_LANG', 'pt-BR') }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  {# Meta description otimizada para SEO #}
+  <meta name="description" content="{% block meta_description %}{{ app_name | default('Open Monitor') }} - Plataforma completa de monitoramento de segurança, análise de vulnerabilidades e geração de relatórios técnicos. Mantenha seus sistemas seguros com nossa solução abrangente.{% endblock %}">
+  
+  {# Keywords para SEO (usar com moderação) #}
+  <meta name="keywords" content="{% block meta_keywords %}segurança, vulnerabilidades, CVE, monitoramento, relatórios, cybersecurity, security monitoring, vulnerability assessment{% endblock %}">
+  
+  {# Theme color otimizada #}
+  <meta name="theme-color" content="#3b82f6">
+  
+  {# Open Graph otimizado #}
+  <meta property="og:title" content="{% block og_title %}{{ app_name | default('Open Monitor') }} - Monitoramento de Segurança{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}{{ app_name | default('Open Monitor') }} - Plataforma completa de monitoramento de segurança, análise de vulnerabilidades e geração de relatórios técnicos. Mantenha seus sistemas seguros com nossa solução abrangente.{% endblock %}">
+  <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+  
+  {# CSP Header - Garante segurança #}
+  {% if csp_header %}
+  <meta http-equiv="Content-Security-Policy" content="{{ csp_header }}">
+  {% endif %}
+  
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  
+  {# Title otimizado para SEO #}
+  <title>{% block title %}{{ app_name | default('Open Monitor') }} - Monitoramento de Segurança{% endblock %}</title>
+  
+  {# Incluir meta tags SEO otimizadas #}
+  {% include 'seo/seo_meta.html' %}
+
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+
+  {# Favicon e Manifest - Verifique os caminhos corretos #}
+  <link rel="icon" href="{{ url_for('static', filename='images/logo.png') }}" type="image/png">
+  <link rel="apple-touch-icon" sizes="512x512" href="{{ url_for('static', filename='images/logo.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+
+  {# Importação de Bootstrap CSS via CDN (forçada) #}
+  <!-- Bootstrap CSS via CDN removido; usando vendor local via main.css -->
+  {# Ícones locais: Bootstrap Icons e Font Awesome são servidos via main.css (vendor) e fontes em /static/fonts #}
+  {# TODO: Adicionar outros links de CDN com fallback se necessário (ex: Remix Icons) #}
+
+  {# CSS Principal - Ponto de entrada único seguindo arquitetura otimizada #}
+  {# main.css gerencia todas as importações na ordem correta da cascata #}
+  <link href="{{ url_for('static', filename='css/main.css') }}?v=20251005" rel="stylesheet">
+  
+  {# CSS para transições suaves entre páginas #}
+  <!-- page-transitions.css removido do head; já importado via main.css -->
+  
+  {# Bundle CSS minificado para produção - descomente para usar versão otimizada #}
+  {# <link href="{{ url_for('static', filename='css/bundle.min.css') }}" rel="stylesheet"> #}
+
+  {# Adiciona uma classe 'no-js' no elemento html para CSS que se comporta diferente sem JS. Removida por base.js #}
+  {# Isso ajuda a evitar FOUC (Flash of Unstyled Content) ou lidar com funcionalidades que requerem JS #}
+  <!-- <script nonce="{{ nonce }}">document.documentElement.classList.add('no-js');</script> --> {# Usar nonce para CSP #}
+
+  {# Bloco para CSS adicional de páginas específicas (geralmente usado pelos templates filhos) #}
+  {% block extra_css %}{% endblock %}
+
+</head>
+<body>
+
+  {# Contêiner flexível principal para layout de altura total #}
+  {# d-flex flex-column faz os filhos (navbar, content-wrapper, footer) se empilharem verticalmente #}
+  <div class="app-container d-flex flex-column min-vh-100">
+
+    {# Inclui a Navbar - Deve ter position: fixed/sticky no CSS #}
+    {% include 'core/navbar.html' %}
+
+    {# Contêiner para Sidebar e Conteúdo Principal #}
+    {# flex-grow-1 faz este contêiner ocupar todo o espaço vertical restante após navbar e footer #}
+    {# d-flex faz os filhos (sidebar e main-content) se posicionarem lado a lado horizontalmente #}
+    {# **A margem superior (margin-top) para evitar sobreposição da navbar fixa deve estar no CSS desta div** #}
+    <div class="main-content-area-wrapper flex-grow-1 d-flex"> {# Classe renomeada para clareza #}
+
+      {# Inclui a Sidebar - Seu posicionamento horizontal (na esquerda) é definido pelo Flexbox parent #}
+      {% include 'core/sidebar.html' %}
+
+      {# Área de conteúdo principal - Ocupa o espaço restante horizontalmente #}
+      <main id="main-content" class="main-content flex-grow-1"> {# flex-grow-1 faz ocupar o espaço horizontal restante #}
+        {# Área para mensagens de alerta do sistema (ex: offline status, flash messages) #}
+        {# Pode ser posicionado fixo ou absoluto via CSS se necessário #}
+        <div id="system-alerts" class="container-fluid mt-3">
+            {# Mensagens de alerta serão injetadas aqui, possivelmente via JS ou Flask flash messages #}
+             {# Renderiza mensagens flash do Flask aqui, injetando-as no toast #}
+              {% with messages = get_flashed_messages(with_categories=true) %}
+                  {% if messages %}
+                      {% for category, message in messages %}
+                          {# Usar classes de alerta Bootstrap #}
+                          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                              {{ message }}
+                              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+                          </div>
+                      {% endfor %}
+                  {% endif %}
+              {% endwith %}
+        </div>
+        {# O conteúdo da página individual é injetado neste bloco #}
+        <div class="container-fluid"> {# container-fluid para full width content #}
+          {% block content %}{% endblock %}
+        </div>
+      </main>
+
+    </div> {# Fecha o main-content-area-wrapper #}
+
+    {# Inclui o Footer - Posicionado no final pelo Flexbox principal #}
+    {% include 'core/footer.html' %}
+
+  </div> {# Fecha o app-container #}
+
+  {# Modais globais: Privacidade e Termos #}
+  <div class="modal fade" id="privacyModal" tabindex="-1" aria-labelledby="privacyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="privacyModalLabel">Política de Privacidade</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <p>Esta é uma versão preliminar da Política de Privacidade do {{ config.get('APP_NAME', 'Open Monitor') }}. Consulte a documentação oficial para detalhes completos.</p>
+          <ul>
+            <li>Coleta mínima de dados para funcionamento e segurança.</li>
+            <li>Sem compartilhamento de dados pessoais com terceiros.</li>
+            <li>Uso de cookies apenas para funcionalidades essenciais.</li>
+          </ul>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="termsModalLabel">Termos de Uso</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <p>Estes termos de uso descrevem as condições para utilização do {{ config.get('APP_NAME', 'Open Monitor') }}.</p>
+          <ol>
+            <li>Uso responsável e conforme a legislação aplicável.</li>
+            <li>Sem garantias explícitas; software fornecido "como está".</li>
+            <li>Contribuições abertas via comunidade.</li>
+          </ol>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  {# Importação de Bootstrap JS via CDN (sem fallback local) - padronizado #}
+  {# Colocado no final do body para carregamento não bloquear a renderização da página #}
+  {# Usar nonce para CSP #}
+  <script type="module" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+          crossorigin="anonymous" referrerpolicy="no-referrer"
+          nonce="{{ nonce }}"></script> {# Carregado como módulo para evitar execução em ambientes legados #}
+
+  <!-- Chart.js global para páginas com gráficos -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"
+          crossorigin="anonymous" referrerpolicy="no-referrer"
+          nonce="{{ nonce }}"></script>
+  
+  {# Bundle JavaScript crítico - Carregamento imediato #}
+  {# Inclui: base.js, loading.js, performance-optimizer.js #}
+  {# <script src="{{ url_for('static', filename='js/critical.min.js') }}" nonce="{{ nonce }}"></script> #}
+  
+  {# Utilitários consolidados - Carregamento prioritário #}
+  <script defer src="{{ url_for('static', filename='js/core/base.js') }}" nonce="{{ nonce }}"></script>
+  <script src="{{ url_for('static', filename='js/core/utils.js') }}" nonce="{{ nonce }}"></script>
+
+
+  {# Polyfill seguro para helpers globais, caso base.js falhe ou carregue depois #}
+  <script nonce="{{ nonce }}">
+    (function() {
+      if (typeof window.getModalInstance !== 'function') {
+        window.getModalInstance = function(el, options) {
+          if (!el) return null;
+          try {
+            if (typeof window.bootstrap !== 'undefined' && bootstrap.Modal) {
+              return bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el, options);
+            }
+          } catch (e) {
+            console.warn('Bootstrap Modal init failed:', e);
+          }
+          return {
+            show: function() {
+              el.classList.add('show');
+              el.style.display = 'block';
+              document.body.classList.add('modal-open');
+            },
+            hide: function() {
+              el.classList.remove('show');
+              el.style.display = 'none';
+              document.body.classList.remove('modal-open');
+              var backdrops = document.querySelectorAll('.modal-backdrop');
+              Array.prototype.forEach.call(backdrops, function(b) {
+                if (b && b.parentNode) { b.parentNode.removeChild(b); }
+              });
+            }
+          };
+        };
+      }
+      if (typeof window.getToastInstance !== 'function') {
+        window.getToastInstance = function(el, options) {
+          if (!el) return null;
+          try {
+            if (typeof window.bootstrap !== 'undefined' && bootstrap.Toast) {
+              return bootstrap.Toast.getInstance(el) || new bootstrap.Toast(el, options);
+            }
+          } catch (e) {
+            console.warn('Bootstrap Toast init failed:', e);
+          }
+          return {
+            show: function() {
+              el.classList.add('show');
+              el.style.display = 'block';
+            },
+            hide: function() {
+              el.classList.remove('show');
+              el.style.display = 'none';
+            }
+          };
+        };
+      }
+    })();
+  </script>
+
+  <!-- Global error handlers and safe toast notification helper -->
+  <script nonce="{{ nonce }}">
+    (function() {
+      function safeNotify(type, title, message, duration) {
+        try {
+          var kind = type || 'error';
+          var ttl = title || (kind === 'success' ? 'Sucesso' : kind === 'warning' ? 'Aviso' : kind === 'info' ? 'Informação' : 'Erro');
+          var msg = message || '';
+          var delay = Number(duration) || 5000;
+
+          var toastContainer = document.querySelector('.toast-container');
+          if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+            toastContainer.style.zIndex = '1080';
+            document.body.appendChild(toastContainer);
+          }
+
+          var toastEl = document.getElementById('feedback-toast');
+          if (!toastEl) {
+            toastEl = document.createElement('div');
+            toastEl.id = 'feedback-toast';
+            toastEl.className = 'toast';
+            toastEl.setAttribute('role', 'alert');
+            toastEl.setAttribute('aria-live', 'assertive');
+            toastEl.setAttribute('aria-atomic', 'true');
+            toastEl.innerHTML = (
+              '<div class="toast-header">' +
+                '<i class="bi me-2"></i>' +
+                '<strong class="me-auto"></strong>' +
+                '<small class="text-muted"></small>' +
+                '<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>' +
+              '</div>' +
+              '<div class="toast-body"></div>'
+            );
+            toastContainer.appendChild(toastEl);
+          }
+
+          var iconEl = toastEl.querySelector('.toast-header i');
+          var titleEl = toastEl.querySelector('.toast-header strong');
+          var bodyEl = toastEl.querySelector('.toast-body');
+
+          var iconMap = {
+            success: 'bi bi-check-circle-fill text-success me-2',
+            error: 'bi bi-exclamation-triangle-fill text-danger me-2',
+            warning: 'bi bi-exclamation-triangle-fill text-warning me-2',
+            info: 'bi bi-info-circle-fill text-primary me-2'
+          };
+
+          iconEl.className = iconMap[kind] || iconMap.info;
+          titleEl.textContent = ttl;
+          bodyEl.textContent = msg;
+
+          var toast = (window.getToastInstance ? window.getToastInstance(toastEl, { delay: delay }) : null);
+          if (toast && typeof toast.show === 'function') {
+            toast.show();
+          } else if (window.bootstrap && window.bootstrap.Toast) {
+            new window.bootstrap.Toast(toastEl, { delay: delay }).show();
+          } else if (window.showSystemAlert) {
+            window.showSystemAlert(ttl + ': ' + msg, 'danger', delay);
+          } else {
+            console.error('[safeNotify]', ttl + ': ' + msg);
+          }
+        } catch (e) {
+          try {
+            if (window.showSystemAlert) window.showSystemAlert('Erro: ' + (message || ''), 'danger', 5000);
+          } catch (_) {
+            console.error('[safeNotify-fallback]', e);
+          }
+        }
+      }
+
+      window.safeNotify = safeNotify;
+
+      window.addEventListener('error', function (event) {
+        try {
+          var msg = event && event.message ? event.message : 'Erro de JavaScript';
+          safeNotify('error', 'Erro de JavaScript', msg, 6000);
+        } catch (e) {
+          if (window.showSystemAlert) window.showSystemAlert('Erro de JavaScript: ' + msg, 'danger', 6000);
+        }
+      });
+
+      window.addEventListener('unhandledrejection', function (event) {
+        var reason = event && event.reason;
+        var msg = (typeof reason === 'string') ? reason : (reason && reason.message) ? reason.message : 'Rejeição não tratada';
+        try {
+          safeNotify('error', 'Erro Assíncrono', msg, 6000);
+        } catch (e) {
+          if (window.showSystemAlert) window.showSystemAlert('Erro Assíncrono: ' + msg, 'danger', 6000);
+        }
+      });
+    })();
+  </script>
+
+  {# Bloco para scripts adicionais de páginas específicas (injetado pelos templates filhos) #}
+  {# Usar nonce para CSP se os scripts inline forem colocados aqui #}
+  {% block scripts %}{% endblock %}
+
+  <!-- <script nonce="{{ nonce }}">
+     document.addEventListener('DOMContentLoaded', function() {
+       // Adicionar listeners para status online/offline
+       window.addEventListener('online', updateOnlineStatus);
+       window.addEventListener('offline', updateOnlineStatus);
+
+       function updateOnlineStatus(event) {
+         const condition = navigator.onLine ? 'online' : 'offline';
+         const systemAlerts = document.getElementById('system-alerts');
+
+         if (systemAlerts) { // Verifica se a div system-alerts existe
+           const existingAlert = document.getElementById('offline-alert');
+
+           if (condition === 'offline') {
+             if (!existingAlert) { // Cria o alerta apenas se não existir
+               const offlineAlert = document.createElement('div');
+               // Usar classes de alerta Bootstrap
+               offlineAlert.className = 'alert alert-warning alert-dismissible fade show';
+               offlineAlert.role = 'alert';
+               offlineAlert.id = 'offline-alert';
+
+               const content = '<div class="d-flex align-items-center">' +
+                 '<div class="me-2">' +
+                 '<i class="bi bi-wifi-off"></i>' +
+                 '</div>' +
+                 '<div>Você está offline. Algumas funcionalidades podem estar indisponíveis.</div>' +
+                 '</div>' +
+                 '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>';
+
+               offlineAlert.innerHTML = content;
+               // Prepend o alerta ao invés de append, para aparecer no topo da lista de alertas
+               systemAlerts.prepend(offlineAlert);
+                // Adiciona um timer para remover a classe 'show' após um pequeno delay para a animação de fade-in
+                // (Pode não ser necessário se o CSS gerenciar o fade com 'fade show')
+             }
+           } else { // Se online
+             if (existingAlert) {
+                // Adiciona a classe 'fade' e 'show' para a animação de fade-out antes de remover
+                // existingAlert.classList.add('fade'); // 'fade' já está na classe
+                existingAlert.classList.add('show');
+                // Espera a transição terminar antes de remover o elemento
+                existingAlert.addEventListener('transitionend', function() {
+                    existingAlert.remove();
+                });
+                // Caso a transição não ocorra por algum motivo, remover após um tempo
+                setTimeout(function() {
+                     if(existingAlert && existingAlert.parentNode) {
+                         existingAlert.remove();
+                     }
+                }, 600); // Tempo maior que a duração da transição
+             }
+           }
+         }
+       }
+
+       // Verificar estado de conexão ao carregar
+       updateOnlineStatus();
+
+       // TODO: Adicionar lógica JS para exibir mensagens flash do Flask em toasts
+       // Isso requer ler as mensagens flash do HTML (já estão lá)
+       // e inicializar e mostrar o componente toast do Bootstrap.
+       // Pode usar o toast-container já definido.
+     });
+   </script> -->
+
+   {# Scripts adicionais para funcionalidades específicas #}
+   {# Bundle Config - Carregamento dinâmico de módulos #}
+   {# <script src="{{ url_for('static', filename='js/bundle-config.js') }}"></script> #}
+   
+   {# Performance Metrics - Monitoramento de performance #}
+   {# <script src="{{ url_for('static', filename='js/performance-metrics.js') }}" defer></script> #}
+   
+   {# Modern Pagination System #}
+   <script src="{{ url_for('static', filename='js/utils/pagination.js') }}" defer nonce="{{ nonce }}"></script>
+   
+   {# Fallback para desenvolvimento - descomente se necessário #}
+   {# {% if config.DEBUG %}
+   
+   <script src="{{ url_for('static', filename='js/utils/performance-optimizer.js') }}" defer nonce="{{ nonce }}"></script>
+   {% endif %} #}
+
+   {# Footer JavaScript - Funcionalidades do rodapé #}
+   <script src="{{ url_for('static', filename='js/components/footer.js') }}" defer nonce="{{ nonce }}"></script>
+   
+   {# JavaScript para transições suaves entre páginas #}
+   <script src="{{ url_for('static', filename='js/utils/page-transitions.js') }}" defer nonce="{{ nonce }}"></script>
+
+   {# Bloco para scripts específicos de cada página #}
+   {% block extra_js %}{% endblock %}
+
+</body>
+</html>

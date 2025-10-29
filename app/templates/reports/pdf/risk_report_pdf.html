@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <title>Relatório de Risco - {{ cve_id }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        @page { size: A4; margin: 12mm; }
+        :root {
+            --primary: #0d6efd;
+            --primary-dark: #0b5ed7;
+            --bg: #ffffff;
+            --text: #333333;
+            --muted: #666666;
+            --border: #e5e7eb;
+            --success: #198754;
+            --warning: #ffc107;
+            --danger: #dc3545;
+        }
+        body { font-family: Arial, Helvetica, sans-serif; background: var(--bg); color: var(--text); }
+        .container { max-width: 900px; margin: 0 auto; }
+        .header {
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 10px;
+            margin-bottom: 18px;
+        }
+        .title { font-size: 22px; margin: 0; }
+        .meta { margin-top: 6px; color: var(--muted); font-size: 12px; }
+        .badge { display: inline-block; padding: 6px 10px; border-radius: 6px; color: #fff; font-weight: 600; font-size: 12px; }
+        .badge.success { background: var(--success); }
+        .badge.warning { background: var(--warning); color: #000; }
+        .badge.danger { background: var(--danger); }
+        .section { margin-top: 18px; }
+        .section h2 { font-size: 18px; margin: 0 0 8px; color: var(--primary-dark); }
+        .content { font-size: 13px; line-height: 1.6; }
+        .content h1, .content h2, .content h3 { color: var(--text); margin: 14px 0 10px; }
+        .content ul, .content ol { margin: 10px 0 10px 20px; }
+        .content p { margin: 8px 0; }
+        .footer { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 12px; font-size: 12px; color: var(--muted); }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .card { border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="grid">
+                <div>
+                    <h1 class="title">Relatório de Análise de Risco</h1>
+                    <div class="meta">
+                        <div><strong>CVE:</strong> {{ cve_id }}</div>
+                        <div><strong>Gerado em:</strong> {{ generated_at.strftime('%d/%m/%Y %H:%M') if generated_at else '' }}</div>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    {% if vulnerability.base_severity %}
+                        {% set sev = vulnerability.base_severity %}
+                        {% set sev_class = 'success' if sev == 'LOW' else 'warning' if sev == 'MEDIUM' else 'danger' %}
+                        <span class="badge {{ sev_class }}">{{ sev }}</span>
+                    {% endif %}
+                    {% if vulnerability.cvss_score %}
+                        <div class="meta" style="margin-top: 8px;">CVSS: {{ '%.1f'|format(vulnerability.cvss_score) }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Resumo</h2>
+            <div class="grid">
+                <div class="card">
+                    <div class="meta">Vendor</div>
+                    <div>{{ vulnerability.vendor_name if vulnerability.vendor_name else '—' }}</div>
+                </div>
+                <div class="card">
+                    <div class="meta">Produto</div>
+                    <div>{{ vulnerability.product_name if vulnerability.product_name else '—' }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Relatório de Risco</h2>
+            <div class="content">
+                {% if risk_analysis_html %}
+                    {{ risk_analysis_html | safe }}
+                {% elif risk_analysis_md %}
+                    {{ risk_analysis_md | markdown | safe }}
+                {% else %}
+                    <p>Não foi possível gerar o relatório de risco para esta vulnerabilidade.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="footer">
+            Gerado por Open Monitor • {{ generated_at.strftime('%Y-%m-%d %H:%M:%S') if generated_at else '' }} • Engine: {{ config.PDF_ENGINE if config and config.PDF_ENGINE else 'auto' }}
+        </div>
+    </div>
+</body>
+</html>

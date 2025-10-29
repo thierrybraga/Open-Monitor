@@ -1,0 +1,60 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Login - Open Monitor{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-12 col-sm-10 col-md-6 col-lg-4">
+      <h1 class="h4 text-center mb-4">Entrar</h1>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" novalidate id="login-form">
+        {{ form.hidden_tag() }}
+
+        <div class="mb-3">
+          {{ form.username.label(class="form-label", for="username") }}
+          {{ form.username(class="form-control", id="username", autocomplete="username", autofocus=true) }}
+          {% if form.username.errors %}
+            <div class="invalid-feedback d-block">{{ form.username.errors[0] }}</div>
+          {% endif %}
+        </div>
+
+        <div class="mb-3">
+          {{ form.password.label(class="form-label", for="password") }}
+          {{ form.password(class="form-control", id="password", autocomplete="current-password") }}
+          {% if form.password.errors %}
+            <div class="invalid-feedback d-block">{{ form.password.errors[0] }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-check mb-3">
+          {{ form.remember_me(class="form-check-input", id="remember_me") }}
+          <label for="remember_me" class="form-check-label">{{ form.remember_me.label.text }}</label>
+        </div>
+
+        <div class="d-grid">
+          {{ form.submit(class="btn btn-primary") }}
+        </div>
+
+        <div class="text-center mt-3">
+          <a href="{{ url_for('auth.forgot_password') }}">Esqueceu sua senha?</a>
+        </div>
+        <div class="text-center mt-2">
+          <a href="{{ url_for('auth.register') }}">Cadastre-se</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

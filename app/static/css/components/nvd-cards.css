@@ -1,0 +1,782 @@
+/* ==========================================================================
+   NVD Cards - Modern Professional Design System
+   Version: 1.0
+   Created: Janeiro 2025
+   Description: Estilos modernos e profissionais para os cards NVD (Vendors, Products, CPE)
+   Dependencies: variables.css, components.css
+   ========================================================================== */
+
+/* ==========================================================================
+   Risk Level Indicators - Sistema de cores por nível de risco
+   ========================================================================== */
+
+.risk-critical {
+  --risk-color: #dc3545;
+  --risk-bg: rgba(220, 53, 69, 0.1);
+  --risk-border: rgba(220, 53, 69, 0.2);
+  --risk-gradient: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+
+.risk-high {
+  --risk-color: #fd7e14;
+  --risk-bg: rgba(253, 126, 20, 0.1);
+  --risk-border: rgba(253, 126, 20, 0.2);
+  --risk-gradient: linear-gradient(135deg, #fd7e14 0%, #e8690b 100%);
+}
+
+.risk-medium {
+  --risk-color: #ffc107;
+  --risk-bg: rgba(255, 193, 7, 0.1);
+  --risk-border: rgba(255, 193, 7, 0.2);
+  --risk-gradient: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+}
+
+.risk-low {
+  --risk-color: #198754;
+  --risk-bg: rgba(25, 135, 84, 0.1);
+  --risk-border: rgba(25, 135, 84, 0.2);
+  --risk-gradient: linear-gradient(135deg, #198754 0%, #146c43 100%);
+}
+
+/* ==========================================================================
+   NVD Cards Grid Layout
+   ========================================================================== */
+
+.nvd-data-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+/* ==========================================================================
+   Modern NVD Card Base Styles
+   ========================================================================== */
+
+.nvd-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 20px;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 4px 20px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.05);
+  position: relative;
+}
+
+.nvd-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #6f42c1, #0d6efd, #198754, #fd7e14);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.nvd-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.15),
+    0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 123, 255, 0.3);
+}
+
+.nvd-card:hover::before {
+  opacity: 1;
+}
+
+/* ==========================================================================
+   Card Header Styles
+   ========================================================================== */
+
+.nvd-card-header {
+  display: flex;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.nvd-card-header:hover {
+  background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+}
+
+.nvd-card-header:focus {
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color, var(--color-primary-500, #007bff));
+  outline-offset: var(--focus-ring-offset, -2px);
+}
+
+/* ==========================================================================
+   Card Icons - Specific Styles for Each Card Type
+   ========================================================================== */
+
+.nvd-card-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1.25rem;
+  font-size: 24px;
+  color: white;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.nvd-card-icon::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.2);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.nvd-card:hover .nvd-card-icon::before {
+  opacity: 1;
+}
+
+.vendors-icon {
+  background: linear-gradient(135deg, #6f42c1 0%, #8b5cf6 100%);
+  box-shadow: 0 4px 12px rgba(111, 66, 193, 0.3);
+}
+
+.products-icon {
+  background: linear-gradient(135deg, #0d6efd 0%, #3b82f6 100%);
+  box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+}
+
+.cpe-icon {
+  background: linear-gradient(135deg, #198754 0%, #10b981 100%);
+  box-shadow: 0 4px 12px rgba(25, 135, 84, 0.3);
+}
+
+/* ==========================================================================
+   Card Title and Metadata
+   ========================================================================== */
+
+.nvd-card-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.nvd-card-title h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #212529;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+
+.nvd-card-count {
+  display: block;
+  font-size: 0.875rem;
+  color: #6c757d;
+  margin-top: 0.25rem;
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   Toggle Button
+   ========================================================================== */
+
+.nvd-toggle-btn {
+  background: none;
+  border: none;
+  padding: 0.75rem;
+  border-radius: 12px;
+  color: #6c757d;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1.125rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nvd-toggle-btn:hover {
+  background: rgba(0, 123, 255, 0.1);
+  color: #007bff;
+  transform: scale(1.1);
+}
+
+.nvd-toggle-btn:focus {
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color, var(--color-primary-500, #007bff));
+  outline-offset: var(--focus-ring-offset, 2px);
+}
+
+.nvd-toggle-btn.active {
+  transform: rotate(180deg);
+  color: #007bff;
+}
+
+/* ==========================================================================
+   Card Content Area
+   ========================================================================== */
+
+.nvd-card-content {
+  padding: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #ffffff;
+}
+
+.nvd-card-content.expanded {
+  max-height: 2000px;
+  padding: 2rem;
+}
+
+/* ==========================================================================
+   Risk Summary Section
+   ========================================================================== */
+
+.risk-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.risk-stat {
+  text-align: center;
+  padding: 1rem;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.risk-stat::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--risk-bg);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.risk-stat:hover::before {
+  opacity: 1;
+}
+
+.risk-stat-number {
+  display: block;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--risk-color);
+  margin-bottom: 0.25rem;
+  position: relative;
+  z-index: 1;
+}
+
+.risk-stat-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  position: relative;
+  z-index: 1;
+}
+
+/* ==========================================================================
+   Items List Styles
+   ========================================================================== */
+
+.vendors-list,
+.products-list,
+.cpe-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ==========================================================================
+   Vendor Item Styles
+   ========================================================================== */
+
+.vendor-item {
+  display: flex;
+  align-items: center;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.vendor-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--risk-gradient);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.vendor-item:hover {
+  transform: translateX(8px);
+  border-color: var(--risk-border);
+  box-shadow: 0 8px 24px var(--risk-bg);
+}
+
+.vendor-item:hover::before {
+  opacity: 1;
+}
+
+.vendor-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--risk-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  margin-right: 1rem;
+  font-size: 1.125rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px var(--risk-bg);
+}
+
+.vendor-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.vendor-name {
+  font-weight: 700;
+  color: #212529;
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+  line-height: 1.3;
+}
+
+.vendor-type,
+.vendor-products-count {
+  font-size: 0.875rem;
+  color: #6c757d;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.125rem;
+}
+
+.vendor-risk-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--risk-bg);
+  color: var(--risk-color);
+  border: 1px solid var(--risk-border);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Product Item Styles
+   ========================================================================== */
+
+.product-item-nvd {
+  display: flex;
+  align-items: center;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.product-item-nvd::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--risk-gradient);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.product-item-nvd:hover {
+  transform: translateX(8px);
+  border-color: var(--risk-border);
+  box-shadow: 0 8px 24px var(--risk-bg);
+}
+
+.product-item-nvd:hover::before {
+  opacity: 1;
+}
+
+.product-icon-nvd {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--risk-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  margin-right: 1rem;
+  font-size: 1.125rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px var(--risk-bg);
+}
+
+.product-info-nvd {
+  flex: 1;
+  min-width: 0;
+}
+
+.product-name-nvd {
+  font-weight: 700;
+  color: #212529;
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+  line-height: 1.3;
+}
+
+.product-version-nvd,
+.product-vendor-nvd {
+  font-size: 0.875rem;
+  color: #6c757d;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.125rem;
+}
+
+.product-risk-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--risk-bg);
+  color: var(--risk-color);
+  border: 1px solid var(--risk-border);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   CPE Item Styles
+   ========================================================================== */
+
+.cpe-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.cpe-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--risk-gradient);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.cpe-item:hover {
+  transform: translateX(8px);
+  border-color: var(--risk-border);
+  box-shadow: 0 8px 24px var(--risk-bg);
+}
+
+.cpe-item:hover::before {
+  opacity: 1;
+}
+
+.cpe-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--risk-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  margin-right: 1rem;
+  font-size: 1.125rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px var(--risk-bg);
+}
+
+.cpe-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.cpe-uri {
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+  color: #212529;
+  background: #f8f9fa;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  word-break: break-all;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.cpe-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.cpe-detail {
+  font-size: 0.875rem;
+  color: #6c757d;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cpe-vulnerable-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--risk-bg);
+  color: var(--risk-color);
+  border: 1px solid var(--risk-border);
+  align-self: flex-start;
+}
+
+/* ==========================================================================
+   Raw Data Section
+   ========================================================================== */
+
+.raw-data-section {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.btn-raw-data {
+  background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.2);
+}
+
+.btn-raw-data:hover {
+  background: linear-gradient(135deg, #495057 0%, #343a40 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(108, 117, 125, 0.3);
+}
+
+.raw-data-container {
+  margin-top: 1rem;
+  background: #f8f9fa;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.raw-data-container pre {
+  margin: 0;
+  padding: 1.5rem;
+  background: #2d3748;
+  color: #e2e8f0;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  overflow-x: auto;
+  font-family: 'Courier New', monospace;
+}
+
+.raw-data-container code {
+  color: #e2e8f0;
+}
+
+/* ==========================================================================
+   Responsive Design
+   ========================================================================== */
+
+@media (max-width: 1200px) {
+  .nvd-data-grid {
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .nvd-data-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .nvd-card-header {
+    padding: 1.25rem 1.5rem;
+  }
+
+  .nvd-card-content.expanded {
+    padding: 1.5rem;
+  }
+
+  .nvd-card-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 1.125rem;
+    margin-right: 1rem;
+  }
+
+  .nvd-card-title h3 {
+    font-size: 1.125rem;
+  }
+
+  .risk-summary {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  .risk-stat {
+    padding: 0.75rem;
+  }
+
+  .risk-stat-number {
+    font-size: 1.5rem;
+  }
+
+  .vendor-item,
+  .product-item-nvd,
+  .cpe-item {
+    padding: 1rem;
+  }
+
+  .vendor-icon,
+  .product-icon-nvd,
+  .cpe-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .nvd-card-header {
+    padding: 1rem;
+  }
+
+  .nvd-card-content.expanded {
+    padding: 1rem;
+  }
+
+  .risk-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .cpe-details {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   Accessibility Enhancements
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .nvd-card,
+  .nvd-card-header,
+  .nvd-card-content,
+  .nvd-toggle-btn,
+  .vendor-item,
+  .product-item-nvd,
+  .cpe-item,
+  .btn-raw-data {
+    transition: none;
+  }
+
+  .nvd-card:hover,
+  .vendor-item:hover,
+  .product-item-nvd:hover,
+  .cpe-item:hover {
+    transform: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .nvd-card {
+    border-width: 2px;
+    border-color: #000;
+  }
+
+  .nvd-card-header {
+    border-bottom-width: 2px;
+    border-bottom-color: #000;
+  }
+
+  .vendor-item,
+  .product-item-nvd,
+  .cpe-item {
+    border-width: 2px;
+  }
+}
+
+/* Focus indicators for keyboard navigation */
+.nvd-card-header:focus-visible,
+.nvd-toggle-btn:focus-visible,
+.btn-raw-data:focus-visible {
+  outline: 3px solid #007bff;
+  outline-offset: 2px;
+}

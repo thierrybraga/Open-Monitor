@@ -1,0 +1,8 @@
+{% extends "error/base_error.html" %}
+
+{% block title %}500 - Erro Interno{% endblock %}
+
+{% set error_code = "500" %}
+{% set error_title = "Erro Interno" %}
+{% set error_message = "Ocorreu um erro no servidor. Tente novamente mais tarde." %}
+{% set error_type = "danger" %}

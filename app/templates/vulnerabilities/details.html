@@ -1,0 +1,706 @@
+{% extends "core/base.html" %}
+
+{% block title %}{{ vulnerability.cve_id or vulnerability.title }} - Detalhes da Vulnerabilidade - {{ super() }}{% endblock %}
+
+{% block meta_description %}Análise detalhada da vulnerabilidade {{ vulnerability.cve_id or vulnerability.title }}{% if vulnerability.base_severity %} ({{ vulnerability.base_severity }}){% endif %}. {% if vulnerability.description %}{{ vulnerability.description | truncate(120) }}{% endif %}{% endblock %}
+
+{% block meta_keywords %}{{ vulnerability.cve_id }}, vulnerabilidade, segurança, {{ vulnerability.base_severity | lower if vulnerability.base_severity }}, CVE, cybersecurity{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/vulnerability-details.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/vulnerability-details.js') }}" defer nonce="{{ csp_nonce }}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="vulnerability-details-improved">
+    <div class="container-fluid px-3 px-lg-4">
+        
+        {# Skip to main content for accessibility #}
+        <a href="#main-content" class="skip-link">Pular para o conteúdo principal</a>
+
+        {# Breadcrumb Navigation #}
+        <nav aria-label="breadcrumb" class="vuln-breadcrumb">
+            <ol class="breadcrumb-list">
+                <li><a href="{{ url_for('main.index') }}">Início</a></li>
+                <li><a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}">Vulnerabilidades</a></li>
+                <li aria-current="page">{{ vulnerability.cve_id or vulnerability.title }}</li>
+            </ol>
+        </nav>
+
+        {# CISA KEV Alert Banner #}
+        {% if vulnerability.cisa_exploit_add %}
+        <div class="alert-banner cisa-kev" role="alert">
+            <div class="alert-icon">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+            <div class="alert-content">
+                <h4 class="alert-title">⚠️ ALERTA CISA KEV</h4>
+                <p class="alert-message"><strong>Esta vulnerabilidade está na lista CISA Known Exploited Vulnerabilities (KEV)</strong></p>
+                {% if vulnerability.cisa_required_action %}
+                <p class="alert-detail"><strong>Ação Requerida:</strong> {{ vulnerability.cisa_required_action }}</p>
+                {% endif %}
+                {% if vulnerability.cisa_action_due %}
+                <p class="alert-detail"><strong>Prazo:</strong> {{ vulnerability.cisa_action_due.strftime('%d/%m/%Y') }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {# Main Content Area #}
+        <main id="main-content" role="main">
+            
+            {# Enhanced Header Section #}
+            <header class="vuln-header" aria-labelledby="vuln-title">
+                <div class="header-main">
+                    <div class="title-group">
+                        <h1 id="vuln-title" class="vuln-title">{{ vulnerability.cve_id or vulnerability.title }}</h1>
+                        {% if vulnerability.base_severity %}
+                        <div class="severity-badge severity-{{ (vulnerability.base_severity|default('unknown'))|lower }}" 
+                             role="img" 
+                             aria-label="Severidade {{ vulnerability.base_severity }}{% if vulnerability.base_score %} - Score CVSS {{ vulnerability.base_score }}{% endif %}">
+                            <span class="severity-label">{{ vulnerability.base_severity }}</span>
+                            {% if vulnerability.base_score %}
+                            <span class="severity-score">{{ vulnerability.base_score }}</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="header-actions">
+                        <a href="{{ url_for('vulnerability_ui.generate_risk_report', cve_id=vulnerability.cve_id) }}" 
+                           class="btn-action btn-primary"
+                           aria-label="Gerar relatório de risco em PDF">
+                            <i class="bi bi-file-earmark-pdf"></i>
+                            <span>Relatório PDF</span>
+                        </a>
+                        <button class="btn-action btn-secondary" 
+                                onclick="copyToClipboard('{{ vulnerability.cve_id }}', this)"
+                                aria-label="Copiar CVE ID">
+                            <i class="bi bi-clipboard"></i>
+                            <span>Copiar ID</span>
+                        </button>
+                        <button class="btn-action btn-secondary" 
+                                data-share="vulnerability"
+                                data-title="{{ vulnerability.cve_id or vulnerability.title }}"
+                                data-text="Detalhes da vulnerabilidade"
+                                aria-label="Compartilhar vulnerabilidade">
+                            <i class="bi bi-share"></i>
+                            <span>Compartilhar</span>
+                        </button>
+                    </div>
+                </div>
+
+                {# Meta Information Chips #}
+                <div class="meta-chips" role="list">
+                    {% if vulnerability.published_date %}
+                    <div class="meta-chip" role="listitem">
+                        <i class="bi bi-calendar-event"></i>
+                        <span class="chip-label">Publicado</span>
+                        <span class="chip-value">{{ vulnerability.published_date.strftime('%d/%m/%Y') }}</span>
+                    </div>
+                    {% endif %}
+                    {% if vulnerability.last_update %}
+                    <div class="meta-chip" role="listitem">
+                        <i class="bi bi-clock-history"></i>
+                        <span class="chip-label">Atualizado</span>
+                        <span class="chip-value">{{ vulnerability.last_update.strftime('%d/%m/%Y') }}</span>
+                    </div>
+                    {% endif %}
+                    {% if vulnerability.vuln_status %}
+                    <div class="meta-chip" role="listitem">
+                        <i class="bi bi-info-circle"></i>
+                        <span class="chip-label">Status</span>
+                        <span class="chip-value">{{ vulnerability.vuln_status }}</span>
+                    </div>
+                    {% endif %}
+                    {% if vulnerability.version_references or vulnerability.affected_products or fallback_versions %}
+                    <div class="meta-chip" role="listitem">
+                        <i class="bi bi-box"></i>
+                        <span class="chip-label">Produtos Afetados</span>
+                        {% set product_count = vulnerability.version_references|length if vulnerability.version_references else (vulnerability.affected_products|length if vulnerability.affected_products else (fallback_versions|length if fallback_versions else 0)) %}
+                        <span class="chip-value">{{ product_count }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </header>
+
+            {# Unified Navigation with Progress #}
+            <nav class="vuln-nav-unified" role="navigation" aria-label="Navegação da vulnerabilidade" id="unifiedNav">
+                <div class="nav-sections">
+                    <a href="#overview" class="nav-item active" data-section="overview">
+                        <i class="bi bi-grid-3x3-gap"></i>
+                        <span>Visão Geral</span>
+                    </a>
+                    <a href="#technical" class="nav-item" data-section="technical">
+                        <i class="bi bi-gear"></i>
+                        <span>Técnico</span>
+                    </a>
+                    <a href="#impact" class="nav-item" data-section="impact">
+                        <i class="bi bi-lightning"></i>
+                        <span>Impacto</span>
+                    </a>
+                    <a href="#references" class="nav-item" data-section="references">
+                        <i class="bi bi-link-45deg"></i>
+                        <span>Referências</span>
+                    </a>
+                </div>
+                <div class="nav-progress" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress-fill"></div>
+                </div>
+            </nav>
+
+            {# SECTION 1: Overview (Above the fold) #}
+            <section id="overview" class="content-section" aria-labelledby="overview-heading">
+                <h2 id="overview-heading" class="section-heading visually-hidden">Visão Geral</h2>
+                
+                {# Summary Cards Grid #}
+                <div class="summary-cards-grid">
+                    {# CVSS Score Card #}
+                    <div class="summary-card card-cvss">
+                        <div class="card-label">
+                            <i class="bi bi-shield-lock"></i>
+                            <span>Score CVSS</span>
+                        </div>
+                        <div class="card-value">
+                            {% set primary_metric = (vulnerability.metrics | selectattr('is_primary') | list | first) if vulnerability.metrics else None %}
+                            {% set cvss_display = vulnerability.cvss_score or (primary_metric.base_score if primary_metric and primary_metric.base_score) %}
+                            {% if cvss_display %}
+                                <span class="value-main">{{ cvss_display }}</span>
+                                {% set severity_display = vulnerability.base_severity or (primary_metric.base_severity if primary_metric and primary_metric.base_severity) %}
+                                {% if severity_display %}
+                                <span class="value-badge badge-{{ (severity_display|default('unknown'))|lower }}">
+                                    {{ severity_display }}
+                                </span>
+                                {% endif %}
+                            {% else %}
+                                <span class="value-na">N/A</span>
+                            {% endif %}
+                        </div>
+                        <div class="card-context">Severidade baseada em CVSS</div>
+                    </div>
+
+                    {# Risk Score Card #}
+                    <div class="summary-card card-risk">
+                        <div class="card-label">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <span>Risco Calculado</span>
+                        </div>
+                        <div class="card-value">
+                            {% if analytics and analytics.calculated_risk_score %}
+                                <span class="value-main">{{ analytics.calculated_risk_score }}</span>
+                            {% else %}
+                                <span class="value-na">N/A</span>
+                            {% endif %}
+                        </div>
+                        <div class="card-context">Baseado em CVSS e contexto</div>
+                    </div>
+
+                    {# Affected Assets Card #}
+                    <div class="summary-card card-assets">
+                        <div class="card-label">
+                            <i class="bi bi-hdd-stack"></i>
+                            <span>Ativos Afetados</span>
+                        </div>
+                        <div class="card-value">
+                            <span class="value-main">{{ analytics.affected_assets_count if analytics and analytics.affected_assets_count else '0' }}</span>
+                        </div>
+                        <div class="card-context">Ativos em risco</div>
+                    </div>
+
+                    {# Patch Status Card #}
+                    <div class="summary-card card-patch">
+                        <div class="card-label">
+                            <i class="bi bi-patch-check"></i>
+                            <span>Status do Patch</span>
+                        </div>
+                        <div class="card-value">
+                            {% if vulnerability.patch_available %}
+                                <span class="status-badge badge-available">
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    Disponível
+                                </span>
+                            {% else %}
+                                <span class="status-badge badge-unavailable">
+                                    <i class="bi bi-x-circle-fill"></i>
+                                    Indisponível
+                                </span>
+                            {% endif %}
+                        </div>
+                        <div class="card-context">Correção do fornecedor</div>
+                    </div>
+                </div>
+
+                {# Description Box #}
+                {% if vulnerability.description %}
+                <div class="description-box">
+                    <h3 class="description-title">
+                        <i class="bi bi-file-text"></i>
+                        Descrição da Vulnerabilidade
+                    </h3>
+                    <p class="description-text">{{ vulnerability.description }}</p>
+                </div>
+                {% endif %}
+            </section>
+
+            {# SECTION 2: Technical Details #}
+            <section id="technical" class="content-section" aria-labelledby="technical-heading">
+                <h2 id="technical-heading" class="section-heading">
+                    <i class="bi bi-gear"></i>
+                    Informações Técnicas
+                </h2>
+
+                {# Enhanced Tabs #}
+                <div class="tech-tabs-container">
+                    <div class="tech-tabs" role="tablist">
+                        <button class="tab-item active" 
+                                role="tab" 
+                                id="tab-general" 
+                                data-tab="panel-general"
+                                aria-controls="panel-general" 
+                                aria-selected="true">
+                            <i class="bi bi-info-circle"></i>
+                            <span>Geral</span>
+                        </button>
+                        {% if vulnerability.metrics %}
+                        <button class="tab-item" 
+                                role="tab" 
+                                id="tab-cvss" 
+                                data-tab="panel-cvss"
+                                aria-controls="panel-cvss" 
+                                aria-selected="false">
+                            <i class="bi bi-shield-lock"></i>
+                            <span>CVSS</span>
+                            <span class="tab-badge">{{ vulnerability.metrics|length }}</span>
+                        </button>
+                        {% endif %}
+                        {% if vulnerability.weaknesses %}
+                        <button class="tab-item" 
+                                role="tab" 
+                                id="tab-weaknesses" 
+                                data-tab="panel-weaknesses"
+                                aria-controls="panel-weaknesses" 
+                                aria-selected="false">
+                            <i class="bi bi-bug"></i>
+                            <span>Fraquezas</span>
+                            <span class="tab-badge">{{ vulnerability.weaknesses|length }}</span>
+                        </button>
+                        {% endif %}
+                        {% if vulnerability.version_references or vulnerability.affected_products or fallback_versions %}
+                        <button class="tab-item" 
+                                role="tab" 
+                                id="tab-products" 
+                                data-tab="panel-products"
+                                aria-controls="panel-products" 
+                                aria-selected="false">
+                            <i class="bi bi-box"></i>
+                            <span>Produtos</span>
+                            {% set product_count = vulnerability.version_references|length if vulnerability.version_references else (vulnerability.affected_products|length if vulnerability.affected_products else (fallback_versions|length if fallback_versions else 0)) %}
+                            <span class="tab-badge">{{ product_count }}</span>
+                        </button>
+                        {% endif %}
+                    </div>
+
+                    {# Tab Panels #}
+                    <div class="tech-panels">
+                        {# General Panel #}
+                        <div class="tab-panel active" 
+                             role="tabpanel" 
+                             id="panel-general" 
+                             aria-labelledby="tab-general">
+                            <div class="tech-grid">
+                                {% if vulnerability.cve_id %}
+                                <div class="tech-item">
+                                    <div class="tech-label">CVE ID</div>
+                                    <div class="tech-value">{{ vulnerability.cve_id }}</div>
+                                </div>
+                                {% endif %}
+                                {% if vulnerability.assigner %}
+                                <div class="tech-item">
+                                    <div class="tech-label">Assigner</div>
+                                    <div class="tech-value">{{ vulnerability.assigner }}</div>
+                                </div>
+                                {% endif %}
+                                {% if vulnerability.source_identifier %}
+                                <div class="tech-item">
+                                    <div class="tech-label">Fonte</div>
+                                    <div class="tech-value">{{ vulnerability.source_identifier }}</div>
+                                </div>
+                                {% endif %}
+                                {% if vulnerability.evaluator_comment %}
+                                <div class="tech-item tech-item-full">
+                                    <div class="tech-label">Comentário do Avaliador</div>
+                                    <div class="tech-value">{{ vulnerability.evaluator_comment }}</div>
+                                </div>
+                                {% endif %}
+                                {% if vulnerability.evaluator_solution %}
+                                <div class="tech-item tech-item-full">
+                                    <div class="tech-label">Solução Recomendada</div>
+                                    <div class="tech-value">{{ vulnerability.evaluator_solution }}</div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {# CVSS Panel #}
+                        {% if vulnerability.metrics %}
+                        <div class="tab-panel" 
+                             role="tabpanel" 
+                             id="panel-cvss" 
+                             aria-labelledby="tab-cvss" 
+                             hidden>
+                            <div class="cvss-metrics-grid">
+                                {% for metric in vulnerability.metrics %}
+                                <div class="cvss-metric-card">
+                                    <div class="metric-header">
+                                        <h4 class="metric-version">CVSS {{ metric.cvss_version }}</h4>
+                                        {% if metric.is_primary %}
+                                        <span class="metric-badge">Principal</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="metric-score-display">
+                                        <div class="score-main">{{ metric.base_score }}</div>
+                                        <div class="score-severity severity-{{ (metric.base_severity|default('unknown'))|lower }}">
+                                            {{ metric.base_severity or 'Desconhecida' }}
+                                        </div>
+                                    </div>
+                                    {% if metric.vector_string %}
+                                    <div class="metric-vector">
+                                        <code>{{ metric.vector_string }}</code>
+                                    </div>
+                                    {% endif %}
+                                    <div class="metric-details">
+                                        {% if metric.attack_vector %}
+                                        <div class="metric-detail-item">
+                                            <span class="detail-label">Vetor de Ataque</span>
+                                            <span class="detail-value">{{ metric.attack_vector }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if metric.attack_complexity %}
+                                        <div class="metric-detail-item">
+                                            <span class="detail-label">Complexidade</span>
+                                            <span class="detail-value">{{ metric.attack_complexity }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if metric.confidentiality_impact %}
+                                        <div class="metric-detail-item">
+                                            <span class="detail-label">Confidencialidade</span>
+                                            <span class="detail-value badge-impact">{{ metric.confidentiality_impact }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if metric.integrity_impact %}
+                                        <div class="metric-detail-item">
+                                            <span class="detail-label">Integridade</span>
+                                            <span class="detail-value badge-impact">{{ metric.integrity_impact }}</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if metric.availability_impact %}
+                                        <div class="metric-detail-item">
+                                            <span class="detail-label">Disponibilidade</span>
+                                            <span class="detail-value badge-impact">{{ metric.availability_impact }}</span>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {# Weaknesses Panel #}
+                        {% if vulnerability.weaknesses %}
+                        <div class="tab-panel" 
+                             role="tabpanel" 
+                             id="panel-weaknesses" 
+                             aria-labelledby="tab-weaknesses" 
+                             hidden>
+                            <div class="weaknesses-list">
+                                {% for weakness in vulnerability.weaknesses %}
+                                <div class="weakness-card">
+                                    <div class="weakness-icon">
+                                        <i class="bi bi-bug-fill"></i>
+                                    </div>
+                                    <div class="weakness-content">
+                                        <h4 class="weakness-title">{{ weakness.cwe_id }} - {{ weakness.name }}</h4>
+                                        {% if weakness.description %}
+                                        <p class="weakness-description">{{ weakness.description }}</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {# Products Panel #}
+                        {% if vulnerability.version_references or vulnerability.affected_products %}
+                        <div class="tab-panel" 
+                             role="tabpanel" 
+                             id="panel-products" 
+                             aria-labelledby="tab-products" 
+                             hidden>
+                            <div class="products-list">
+                                {% if vulnerability.version_references %}
+                                    {% for ref in vulnerability.version_references %}
+                                    <div class="product-card">
+                                        <div class="product-icon">
+                                            <i class="bi bi-box-seam"></i>
+                                        </div>
+                                        <div class="product-content">
+                                            <h4 class="product-name">{{ ref.product.name if ref.product else 'Produto desconhecido' }}</h4>
+                                            {% if ref.product and ref.product.vendor %}
+                                            <div class="product-vendor">
+                                                <i class="bi bi-building"></i>
+                                                {{ ref.product.vendor.name }}
+                                            </div>
+                                            {% endif %}
+                                            {% if ref.affected_version %}
+                                            <div class="product-version">
+                                                <i class="bi bi-tag"></i>
+                                                Versão afetada: {{ ref.affected_version }}
+                                            </div>
+                                            {% endif %}
+                                            {% if ref.fixed_version %}
+                                            <div class="product-fixed">
+                                                <i class="bi bi-tools"></i>
+                                                Versão de correção: {{ ref.fixed_version }}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% elif vulnerability.affected_products %}
+                                    {% for ap in vulnerability.affected_products %}
+                                    <div class="product-card">
+                                        <div class="product-icon">
+                                            <i class="bi bi-box-seam"></i>
+                                        </div>
+                                        <div class="product-content">
+                                            <h4 class="product-name">{{ ap.product.name if ap.product else 'Produto desconhecido' }}</h4>
+                                            {% if ap.product and ap.product.vendor %}
+                                            <div class="product-vendor">
+                                                <i class="bi bi-building"></i>
+                                                {{ ap.product.vendor.name }}
+                                            </div>
+                                            {% endif %}
+                                            {% if ap.affected_versions %}
+                                            <div class="product-version">
+                                                <i class="bi bi-tag"></i>
+                                                Versões afetadas: {{ ap.affected_versions }}
+                                            </div>
+                                            {% endif %}
+                                            {% set refs = vulnerability.version_references | selectattr('product_id', 'equalto', ap.product_id) | list %}
+                                            {% if refs %}
+                                                {% for r in refs %}
+                                                    {% if r.fixed_version %}
+                                                    <div class="product-fixed">
+                                                        <i class="bi bi-tools"></i>
+                                                        Versão de correção: {{ r.fixed_version }}
+                                                    </div>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% elif fallback_versions %}
+                                    {% for fv in fallback_versions %}
+                                    <div class="product-card">
+                                        <div class="product-icon">
+                                            <i class="bi bi-box-seam"></i>
+                                        </div>
+                                        <div class="product-content">
+                                            <h4 class="product-name">{{ fv.product_name or 'Produto desconhecido' }}</h4>
+                                            {% if fv.vendor_name %}
+                                            <div class="product-vendor">
+                                                <i class="bi bi-building"></i>
+                                                {{ fv.vendor_name }}
+                                            </div>
+                                            {% endif %}
+                                            {% if fv.affected_version %}
+                                            <div class="product-version">
+                                                <i class="bi bi-tag"></i>
+                                                Versão afetada: {{ fv.affected_version }}
+                                            </div>
+                                            {% endif %}
+                                            {% if fv.fixed_version %}
+                                            <div class="product-fixed">
+                                                <i class="bi bi-tools"></i>
+                                                Versão de correção: {{ fv.fixed_version }}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+
+            {# SECTION 3: Impact & Timeline #}
+            <section id="impact" class="content-section" aria-labelledby="impact-heading">
+                <h2 id="impact-heading" class="section-heading">
+                    <i class="bi bi-lightning"></i>
+                    Impacto e Timeline
+                </h2>
+
+                <div class="impact-grid">
+                    {# Timeline Column #}
+                    <div class="timeline-enhanced">
+                        <h3 class="timeline-title">Linha do Tempo</h3>
+                        {% if vulnerability.published_date %}
+                        <div class="timeline-event event-info">
+                            <div class="event-marker"></div>
+                            <div class="event-date">{{ vulnerability.published_date.strftime('%d/%m/%Y') }}</div>
+                            <div class="event-content">
+                                <h4 class="event-title">Vulnerabilidade Publicada</h4>
+                                <p class="event-description">CVE {{ vulnerability.cve_id }} foi publicado oficialmente.</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if vulnerability.last_update and vulnerability.last_update != vulnerability.published_date %}
+                        <div class="timeline-event event-important">
+                            <div class="event-marker"></div>
+                            <div class="event-date">{{ vulnerability.last_update.strftime('%d/%m/%Y') }}</div>
+                            <div class="event-content">
+                                <h4 class="event-title">Última Atualização</h4>
+                                <p class="event-description">Informações da vulnerabilidade foram atualizadas.</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if vulnerability.cisa_exploit_add %}
+                        <div class="timeline-event event-critical">
+                            <div class="event-marker"></div>
+                            <div class="event-date">{{ vulnerability.cisa_exploit_add.strftime('%d/%m/%Y') }}</div>
+                            <div class="event-content">
+                                <h4 class="event-title">Adicionado ao CISA KEV</h4>
+                                <p class="event-description">Vulnerabilidade foi adicionada à lista de vulnerabilidades conhecidas e exploradas.</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {# Related Vulnerabilities #}
+                    {% if analytics and analytics.similar_vulnerabilities_count > 0 %}
+                    <div class="related-vulns-card">
+                        <div class="card-icon">
+                            <i class="bi bi-diagram-3"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3 class="card-title">Vulnerabilidades Relacionadas</h3>
+                            <div class="card-stat">{{ analytics.similar_vulnerabilities_count }}</div>
+                            <p class="card-description">Vulnerabilidades similares encontradas no sistema</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+
+            {# SECTION 4: References #}
+            {% if vulnerability.references %}
+            <section id="references" class="content-section" aria-labelledby="references-heading">
+                <h2 id="references-heading" class="section-heading">
+                    <i class="bi bi-link-45deg"></i>
+                    Referências Externas
+                </h2>
+
+                {# References Toolbar #}
+                <div class="references-toolbar">
+                    <input type="search" 
+                           id="refSearch" 
+                           class="ref-search-input" 
+                           placeholder="Buscar por domínio, tag ou URL..."
+                           aria-label="Buscar referências">
+                    
+                    <div class="ref-filters">
+                        <button class="filter-chip active" data-filter="all">
+                            Todas <span class="filter-count" id="refCount">{{ vulnerability.references|length }}</span>
+                        </button>
+                        {% set patch_count = vulnerability.references | selectattr('is_patch') | list | length %}
+                        {% if patch_count > 0 %}
+                        <button class="filter-chip" data-filter="patch">
+                            🩹 Patches <span class="filter-count">{{ patch_count }}</span>
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {# References List #}
+                <div class="references-grid" id="referencesGrid">
+                    {% for reference in vulnerability.references %}
+                    <div class="reference-card" data-type="{{ 'patch' if reference.is_patch else 'link' }}" data-patch="{{ 'true' if reference.is_patch else 'false' }}">
+                        <div class="ref-icon">
+                            <i class="bi bi-link-45deg"></i>
+                        </div>
+                        <div class="ref-content">
+                            <a href="{{ reference.url }}" 
+                               target="_blank" 
+                               rel="noopener noreferrer" 
+                               class="ref-url">
+                                {{ reference.url | truncate(60) }}
+                            </a>
+                            {% if reference.source %}
+                            <div class="ref-source">
+                                <i class="bi bi-building"></i>
+                                {{ reference.source }}
+                            </div>
+                            {% endif %}
+                            {% if reference.tags %}
+                            <div class="ref-tags">
+                                {% for tag in reference.tags.split(',') %}
+                                <span class="ref-tag">{{ tag.strip() }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            {% if reference.is_patch %}
+                            <span class="ref-badge badge-patch">Patch</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
+
+            {# NVD Data Section - Collapsible #}
+            {% if vulnerability.nvd_vendors_data or vulnerability.nvd_products_data or vulnerability.nvd_cpe_configurations %}
+            <section id="nvd-data" class="content-section" aria-labelledby="nvd-heading">
+                <h2 id="nvd-heading" class="section-heading">
+                    <i class="bi bi-shield-shaded"></i>
+                    Dados Técnicos NVD
+                    <button class="section-toggle" 
+                            aria-expanded="false" 
+                            aria-controls="nvd-content"
+                            data-toggle-section="nvd-content">
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                </h2>
+
+                <div id="nvd-content" class="section-collapsible" hidden>
+                    <p class="section-note">Informações detalhadas do National Vulnerability Database</p>
+                    
+                    {# Vendors, Products, CPE cards would go here - simplified for brevity #}
+                    <div class="nvd-notice">
+                        <i class="bi bi-info-circle"></i>
+                        <p>Os dados técnicos completos do NVD estão disponíveis. Clique para expandir as seções específicas conforme necessário.</p>
+                    </div>
+                </div>
+            </section>
+            {% endif %}
+
+        </main>
+
+    </div>
+</div>
+
+{# Status Announcement for Screen Readers #}
+<div role="status" aria-live="polite" aria-atomic="true" class="visually-hidden" id="statusAnnouncement"></div>
+
+{# Removido script inline duplicado: a inicialização está no arquivo externo vulnerability-details.js #}
+
+{% endblock %}

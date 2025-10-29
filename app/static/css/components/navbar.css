@@ -1,0 +1,554 @@
+
+/* ========================================
+   NAVBAR - CONSOLIDATED STYLES
+   Modern, Clean, Light, Transparent Design
+   ======================================== */
+
+/* CSS Variables for Navbar - Removidas (usando variables.css) */
+
+/* ========================================
+   MAIN NAVBAR STRUCTURE
+   ======================================== */
+
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-index-navbar);
+  height: var(--layout-navbar-height);
+  background: var(--glass-bg-medium);
+  backdrop-filter: var(--glass-blur-medium);
+  -webkit-backdrop-filter: var(--glass-blur-medium);
+  border-bottom: var(--glass-border-medium);
+  box-shadow: var(--shadow-soft-lg);
+  transition: var(--transition-soft);
+  padding: var(--space-sm) 0;
+  display: flex;
+  align-items: center;
+}
+
+.navbar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+  pointer-events: none;
+}
+
+.navbar .container-fluid {
+  padding-left: var(--space-lg);
+  padding-right: var(--space-lg);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+/* Entry Animation */
+.navbar {
+  animation: navbarSlideIn 0.4s var(--ease-decelerate);
+}
+
+@keyframes navbarSlideIn {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+    backdrop-filter: var(--glass-blur-medium);
+  }
+}
+
+/* ========================================
+   NAVBAR BRAND
+   ======================================== */
+
+.navbar-brand {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--content-strongest);
+  text-decoration: none;
+  transition: var(--transition-soft);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  position: relative;
+}
+
+.navbar-brand:hover {
+  color: var(--color-primary);
+  transform: var(--transform-hover-scale);
+  text-shadow: 0 2px 8px rgba(var(--primary-500-rgb), 0.3);
+}
+
+.navbar-brand::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary-500), var(--primary-600));
+  transition: var(--transition-soft);
+}
+
+.navbar-brand:hover::after {
+  width: 100%;
+}
+
+.navbar-brand:hover,
+.navbar-brand:focus {
+  color: var(--navbar-brand-color);
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+.navbar-brand .brand-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1rem;
+  transition: var(--navbar-transition);
+}
+
+.navbar-brand:hover .brand-icon {
+  transform: rotate(5deg) scale(1.05);
+}
+
+/* ========================================
+   NAVBAR BUTTONS
+   ======================================== */
+
+.navbar .btn {
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: var(--navbar-btn-bg);
+  border: 1px solid var(--navbar-btn-border);
+  color: var(--navbar-btn-text);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  transition: var(--navbar-transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.navbar .btn:hover {
+  background: var(--navbar-btn-hover-bg);
+  border-color: var(--navbar-btn-hover-border);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+}
+
+.navbar .btn:active,
+.navbar .btn.active {
+  background: var(--navbar-btn-active-bg);
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);
+}
+
+.navbar .btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+/* Ripple Effect */
+.navbar .btn.ripple-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.navbar .btn.ripple-effect::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  transform: translate(-50%, -50%);
+  transition: width 0.3s, height 0.3s;
+}
+
+.navbar .btn.ripple-effect:active::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* ========================================
+   SIDEBAR TOGGLE BUTTON
+   ======================================== */
+
+.sidebar-toggle {
+  display: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 8px;
+  background: var(--navbar-btn-bg);
+  border: 1px solid var(--navbar-btn-border);
+  color: var(--navbar-btn-text);
+  transition: var(--navbar-transition);
+}
+
+.sidebar-toggle:hover {
+  background: var(--navbar-btn-hover-bg);
+  border-color: var(--navbar-btn-hover-border);
+  transform: translateY(-1px);
+}
+
+.sidebar-toggle i {
+  font-size: 1.2rem;
+}
+
+/* Show on mobile */
+@media (max-width: 767.98px) {
+  .sidebar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* ========================================
+   REFRESH BUTTON
+   ======================================== */
+
+#refreshButton {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#refreshButton i {
+  font-size: 1rem;
+  transition: transform var(--navbar-animation-duration) var(--navbar-animation-easing);
+}
+
+#refreshButton:hover i {
+  transform: rotate(90deg);
+}
+
+#refreshButton.refreshing i {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+
+
+
+
+
+
+/* ========================================
+   ACCOUNT DROPDOWN
+   ======================================== */
+
+.account-avatar-container .avatar-button {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.account-avatar-container .avatar-button i {
+  font-size: 1.2rem;
+}
+
+.account-avatar-container .username {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--navbar-text);
+}
+
+.account-avatar-container .dropdown-menu {
+  border: 1px solid var(--navbar-border);
+  border-radius: 12px;
+  background: var(--navbar-bg);
+  backdrop-filter: var(--navbar-backdrop-filter);
+  -webkit-backdrop-filter: var(--navbar-backdrop-filter);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  margin-top: 0.5rem;
+}
+
+.account-avatar-container .dropdown-item {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  color: var(--navbar-text);
+  transition: var(--navbar-transition);
+}
+
+.account-avatar-container .dropdown-item:hover {
+  background: rgba(0, 123, 255, 0.1);
+  color: var(--navbar-text);
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+/* Large screens */
+@media (min-width: 992px) {
+  .status-sync-group {
+    display: flex !important;
+  }
+}
+
+/* Medium screens */
+@media (max-width: 991.98px) {
+  .sync-badge {
+    display: none !important;
+  }
+  
+  .navbar .container-fluid {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}
+
+/* Small screens */
+@media (max-width: 575.98px) {
+  .navbar {
+    --navbar-padding-x: 0.5rem;
+  }
+  
+  .navbar-brand {
+    font-size: 1.1rem;
+  }
+  
+  .account-avatar-container .username {
+    display: none !important;
+  }
+  
+  .navbar .btn {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* ========================================
+   ACCESSIBILITY
+   ======================================== */
+
+/* Focus indicators */
+.navbar .btn:focus-visible,
+.navbar-brand:focus-visible {
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color, var(--color-primary-500, #0066cc));
+  outline-offset: var(--focus-ring-offset, 2px);
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .navbar {
+    background: #ffffff;
+    border-bottom: 2px solid #000000;
+  }
+  
+  .navbar .btn {
+    background: #ffffff;
+    border: 2px solid #000000;
+    color: #000000;
+  }
+  
+  .navbar-brand {
+    color: #000000;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .navbar,
+  .navbar .btn,
+  .navbar-brand,
+  #refreshButton i {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+
+@media print {
+  .navbar {
+    display: none;
+  }
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+.navbar .text-xs {
+  font-size: 0.75rem;
+}
+
+.navbar .gap-1 {
+  gap: 0.25rem;
+}
+
+.navbar .gap-2 {
+  gap: 0.5rem;
+}
+
+.navbar .gap-3 {
+  gap: 1rem;
+}
+
+/* ========================================
+   PERFORMANCE OPTIMIZATIONS
+   ======================================== */
+
+.navbar {
+  contain: layout style;
+  will-change: transform;
+}
+
+.navbar .btn {
+  contain: layout style;
+}
+
+/* GPU acceleration for smooth animations */
+.navbar .btn,
+.navbar-brand,
+#refreshButton i {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* ========================================
+   SYNC BADGE
+   ======================================== */
+
+.sync-badge {
+  display: flex !important;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  box-shadow: none;
+  font-size: 0.75rem;
+  color: rgba(31, 41, 55, 0.8);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+/* Sync Badge - Responsivo */
+@media (max-width: 991.98px) {
+  .sync-badge {
+    display: none !important;
+  }
+}
+
+.sync-badge:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: none;
+  transform: none;
+}
+
+.sync-badge i {
+  font-size: 0.75rem;
+  color: rgba(59, 130, 246, 0.7);
+  transition: color 0.15s ease;
+}
+
+.sync-badge:hover i {
+  color: rgba(37, 99, 235, 0.8);
+}
+
+.sync-badge .last-sync-time {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgba(31, 41, 55, 0.9);
+  letter-spacing: 0.02em;
+}
+
+/* Focus states for accessibility */
+.sync-badge:focus-visible {
+  outline: 1px solid rgba(59, 130, 246, 0.5);
+  outline-offset: 1px;
+  border-radius: 1rem;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+/* Responsive adjustments */
+/* O badge já está oculto em telas menores que lg (992px) via Bootstrap classes d-none d-lg-flex */
+@media (max-width: 1200px) {
+  .sync-badge {
+    gap: 0.25rem;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.7rem;
+  }
+  
+  .sync-badge i {
+    font-size: 0.7rem;
+  }
+  
+  .sync-badge .last-sync-time {
+    font-size: 0.7rem;
+  }
+}
+
+/* ========================================
+   NAV LINK STATES (ADDED)
+   ======================================== */
+
+.navbar .nav-link {
+  color: var(--navbar-text);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-soft-md);
+  transition: var(--transition-soft);
+}
+
+.navbar .nav-link:hover,
+.navbar .nav-link:focus {
+  color: var(--navbar-text);
+  background: rgba(255, 255, 255, 0.08);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+}
+
+.navbar .nav-link.active {
+  color: var(--navbar-text);
+  background: rgba(255, 255, 255, 0.12);
+  font-weight: var(--font-weight-semibold);
+}
+
+@media (max-width: 575.98px) {
+  .navbar .nav-link {
+    padding: 0.4rem 0.6rem;
+  }
+}

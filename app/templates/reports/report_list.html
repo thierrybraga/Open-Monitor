@@ -1,0 +1,1140 @@
+{% extends "core/base.html" %}
+
+{% block title %}Relatórios de Segurança - {{ super() }}{% endblock %}
+
+{% block meta_description %}Gerencie e visualize relatórios de cybersegurança, análises de vulnerabilidades e estudos de ambiente. Crie relatórios executivos, técnicos e de auditoria com dados em tempo real.{% endblock %}
+
+{% block extra_css %}
+<style>
+.report-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    color: white;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.stats-card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    overflow: hidden;
+    position: relative;
+}
+
+.stats-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+}
+
+.stats-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--card-color), var(--card-color-light));
+}
+
+.stats-card.primary { --card-color: #007bff; --card-color-light: #66b3ff; }
+.stats-card.warning { --card-color: #ffc107; --card-color-light: #ffdb4d; }
+.stats-card.success { --card-color: #28a745; --card-color-light: #71dd8a; }
+.stats-card.danger { --card-color: #dc3545; --card-color-light: #ff6b7a; }
+
+.filter-card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    background: #f8f9fa;
+}
+
+.reports-table-card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+.table-responsive {
+    border-radius: 10px;
+}
+
+.table th {
+    background: #f8f9fa;
+    border: none;
+    font-weight: 600;
+    color: #495057;
+    padding: 1rem;
+}
+
+.table td {
+    border: none;
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+.table tbody tr {
+    border-bottom: 1px solid #e9ecef;
+    transition: background-color 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.btn-modern {
+    border-radius: 10px;
+    padding: 0.5rem 1.5rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.btn-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.badge-modern {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #6c757d;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.quick-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Loading Skeleton Styles */
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 4px;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-row {
+    height: 60px;
+    margin-bottom: 1rem;
+}
+
+.skeleton-text {
+    height: 16px;
+    margin-bottom: 8px;
+}
+
+.skeleton-text.short {
+    width: 60%;
+}
+
+.skeleton-text.medium {
+    width: 80%;
+}
+
+.skeleton-badge {
+    height: 24px;
+    width: 80px;
+    border-radius: 12px;
+}
+
+.skeleton-button {
+    height: 32px;
+    width: 100px;
+    border-radius: 6px;
+}
+
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: 15px;
+}
+
+.progress-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: rgba(0, 123, 255, 0.1);
+    border: 1px solid rgba(0, 123, 255, 0.2);
+    border-radius: 20px;
+    color: #007bff;
+    font-size: 0.875rem;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 4px;
+    background: #e9ecef;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #007bff, #0056b3);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    animation: progress-shine 2s infinite;
+}
+
+@keyframes progress-shine {
+    0% { background-position: -100% 0; }
+    100% { background-position: 100% 0; }
+}
+
+@media (max-width: 768px) {
+    .report-header {
+        text-align: center;
+        padding: 1.5rem;
+    }
+    
+    .quick-actions {
+        justify-content: center;
+        margin-top: 1rem;
+    }
+    
+    .skeleton-text {
+        height: 14px;
+    }
+    
+    .skeleton-row {
+        height: 50px;
+    }
+    
+    /* Otimizações para mobile */
+    .reports-table-card {
+        margin: 0.5rem;
+        border-radius: 8px;
+    }
+    
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+    
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+    
+    /* Esconder colunas menos importantes em mobile */
+    .table th:nth-child(3),
+    .table td:nth-child(3),
+    .table th:nth-child(5),
+    .table td:nth-child(5) {
+        display: none;
+    }
+    
+    /* Compactar ações em mobile */
+    .btn-group-vertical .btn {
+        margin-bottom: 2px;
+    }
+    
+    /* Melhorar touch targets */
+    .btn, .page-link {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    /* Reduzir animações em dispositivos com pouca bateria */
+    @media (prefers-reduced-motion: reduce) {
+        .skeleton::before,
+        .progress-indicator,
+        .btn-modern {
+            animation: none;
+        }
+    }
+}
+
+@media (max-width: 576px) {
+    /* Extra small devices */
+    .stats-card {
+        margin-bottom: 1rem;
+    }
+    
+    .filter-card {
+        padding: 1rem;
+    }
+    
+    .table th:nth-child(6),
+    .table td:nth-child(6) {
+        display: none;
+    }
+    
+    /* Stack action buttons vertically */
+    .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .btn-group .btn {
+        border-radius: 4px !important;
+        margin-bottom: 2px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header da página modernizado -->
+    <div class="report-header">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h1 class="h2 mb-2">
+                    <i class="bi bi-shield-check me-3"></i>
+                    Central de Relatórios de Segurança
+                </h1>
+                <p class="mb-0 opacity-90">
+                    Gerencie, analise e visualize relatórios de cybersegurança com inteligência artificial
+                </p>
+            </div>
+            <div class="col-lg-4">
+                <div class="quick-actions">
+                    <a href="{{ url_for('report.quick_create_report') }}" class="btn btn-light btn-modern">
+                        <i class="bi bi-lightning-fill me-2"></i>
+                        Relatório Rápido
+                    </a>
+                    <a href="{{ url_for('report.create_report') }}" class="btn btn-warning btn-modern">
+                        <i class="bi bi-plus-lg me-2"></i>
+                        Novo Relatório
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards de estatísticas modernizados -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stats-card primary">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-file-earmark-text text-primary" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h3 class="fw-bold text-primary mb-1">{{ stats.total_reports or 0 }}</h3>
+                    <p class="text-muted mb-0">Total de Relatórios</p>
+                    <small class="text-muted">
+                        <i class="bi bi-graph-up me-1"></i>
+                        Todos os relatórios criados
+                    </small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stats-card warning">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-clock-history text-warning" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h3 class="fw-bold text-warning mb-1">{{ stats.pending_reports or 0 }}</h3>
+                    <p class="text-muted mb-0">Pendentes</p>
+                    <small class="text-muted">
+                        <i class="bi bi-hourglass-split me-1"></i>
+                        Aguardando processamento
+                    </small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stats-card success">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h3 class="fw-bold text-success mb-1">{{ stats.completed_reports or 0 }}</h3>
+                    <p class="text-muted mb-0">Concluídos</p>
+                    <small class="text-muted">
+                        <i class="bi bi-download me-1"></i>
+                        Prontos para download
+                    </small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stats-card danger">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h3 class="fw-bold text-danger mb-1">{{ stats.failed_reports or 0 }}</h3>
+                    <p class="text-muted mb-0">Com Erro</p>
+                    <small class="text-muted">
+                        <i class="bi bi-arrow-clockwise me-1"></i>
+                        Necessitam regeneração
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros modernizados -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card filter-card">
+                <div class="card-header border-0 bg-transparent">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0 text-dark">
+                            <i class="bi bi-funnel-fill me-2 text-primary"></i>
+                            Filtros Avançados
+                        </h5>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#advancedFiltersBody" aria-expanded="true" aria-controls="advancedFiltersBody">
+                            <i class="bi bi-chevron-up"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div id="activeFiltersChips" class="d-flex flex-wrap gap-2" role="list" aria-live="polite" aria-atomic="true"></div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="autoApplyToggle" checked aria-label="Auto aplicar filtros enquanto digita">
+                            <label class="form-check-label" for="autoApplyToggle" data-bs-toggle="tooltip" title="Aplica filtros automaticamente enquanto você digita">
+                                Auto aplicar
+                            </label>
+                        </div>
+                    </div>
+                    <div id="advancedFiltersBody" class="collapse show">
+                        <form method="GET" action="{{ url_for('report.list_reports') }}">
+                            <div class="row g-3">
+                                <div class="col-lg-3 col-md-6">
+                                    {{ filter_form.report_type.label(class="form-label fw-semibold") }}
+                                    {{ filter_form.report_type(class="form-select form-select-lg") }}
+                                </div>
+                                <div class="col-lg-3 col-md-6">
+                                    {{ filter_form.status.label(class="form-label fw-semibold") }}
+                                    {{ filter_form.status(class="form-select form-select-lg") }}
+                                </div>
+                                <div class="col-lg-2 col-md-6">
+                                    <label for="quickRange" class="form-label fw-semibold" data-bs-toggle="tooltip" title="Selecione um intervalo rápido para datas">
+                                        Intervalo Rápido
+                                    </label>
+                                    <select id="quickRange" class="form-select form-select-lg">
+                                        <option value="">Personalizado</option>
+                                        <option value="today">Hoje</option>
+                                        <option value="last7">Últimos 7 dias</option>
+                                        <option value="last30">Últimos 30 dias</option>
+                                        <option value="thisMonth">Este mês</option>
+                                        <option value="last90">Últimos 90 dias</option>
+                                    </select>
+                                    <button type="button" id="clearDateBtn" class="btn btn-outline-secondary btn-sm mt-2" aria-label="Limpar apenas intervalo de datas">
+                                        <i class="bi bi-x-circle me-1"></i>Limpar datas
+                                    </button>
+                                </div>
+                                <div class="col-lg-2 col-md-6">
+                                    {{ filter_form.date_from.label(class="form-label fw-semibold") }}
+                                    {{ filter_form.date_from(class="form-control form-control-lg") }}
+                                </div>
+                                <div class="col-lg-2 col-md-6">
+                                    {{ filter_form.date_to.label(class="form-label fw-semibold") }}
+                                    {{ filter_form.date_to(class="form-control form-control-lg") }}
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-12 d-flex align-items-center gap-2">
+                                    <button type="submit" class="btn btn-primary btn-modern">
+                                        <i class="bi bi-search me-2"></i>
+                                        Filtrar
+                                    </button>
+                                    <a href="{{ url_for('report.list_reports') }}" class="btn btn-outline-secondary btn-modern" data-bs-toggle="tooltip" title="Limpar todos os filtros">
+                                        <i class="bi bi-arrow-clockwise"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de relatórios modernizada -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card reports-table-card">
+                <div class="card-header border-0 bg-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0 text-dark">
+                            <i class="bi bi-table me-2 text-primary"></i>
+                            Relatórios de Segurança
+                        </h5>
+                        <span class="badge bg-light text-dark">
+                            {{ stats.total_reports or 0 }} relatórios
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body position-relative">
+                    <!-- Loading Skeleton -->
+                    <div id="reportsLoadingSkeleton" class="d-none">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Título</th>
+                                        <th>Tipo</th>
+                                        <th>Escopo</th>
+                                        <th>Status</th>
+                                        <th>Criado em</th>
+                                        <th>Gerado em</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for i in range(5) %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="skeleton skeleton-text me-2" style="width: 20px; height: 20px;"></div>
+                                                <div class="flex-grow-1">
+                                                    <div class="skeleton skeleton-text medium"></div>
+                                                    <div class="skeleton skeleton-text short"></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td><div class="skeleton skeleton-badge"></div></td>
+                                        <td><div class="skeleton skeleton-badge"></div></td>
+                                        <td><div class="skeleton skeleton-badge"></div></td>
+                                        <td><div class="skeleton skeleton-text short"></div></td>
+                                        <td><div class="skeleton skeleton-text short"></div></td>
+                                        <td>
+                                            <div class="d-flex gap-1">
+                                                <div class="skeleton skeleton-button"></div>
+                                                <div class="skeleton skeleton-button"></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Conteúdo Real -->
+                    <div id="reportsContent">
+                        {% if reports and reports.items %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Título</th>
+                                            <th>Tipo</th>
+                                            <th>Escopo</th>
+                                            <th>Status</th>
+                                            <th>Criado em</th>
+                                            <th>Gerado em</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    {% for report in reports.items %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-file-earmark-text me-2 text-primary"></i>
+                                                <div>
+                                                    <strong>{{ report.title }}</strong>
+                                                    {% if report.description %}
+                                                    <br>
+                                                    <small class="text-muted">{{ report.description[:100] }}{% if report.description|length > 100 %}...{% endif %}</small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-modern bg-info text-white">
+                                                <i class="bi bi-tag-fill me-1"></i>
+                                                {{ report.report_type.value.replace('_', ' ').title() }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-modern bg-secondary text-white">
+                                                <i class="bi bi-bullseye me-1"></i>
+                                                {{ report.scope.value.replace('_', ' ').title() }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if report.status.value == 'pendente' %}
+                                                <span class="badge badge-modern bg-warning text-dark">
+                                                    <i class="bi bi-clock-history me-1"></i>
+                                                    Pendente
+                                                </span>
+                                            {% elif report.status.value == 'gerando' %}
+                                                <span class="badge badge-modern bg-info text-white">
+                                                    <i class="bi bi-arrow-repeat me-1"></i>
+                                                    Processando
+                                                </span>
+                                            {% elif report.status.value == 'concluido' %}
+                                                <span class="badge badge-modern bg-success text-white">
+                                                    <i class="bi bi-check-circle-fill me-1"></i>
+                                                    Concluído
+                                                </span>
+                                            {% elif report.status.value == 'falhou' %}
+                                                <span class="badge badge-modern bg-danger text-white">
+                                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                                    Erro
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small>{{ report.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                                        </td>
+                                        <td>
+                                            {% if report.generated_at %}
+                                                <small>{{ report.generated_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                                            {% else %}
+                                                <small class="text-muted">-</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="d-flex gap-1" role="group">
+                                                <a href="{{ url_for('report.view_report', report_id=report.id) }}" 
+                                                   class="btn btn-outline-primary btn-sm btn-modern" 
+                                                   title="Visualizar Relatório">
+                                                    <i class="bi bi-eye-fill"></i>
+                                                </a>
+                                                
+                                                {% if report.status.value in ['concluido', 'exportado'] %}
+                                                    <div class="btn-group btn-group-sm" role="group">
+                                                        <button type="button" class="btn btn-outline-success btn-sm btn-modern dropdown-toggle" 
+                                                                data-bs-toggle="dropdown" title="Exportar Relatório">
+                                                            <i class="bi bi-download"></i>
+                                                        </button>
+                                                        <ul class="dropdown-menu">
+                                                            {% set export_formats = report.export_formats if report.export_formats is defined and report.export_formats else ['pdf'] %}
+                                                            {% for format in export_formats %}
+                                                                <li>
+                                                                    <a class="dropdown-item" 
+                                                                       href="{{ url_for('report.export_report', report_id=report.id, format=format) }}">
+                                                                        <i class="bi bi-file-earmark-{{ 'pdf' if format == 'pdf' else 'code' }} me-2"></i>
+                                                                        {{ format.upper() }}
+                                                                    </a>
+                                                                </li>
+                                                            {% endfor %}
+                                                        </ul>
+                                                    </div>
+                                                {% endif %}
+                                                
+                                                {% if report.status.value in ['failed', 'completed'] %}
+                                                    <form method="POST" action="{{ url_for('report.regenerate_report', report_id=report.id) }}" 
+                                                          class="d-inline">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                        <button type="submit" class="btn btn-outline-warning btn-sm btn-modern" 
+                                                                title="Regenerar Relatório"
+                                                                onclick="return confirm('Deseja regenerar este relatório?')">
+                                                            <i class="bi bi-arrow-clockwise"></i>
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+                                                
+                                                <form method="POST" action="{{ url_for('report.delete_report', report_id=report.id) }}" 
+                                                      class="d-inline">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm btn-modern" 
+                                                            title="Deletar Relatório"
+                                                            onclick="return confirm('Deseja deletar este relatório?')">
+                                                        <i class="bi bi-trash-fill"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Paginação -->
+                        {% if reports.pages > 1 %}
+                        <nav aria-label="Navegação de páginas" class="mt-4">
+                            <ul class="pagination justify-content-center pagination-modern">
+                                {% if reports.has_prev %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('report.list_reports') }}?page={{ reports.prev_num }}{% if filter_qs %}&{{ filter_qs }}{% endif %}">
+                                            <i class="bi bi-chevron-left"></i>
+                                            <span class="d-none d-sm-inline ms-1">Anterior</span>
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">
+                                            <i class="bi bi-chevron-left"></i>
+                                            <span class="d-none d-sm-inline ms-1">Anterior</span>
+                                        </span>
+                                    </li>
+                                {% endif %}
+
+                                {% for page_num in reports.iter_pages() %}
+                                    {% if page_num %}
+                                        {% if page_num != reports.page %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="{{ url_for('report.list_reports') }}?page={{ page_num }}{% if filter_qs %}&{{ filter_qs }}{% endif %}">
+                                                    {{ page_num }}
+                                                </a>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ page_num }}</span>
+                                            </li>
+                                        {% endif %}
+                                    {% else %}
+                                        <li class="page-item disabled">
+                                            <span class="page-link">…</span>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if reports.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('report.list_reports') }}?page={{ reports.next_num }}{% if filter_qs %}&{{ filter_qs }}{% endif %}">
+                                            <span class="d-none d-sm-inline me-1">Próximo</span>
+                                            <i class="bi bi-chevron-right"></i>
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">
+                                            <span class="d-none d-sm-inline me-1">Próximo</span>
+                                            <i class="bi bi-chevron-right"></i>
+                                        </span>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <h4 class="mt-3">Nenhum relatório encontrado</h4>
+                            <p class="text-muted">Crie seu primeiro relatório de segurança para começar.</p>
+                            <div class="mt-3">
+                                <a href="{{ url_for('report.quick_create_report') }}" class="btn btn-success me-2">
+                                    <i class="bi bi-lightning-fill me-1"></i>
+                                    Relatório Rápido
+                                </a>
+                                <a href="{{ url_for('report.create_report') }}" class="btn btn-primary">
+                                    <i class="bi bi-plus-lg me-1"></i>
+                                    Novo Relatório
+                                </a>
+                            </div>
+                        </div>
+                    {% endif %}
+                    </div> <!-- Fim do reportsContent -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Auto-refresh para relatórios em processamento -->
+{% if reports and reports.items %}
+    {% set has_processing = reports.items | selectattr('status.value', 'in', ['pendente', 'gerando']) | list | length > 0 %}
+    {% if has_processing %}
+    <script>
+        // Auto-refresh a cada 30 segundos se houver relatórios em processamento
+        setTimeout(function() {
+            location.reload();
+        }, 30000);
+    </script>
+    {% endif %}
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Elementos do loading
+    const loadingSkeleton = document.getElementById('reportsLoadingSkeleton');
+    const reportsContent = document.getElementById('reportsContent');
+    
+    // Função para mostrar loading
+    function showLoading() {
+        if (loadingSkeleton && reportsContent) {
+            loadingSkeleton.classList.remove('d-none');
+            reportsContent.classList.add('d-none');
+        }
+    }
+    
+    // Função para esconder loading
+    function hideLoading() {
+        if (loadingSkeleton && reportsContent) {
+            loadingSkeleton.classList.add('d-none');
+            reportsContent.classList.remove('d-none');
+        }
+    }
+    
+    // Interceptar cliques em links de paginação para loading assíncrono
+    document.querySelectorAll('.pagination a').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            showLoading();
+            
+            // Simular delay mínimo para mostrar o skeleton
+            setTimeout(function() {
+                window.location.href = link.href;
+            }, 300);
+        });
+    });
+    
+    // Interceptar submissão de formulários de filtro
+    const filterForm = document.querySelector('form[method="GET"]');
+    if (filterForm) {
+        filterForm.addEventListener('submit', function(e) {
+            showLoading();
+            // Permitir que o formulário seja submetido normalmente
+        });
+    }
+    
+    
+    // Confirmação para ações destrutivas
+    document.querySelectorAll('form[action*="delete"]').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            if (!confirm('Tem certeza que deseja deletar este relatório?')) {
+                e.preventDefault();
+            } else {
+                showLoading();
+            }
+        });
+    });
+    
+    document.querySelectorAll('form[action*="regenerate"]').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            if (!confirm('Tem certeza que deseja regenerar este relatório?')) {
+                e.preventDefault();
+            } else {
+                showLoading();
+            }
+        });
+    });
+    
+    // Lazy loading para imagens e conteúdo pesado
+    if ('IntersectionObserver' in window) {
+        const lazyElements = document.querySelectorAll('[data-lazy]');
+        const lazyObserver = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    const element = entry.target;
+                    if (element.dataset.lazy === 'chart') {
+                        // Carregar gráficos sob demanda
+                        loadChart(element);
+                    }
+                    lazyObserver.unobserve(element);
+                }
+            });
+        });
+        
+        lazyElements.forEach(function(element) {
+            lazyObserver.observe(element);
+        });
+    }
+    
+    // Cache simples para relatórios
+    const reportCache = new Map();
+    
+    // Função para cache de relatórios
+    function cacheReport(reportId, data) {
+        reportCache.set(reportId, {
+            data: data,
+            timestamp: Date.now()
+        });
+    }
+    
+    // Função para recuperar do cache (válido por 5 minutos)
+    function getCachedReport(reportId) {
+        const cached = reportCache.get(reportId);
+        if (cached && (Date.now() - cached.timestamp) < 300000) {
+            return cached.data;
+        }
+        return null;
+    }
+    
+    // Indicador de progresso para relatórios em processamento
+    const processingReports = document.querySelectorAll('.badge-warning');
+    if (processingReports.length > 0) {
+        // Adicionar indicador visual de progresso
+        processingReports.forEach(function(badge) {
+            if (badge.textContent.includes('Processando')) {
+                badge.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Processando...';
+                badge.classList.add('progress-indicator');
+            }
+        });
+    }
+});
+
+// Função para carregar gráficos sob demanda
+function loadChart(element) {
+    // Implementar carregamento de gráficos quando necessário
+    console.log('Carregando gráfico para:', element);
+}
+
+// Melhorias de UX dos filtros: Auto aplicar, chips ativos e intervalo rápido
+document.addEventListener('DOMContentLoaded', function() {
+    const filterForm = document.querySelector('form[method="GET"]');
+    const autoToggle = document.getElementById('autoApplyToggle');
+    const quickRange = document.getElementById('quickRange');
+    const chips = document.getElementById('activeFiltersChips');
+
+    if (!filterForm) return;
+
+    const inputs = filterForm.querySelectorAll('input[type="text"], select, input[type="date"]');
+
+    function submitForm() { filterForm.submit(); }
+
+    function bindDebounce(wait) {
+        inputs.forEach(function(input) {
+            const key = `reports-filter-${input.name || input.id || 'field'}`;
+            const handler = Utils.debounce(submitForm, wait, key);
+            if (input._debouncedSubmitHandler) {
+                input.removeEventListener('input', input._debouncedSubmitHandler);
+            }
+            input.addEventListener('input', handler);
+            input._debouncedSubmitHandler = handler;
+        });
+    }
+
+    function unbindDebounce() {
+        inputs.forEach(function(input) {
+            if (input._debouncedSubmitHandler) {
+                input.removeEventListener('input', input._debouncedSubmitHandler);
+                input._debouncedSubmitHandler = null;
+            }
+        });
+    }
+
+    function updateChips() {
+        if (!chips) return;
+        chips.innerHTML = '';
+        function addChip(label, value, clearCallback) {
+            if (!value) return;
+            const chip = document.createElement('span');
+            chip.className = 'badge bg-info text-dark d-flex align-items-center gap-1';
+            chip.setAttribute('role', 'listitem');
+            chip.setAttribute('aria-label', `Filtro ativo: ${label} - ${value}`);
+            chip.innerHTML = `<i class=\"bi bi-filter\"></i>${label}: ${value} <button type=\"button\" class=\"btn btn-sm btn-link text-dark p-0 ms-1\"><i class=\"bi bi-x\"></i></button>`;
+            const btn = chip.querySelector('button');
+            btn.setAttribute('aria-label', `Remover filtro ${label} (${value})`);
+            btn.addEventListener('click', function() {
+                if (clearCallback) clearCallback();
+                if (autoToggle?.checked) submitForm();
+                updateChips();
+            });
+            chips.appendChild(chip);
+        }
+
+        const typeSelect = filterForm.querySelector('[name="report_type"]');
+        if (typeSelect && typeSelect.value) {
+            addChip('Tipo', typeSelect.selectedOptions[0]?.text || typeSelect.value, function() { typeSelect.value = ''; });
+        }
+
+        const statusSelect = filterForm.querySelector('[name="status"]');
+        if (statusSelect && statusSelect.value) {
+            addChip('Status', statusSelect.selectedOptions[0]?.text || statusSelect.value, function() { statusSelect.value = ''; });
+        }
+
+        const fromInput = filterForm.querySelector('[name="date_from"]');
+        const toInput = filterForm.querySelector('[name="date_to"]');
+        function formatDate(val) { return val ? new Date(val).toLocaleDateString() : ''; }
+        if ((fromInput && fromInput.value) || (toInput && toInput.value)) {
+            const label = 'Período';
+            const val = `${formatDate(fromInput?.value)}${toInput?.value ? ' → ' + formatDate(toInput.value) : ''}`.trim();
+            addChip(label, val, function() { if (fromInput) fromInput.value = ''; if (toInput) toInput.value = ''; });
+        }
+    }
+
+    // Persistência do estado de Auto aplicar no localStorage
+    const savedAuto = localStorage.getItem('reports:autoApply');
+    if (autoToggle && savedAuto !== null) {
+        autoToggle.checked = (savedAuto === 'true');
+    }
+
+    // Inicialização conforme alternador Auto aplicar
+    if (autoToggle?.checked) { bindDebounce(500); } else { unbindDebounce(); }
+
+    autoToggle?.addEventListener('change', function() {
+        localStorage.setItem('reports:autoApply', String(autoToggle.checked));
+        if (autoToggle.checked) {
+            bindDebounce(500);
+            submitForm();
+        } else {
+            unbindDebounce();
+        }
+    });
+
+    // Intervalo rápido
+    quickRange?.addEventListener('change', function() {
+        const fromInput = filterForm.querySelector('[name="date_from"]');
+        const toInput = filterForm.querySelector('[name="date_to"]');
+        const now = new Date();
+        let start = null, end = null;
+        function toISODate(d) { return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-'); }
+        switch (quickRange.value) {
+            case 'today':
+                start = new Date(now); end = new Date(now); break;
+            case 'last7':
+                start = new Date(now); start.setDate(start.getDate()-7); end = new Date(now); break;
+            case 'last30':
+                start = new Date(now); start.setDate(start.getDate()-30); end = new Date(now); break;
+            case 'thisMonth':
+                start = new Date(now.getFullYear(), now.getMonth(), 1);
+                end = new Date(now.getFullYear(), now.getMonth()+1, 0);
+                break;
+            case 'last90':
+                start = new Date(now); start.setDate(start.getDate()-90); end = new Date(now); break;
+            default:
+                start = null; end = null;
+        }
+        if (fromInput) fromInput.value = start ? toISODate(start) : '';
+        if (toInput) toInput.value = end ? toISODate(end) : '';
+        updateChips();
+        if (autoToggle?.checked) submitForm();
+    });
+
+    inputs.forEach(function(input) { input.addEventListener('change', updateChips); });
+    updateChips();
+
+    // Atualizar ícone de collapse no cabeçalho
+    const collapseBtn = document.querySelector('[data-bs-target="#advancedFiltersBody"]');
+    const collapseArea = document.getElementById('advancedFiltersBody');
+    if (collapseBtn && collapseArea) {
+        collapseArea.addEventListener('shown.bs.collapse', function() {
+            const icon = collapseBtn.querySelector('i');
+            if (icon) icon.classList.replace('bi-chevron-down','bi-chevron-up');
+            // Foco adequado ao expandir: primeiro campo do formulário
+            const firstInput = filterForm.querySelector('select, input');
+            if (firstInput) firstInput.focus();
+        });
+        collapseArea.addEventListener('hidden.bs.collapse', function() {
+            const icon = collapseBtn.querySelector('i');
+            if (icon) icon.classList.replace('bi-chevron-up','bi-chevron-down');
+            // Foco retorna para o botão de colapsar
+            collapseBtn.focus();
+        });
+    }
+
+    // Botão: Limpar apenas datas
+    const clearDateBtn = document.getElementById('clearDateBtn');
+    clearDateBtn?.addEventListener('click', function() {
+        const fromInput = filterForm.querySelector('[name="date_from"]');
+        const toInput = filterForm.querySelector('[name="date_to"]');
+        if (fromInput) fromInput.value = '';
+        if (toInput) toInput.value = '';
+        if (quickRange) quickRange.value = '';
+        updateChips();
+        if (autoToggle?.checked) submitForm();
+    });
+});
+
+// Performance: Debounce para filtros consolidado em Utils.debounce
+
+// Aplicação automática de filtros gerenciada pelo alternador "Auto aplicar"
+// (Inicialização feita no bloco de melhorias UX dos filtros)
+
+// Otimizações para mobile e performance
+function initMobileOptimizations() {
+    // Detectar se é dispositivo móvel
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+        // Otimizar touch events
+        document.addEventListener('touchstart', function() {}, { passive: true });
+        document.addEventListener('touchmove', function() {}, { passive: true });
+        
+        // Reduzir frequência de auto-refresh em mobile (verificação segura)
+        try {
+            const scripts = Array.from(document.querySelectorAll('script'));
+            const autoRefreshScript = scripts.find(s => {
+                const txt = s.textContent || '';
+                return txt.includes('setTimeout') && txt.includes('location.reload');
+            });
+            if (autoRefreshScript && autoRefreshScript.textContent.includes('30000')) {
+                // Nota: alterar o conteúdo do script após execução não reprograma o timer já agendado,
+                // mas evita erro de seletor e mantém compatibilidade.
+                autoRefreshScript.textContent = autoRefreshScript.textContent.replace(/30000/g, '60000');
+            }
+        } catch (err) {
+            // Ignorar silenciosamente para evitar erros em navegadores sem suporte
+            console.debug('Mobile optimizations: fallback sem ajuste de auto-refresh', err);
+        }
+    }
+    
+    // Detectar conexão lenta
+    if ('connection' in navigator) {
+        const connection = navigator.connection;
+        if (connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g') {
+            // Desabilitar animações em conexões lentas
+            document.documentElement.style.setProperty('--animation-duration', '0s');
+            
+            // Aumentar debounce para filtros (apenas quando Auto aplicar estiver ativo)
+            const autoToggle = document.getElementById('autoApplyToggle');
+            const filterForm = document.querySelector('form[method="GET"]');
+            if (autoToggle?.checked && filterForm) {
+                const inputs = filterForm.querySelectorAll('input[type="text"], select, input[type="date"]');
+                inputs.forEach(function(input) {
+                    const slowKey = `reports-filter-slow-${input.name || input.id || 'field'}`;
+                    const slowHandler = Utils.debounce(function() {
+                        filterForm.submit();
+                    }, 1000, slowKey);
+                    if (input._debouncedSubmitHandler) {
+                        input.removeEventListener('input', input._debouncedSubmitHandler);
+                    }
+                    input.addEventListener('input', slowHandler);
+                    input._debouncedSubmitHandler = slowHandler;
+                });
+            }
+        }
+    }
+    
+    // Otimizar scroll performance
+    let ticking = false;
+    function updateScrollPosition() {
+        // Implementar virtual scrolling se necessário
+        ticking = false;
+    }
+    
+    document.addEventListener('scroll', function() {
+        if (!ticking) {
+            requestAnimationFrame(updateScrollPosition);
+            ticking = true;
+        }
+    }, { passive: true });
+}
+
+// Inicializar otimizações mobile
+initMobileOptimizations();
+</script>
+{% endblock %}

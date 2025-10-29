@@ -1,0 +1,208 @@
+<!-- Template para requisições AJAX da tabela de vulnerabilidades -->
+{% from 'core/macros.html' import render_pagination %}
+
+{% if vulnerabilities %}
+    <div class="table-card" role="group" aria-labelledby="table-title">
+        <div class="table-responsive" role="region" aria-labelledby="table-title" tabindex="0">
+        <table class="table table-hover" id="vulnerabilities-table" aria-label="Tabela de vulnerabilidades de segurança">
+            <caption class="visually-hidden">Lista de vulnerabilidades, ordenável; Use Tab para navegar e Enter para ordenar.</caption>
+            <thead>
+                <tr role="row">
+                    <th scope="col" 
+                        class="sortable" 
+                        data-sort="cve_id"
+                        tabindex="0"
+                        role="columnheader"
+                        aria-sort="none"
+                        aria-label="CVE ID - Clique para ordenar">
+                        CVE ID
+                        <i class="fas fa-sort sort-icon" aria-hidden="true"></i>
+                    </th>
+                    <th scope="col" 
+                        class="sortable" 
+                        data-sort="severity"
+                        tabindex="0"
+                        role="columnheader"
+                        aria-sort="none"
+                        aria-label="Severidade - Clique para ordenar">
+                        Severidade
+                        <i class="fas fa-sort sort-icon" aria-hidden="true"></i>
+                    </th>
+                    <th scope="col" role="columnheader">Descrição</th>
+                    <th scope="col" class="d-none-mobile" role="columnheader">Fornecedor</th>
+                    <th scope="col" class="d-none-mobile" role="columnheader">Produto</th>
+                    <th scope="col" class="sortable d-none-mobile" data-sort="cvss_score" tabindex="0" role="columnheader" aria-sort="none" aria-label="CVSS Score - Clique para ordenar">CVSS Score
+                      <i class="fas fa-sort sort-icon" aria-hidden="true"></i>
+                    </th>
+                    <th scope="col" class="sortable d-none-mobile" data-sort="published_date" tabindex="0" role="columnheader" aria-sort="none" aria-label="Data de Publicação - Clique para ordenar">Data de Publicação
+                      <i class="fas fa-sort sort-icon" aria-hidden="true"></i>
+                    </th>
+                    <th scope="col" role="columnheader" class="text-center">Ações</th>
+                </tr>
+            </thead>
+            <tbody role="rowgroup">
+                {% for vuln in vulnerabilities %}
+                <tr role="row" 
+                    data-cve-id="{{ vuln.cve_id }}" 
+                    aria-describedby="vuln-{{ vuln.cve_id }}-desc"
+                    class="table-row">
+                    <th scope="row" role="rowheader">
+                        <a href="{{ url_for('vulnerability_ui.vulnerability_details', cve_id=vuln.cve_id) }}"
+                           aria-label="Ver detalhes da vulnerabilidade {{ vuln.cve_id }}"
+                           class="cve-id">
+                            {{ vuln.cve_id }}
+                        </a>
+                    </th>
+                    <td role="gridcell">
+                        <span class="severity-badge {{ vuln.base_severity|lower if vuln.base_severity else 'na' }}"
+                              aria-label="Severidade: {{ vuln.base_severity|title if vuln.base_severity else 'N/A' }}">
+                            {{ vuln.base_severity|title if vuln.base_severity else 'N/A' }}
+                        </span>
+                    </td>
+                    <td role="gridcell">
+                        <div class="vulnerability-description" id="vuln-{{ vuln.cve_id }}-desc">
+                            {{ vuln.description[:80] }}{% if vuln.description|length > 80 %}...{% endif %}
+                        </div>
+                    </td>
+                    <td class="d-none-mobile" role="gridcell">
+                        {% if vuln.nvd_vendors_data %}
+                            {% for vendor in vuln.nvd_vendors_data[:3] %}
+                                <span class="badge bg-secondary me-1">{{ vendor }}</span>
+                            {% endfor %}
+                            {% if vuln.nvd_vendors_data|length > 3 %}
+                                <span class="badge bg-light text-dark">+{{ vuln.nvd_vendors_data|length - 3 }}</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="text-muted">N/A</span>
+                        {% endif %}
+                    </td>
+                    <td class="d-none-mobile" role="gridcell">
+                        {% if vuln.nvd_products_data %}
+                            {% for product in vuln.nvd_products_data[:3] %}
+                                {% set product_name = product if product is string else product.name %}
+                                <span class="badge bg-secondary me-1">{{ product_name }}</span>
+                            {% endfor %}
+                            {% if vuln.nvd_products_data|length > 3 %}
+                                <span class="badge bg-light text-dark">+{{ vuln.nvd_products_data|length - 3 }}</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="text-muted">N/A</span>
+                        {% endif %}
+                    </td>
+                    <td class="d-none-mobile" role="gridcell">
+                        {% if vuln.cvss_score %}
+                            <span class="badge bg-info cvss-badge" aria-label="CVSS Score {{ "%.1f"|format(vuln.cvss_score) }}">{{ "%.1f"|format(vuln.cvss_score) }}</span>
+                        {% else %}
+                            <span class="text-muted" aria-label="CVSS Score não disponível">N/A</span>
+                        {% endif %}
+                    </td>
+                    <td class="d-none-mobile" role="gridcell">
+                        <span aria-label="Publicado em {{ vuln.published_date[:10] if vuln.published_date else 'Data não disponível' }}">
+                            {{ vuln.published_date[:10] if vuln.published_date else 'N/A' }}
+                        </span>
+                    </td>
+                    <td role="gridcell" class="text-center">
+                        <div class="action-buttons" role="group" aria-label="Ações para vulnerabilidade {{ vuln.cve_id }}">
+                            <a href="{{ url_for('vulnerability_ui.vulnerability_details', cve_id=vuln.cve_id) }}" 
+                               class="btn btn-sm btn-outline-primary" 
+                               title="Ver Detalhes"
+                               aria-label="Ver detalhes da vulnerabilidade {{ vuln.cve_id }}"
+                               data-bs-toggle="tooltip" data-bs-placement="top">
+                                <i class="bi bi-eye" aria-hidden="true"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            
+            <!-- Integrated Pagination Footer -->
+            <tfoot>
+                <tr>
+                    <td colspan="8" class="table-pagination-footer">
+                        <div class="table-pagination-nav pagination-section" role="navigation" aria-label="Navegação de páginas de vulnerabilidades">
+                            {% set args = request.args.to_dict(flat=False) %}
+                            {% set _ = args.pop('page', None) %}
+                            {% set _ = args.pop('severity', None) %}
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <div class="pagination-controls">
+                                    {% if pagination.has_prev %}
+                                        {% if filters.severity %}
+                                            <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui', page=pagination.prev_num, severity=filters.severity, **args) }}" class="btn btn-sm btn-outline-primary page-link page-link-prev">
+                                                <i class="fas fa-chevron-left"></i> Anterior
+                                            </a>
+                                        {% else %}
+                                            <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui', page=pagination.prev_num, **args) }}" class="btn btn-sm btn-outline-primary page-link page-link-prev">
+                                                <i class="fas fa-chevron-left"></i> Anterior
+                                            </a>
+                                        {% endif %}
+                                    {% else %}
+                                        <button class="btn btn-sm btn-outline-primary page-link page-link-prev" disabled>
+                                            <i class="fas fa-chevron-left"></i> Anterior
+                                        </button>
+                                    {% endif %}
+                                    <span class="mx-3 pagination-text">
+                                        Página <span>{{ pagination.page }}</span> de <span>{{ pagination.pages }}</span>
+                                    </span>
+                                    {% if pagination.has_next %}
+                                        {% if filters.severity %}
+                                            <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui', page=pagination.next_num, severity=filters.severity, **args) }}" class="btn btn-sm btn-outline-primary page-link page-link-next">
+                                                Próxima <i class="fas fa-chevron-right"></i>
+                                            </a>
+                                        {% else %}
+                                            <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui', page=pagination.next_num, **args) }}" class="btn btn-sm btn-outline-primary page-link page-link-next">
+                                                Próxima <i class="fas fa-chevron-right"></i>
+                                            </a>
+                                        {% endif %}
+                                    {% else %}
+                                        <button class="btn btn-sm btn-outline-primary page-link page-link-next" disabled>
+                                            Próxima <i class="fas fa-chevron-right"></i>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                                <div class="page-size-controls">
+                                    <label for="per-page-select" class="form-label mb-0 me-2">Itens por página:</label>
+                                    {% set current_per_page = request.args.get('per_page', '20')|int %}
+                                    <select id="per-page-select" class="form-select form-select-sm" style="width: auto;" onchange="changePerPage(this.value)">
+                                        {% for option in [10, 20, 50, 100] %}
+                                            <option value="{{ option }}" {{ 'selected' if option == current_per_page else '' }}>{{ option }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+        </div>
+    </div>
+    
+    <!-- Loading Overlay -->
+    <div id="table-loading" class="d-none">
+        <div class="spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+        </div>
+    </div>
+
+{% else %}
+<div class="empty-state" role="region" aria-labelledby="empty-state-title">
+    <div class="empty-state-icon">
+        <i class="fas fa-shield-alt" aria-hidden="true"></i>
+    </div>
+    <h4 id="empty-state-title" class="empty-state-title">Nenhuma vulnerabilidade encontrada</h4>
+    <p class="empty-state-description">
+        Não há vulnerabilidades cadastradas no sistema no momento. 
+        Comece adicionando uma nova vulnerabilidade para monitorar.
+    </p>
+    <div class="empty-state-action" role="group" aria-label="Ações disponíveis">
+        <a href="{{ url_for('vulnerability_ui.create_vulnerability_ui') }}" 
+           class="btn btn-primary"
+           aria-label="Cadastrar nova vulnerabilidade no sistema">
+            <i class="fas fa-plus me-2" aria-hidden="true"></i>Cadastrar Nova Vulnerabilidade
+        </a>
+    </div>
+</div>
+{% endif %}

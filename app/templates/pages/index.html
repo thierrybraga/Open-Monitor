@@ -1,0 +1,384 @@
+{% extends "core/base.html" %}
+{% set footer_has_utility = true %}
+{% set footer_show_microcopy = true %}
+
+{% block title %}Dashboard - Open Monitor{% endblock %}
+
+{% block meta_description %}Dashboard de segurança em tempo real. Monitore vulnerabilidades críticas, métricas de segurança e status do sistema de forma centralizada e intuitiva.{% endblock %}
+
+{% block meta_keywords %}dashboard, segurança, monitoramento, vulnerabilidades, métricas, tempo real, sistema de segurança, análise{% endblock %}
+
+{% block extra_css %}
+{# Removido: CSS de página já importado via main.css #}
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Skip link para acessibilidade -->
+    <a href="#vulnerabilities-table" class="skip-link">Pular para vulnerabilidades recentes</a>
+
+    <!-- Header do Dashboard -->
+    <div class="dashboard-header">
+        <h1 class="dashboard-title">Dashboard de Segurança</h1>
+        <p class="dashboard-subtitle">Visão geral das vulnerabilidades e status do sistema</p>
+    </div>
+    <!-- Hero removido conforme solicitação -->
+    
+    <!-- Cards de Métricas -->
+    <div class="metric-cards">
+        <div class="metric-card critical">
+            <div class="metric-card-header">
+                <h3 class="metric-card-title">Vulnerabilidades Críticas</h3>
+                <div class="metric-card-icon">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                </div>
+            </div>
+            <div class="metric-card-value">{{ critical_count | default(0) }}</div>
+            <p class="metric-card-description">Requerem atenção imediata</p>
+            <div class="metric-card-weekly">
+                <span class="weekly-badge critical">
+                    <i class="bi bi-calendar-week"></i>
+                    +{{ weekly_critical | default(0) }} esta semana
+                </span>
+            </div>
+            <div class="metric-card-footer">
+                <a href="{{ url_for('vulnerability_ui.vulnerability_details_by_severity', severity='critical') }}" class="metric-card-link">
+                    Ver detalhes <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+        
+        <div class="metric-card high">
+            <div class="metric-card-header">
+                <h3 class="metric-card-title">Vulnerabilidades Altas</h3>
+                <div class="metric-card-icon">
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                </div>
+            </div>
+            <div class="metric-card-value">{{ high_count | default(0) }}</div>
+            <p class="metric-card-description">Prioridade alta para correção</p>
+            <div class="metric-card-weekly">
+                <span class="weekly-badge high">
+                    <i class="bi bi-calendar-week"></i>
+                    +{{ weekly_high | default(0) }} esta semana
+                </span>
+            </div>
+            <div class="metric-card-footer">
+                <a href="{{ url_for('vulnerability_ui.vulnerability_details_by_severity', severity='high') }}" class="metric-card-link">
+                    Ver detalhes <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+        
+        <div class="metric-card medium">
+            <div class="metric-card-header">
+                <h3 class="metric-card-title">Vulnerabilidades Médias</h3>
+                <div class="metric-card-icon">
+                    <i class="bi bi-info-circle-fill"></i>
+                </div>
+            </div>
+            <div class="metric-card-value">{{ medium_count | default(0) }}</div>
+            <p class="metric-card-description">Monitoramento contínuo</p>
+            <div class="metric-card-weekly">
+                <span class="weekly-badge medium">
+                    <i class="bi bi-calendar-week"></i>
+                    +{{ weekly_medium | default(0) }} esta semana
+                </span>
+            </div>
+            <div class="metric-card-footer">
+                <a href="{{ url_for('vulnerability_ui.vulnerability_details_by_severity', severity='medium') }}" class="metric-card-link">
+                    Ver detalhes <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+        
+        <div class="metric-card total">
+            <div class="metric-card-header">
+                <h3 class="metric-card-title">Total de Vulnerabilidades</h3>
+                <div class="metric-card-icon">
+                    <i class="bi bi-shield-exclamation"></i>
+                </div>
+            </div>
+            <div class="metric-card-value">{{ total_count | default(0) }}</div>
+            <p class="metric-card-description">Todas as vulnerabilidades</p>
+            <div class="metric-card-weekly">
+                <span class="weekly-badge total">
+                    <i class="bi bi-calendar-week"></i>
+                    +{{ weekly_total | default(0) }} esta semana
+                </span>
+            </div>
+            <div class="metric-card-footer">
+                <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}" class="metric-card-link">
+                    Ver todas <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+            
+
+    
+    <!-- Ações Rápidas -->
+    <div class="quick-actions-section">
+        <div class="section-header">
+            <h2 class="section-title">Ações Rápidas</h2>
+            <p class="section-subtitle">Acesso direto às principais funcionalidades</p>
+        </div>
+        
+        <div class="quick-actions-grid">
+            <a href="{{ url_for('main.search') }}" class="quick-action-card">
+                <div class="quick-action-icon search">
+                    <i class="bi bi-search"></i>
+                </div>
+                <div class="quick-action-content">
+                    <h3 class="quick-action-title">Buscar Vulnerabilidades</h3>
+                    <p class="quick-action-description">Pesquise por CVEs específicos ou filtros avançados</p>
+                </div>
+                <div class="quick-action-arrow">
+                    <i class="bi bi-arrow-right"></i>
+                </div>
+            </a>
+            
+            <!-- Novo: Adicionar Ativo -->
+            <a href="{{ url_for('asset.create_asset') }}" class="quick-action-card">
+                <div class="quick-action-icon add-asset">
+                    <i class="bi bi-plus-circle"></i>
+                </div>
+                <div class="quick-action-content">
+                    <h3 class="quick-action-title">Adicionar Ativo</h3>
+                    <p class="quick-action-description">Cadastre rapidamente um novo ativo de TI</p>
+                </div>
+                <div class="quick-action-arrow">
+                    <i class="bi bi-arrow-right"></i>
+                </div>
+            </a>
+
+            
+            <a href="{{ url_for('asset.list_assets') }}" class="quick-action-card">
+                <div class="quick-action-icon assets">
+                    <i class="bi bi-hdd-stack"></i>
+                </div>
+                <div class="quick-action-content">
+                    <h3 class="quick-action-title">Gerenciar Assets</h3>
+                    <p class="quick-action-description">Visualize e gerencie seus ativos de TI</p>
+                </div>
+                <div class="quick-action-arrow">
+                    <i class="bi bi-arrow-right"></i>
+                </div>
+            </a>
+            
+            <a href="{{ url_for('monitoring.monitoring_home') }}" class="quick-action-card">
+                <div class="quick-action-icon monitoring">
+                    <i class="bi bi-activity"></i>
+                </div>
+                <div class="quick-action-content">
+                    <h3 class="quick-action-title">Monitoramento</h3>
+                    <p class="quick-action-description">Configure regras de monitoramento</p>
+                </div>
+                <div class="quick-action-arrow">
+                    <i class="bi bi-arrow-right"></i>
+                </div>
+            </a>
+            
+            <!-- Novo: Selecionar Vendors -->
+            <a href="{{ url_for('vulnerability_ui.vendor_selection_ui') }}" class="quick-action-card">
+                <div class="quick-action-icon vendor-select">
+                    <i class="bi bi-building"></i>
+                </div>
+                <div class="quick-action-content">
+                    <h3 class="quick-action-title">Selecionar Vendors</h3>
+                    <p class="quick-action-description">Escolha fornecedores para monitorar vulnerabilidades</p>
+                </div>
+                <div class="quick-action-arrow">
+                    <i class="bi bi-arrow-right"></i>
+                </div>
+            </a>
+
+            <a href="{{ url_for('main.analytics') }}" class="quick-action-card">
+                <div class="quick-action-icon analytics">
+                    <i class="bi bi-graph-up"></i>
+                </div>
+                <div class="quick-action-content">
+                    <h3 class="quick-action-title">Analytics</h3>
+                    <p class="quick-action-description">Análise de tendências e estatísticas</p>
+                </div>
+                <div class="quick-action-arrow">
+                    <i class="bi bi-arrow-right"></i>
+                </div>
+            </a>
+            
+
+        </div>
+    </div>
+            
+    <!-- Vulnerabilidades Recentes -->
+    <div class="recent-vulnerabilities-section">
+        <div class="section-header">
+            <h2 class="section-title">Vulnerabilidades Recentes</h2>
+            <p class="section-subtitle">Últimas vulnerabilidades identificadas no sistema</p>
+            <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}" class="section-action">
+                Ver todas <i class="bi bi-arrow-right"></i>
+            </a>
+        </div>
+        
+        <div class="vulnerabilities-table-container">
+            {% if vulnerabilities %}
+                <div class="vulnerabilities-table">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="vulnerabilities-table" aria-label="Lista de vulnerabilidades recentes">
+                            <caption class="sr-only">Vulnerabilidades recentes: CVE, severidade, descrição, data de publicação, pontuação CVSS e ações.</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="sortable text-nowrap" data-sort="cve_id" tabindex="0" role="columnheader" aria-sort="none" aria-label="CVE - Clique para ordenar">
+                                        CVE <i class="fas fa-sort sort-icon text-muted" aria-hidden="true"></i>
+                                    </th>
+                                    <th scope="col" class="sortable text-nowrap" data-sort="severity" tabindex="0" role="columnheader" aria-sort="none" aria-label="Severidade - Clique para ordenar">
+                                        Severidade <i class="fas fa-sort sort-icon text-muted" aria-hidden="true"></i>
+                                    </th>
+                                    <th scope="col" class="d-none d-md-table-cell" style="min-width: 250px;">Descrição</th>
+                                    <th scope="col" class="sortable text-nowrap" data-sort="published_date" tabindex="0" role="columnheader" aria-sort="none" aria-label="Publicado - Clique para ordenar">
+                                        Publicado <i class="fas fa-sort sort-icon text-muted" aria-hidden="true"></i>
+                                    </th>
+                                    <th scope="col" class="sortable text-nowrap" data-sort="cvss_score" tabindex="0" role="columnheader" aria-sort="none" aria-label="CVSS - Clique para ordenar">
+                                        CVSS <i class="fas fa-sort sort-icon text-muted" aria-hidden="true"></i>
+                                    </th>
+                                    <th scope="col" class="text-nowrap text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for vuln in vulnerabilities %}
+                                <tr>
+                                    <th scope="row">
+                                        {% if vuln.references and vuln.references|length > 0 %}
+                                            <a href="{{ vuln.references[0].url }}" target="_blank" rel="noopener noreferrer" class="cve-link" aria-label="Abrir referência {{ vuln.cve_id }} em nova aba">
+                                                <span class="cve-badge">{{ vuln.cve_id }}</span>
+                                            </a>
+                                        {% else %}
+                                            <span class="cve-badge">{{ vuln.cve_id }}</span>
+                                        {% endif %}
+                                    </th>
+                                    <td>
+                                        <span class="severity-badge {{ (vuln.base_severity | lower) | replace('/', '\/') }}" title="Severidade: {{ vuln.base_severity if vuln.base_severity != 'N/A' else 'Não Avaliado' }}">
+                                            <i class="bi bi-{{ 'exclamation-triangle-fill' if vuln.base_severity == 'CRITICAL' else 'exclamation-circle-fill' if vuln.base_severity == 'HIGH' else 'info-circle-fill' if vuln.base_severity == 'MEDIUM' else 'check-circle-fill' if vuln.base_severity == 'LOW' else 'question-circle-fill' }}"></i>
+                                            {{ vuln.base_severity if vuln.base_severity != 'N/A' else 'Não Avaliado' }}
+                                        </span>
+                                    </td>
+                                    <td class="d-none d-md-table-cell">
+                                        <p class="vulnerability-description mb-0" title="{{ vuln.description | default('Sem descrição disponível') }}">{{ vuln.description | default('Sem descrição disponível') | truncate(120) }}</p>
+                                    </td>
+                                    <td>
+                                        <span class="date-text">{{ vuln.published_date | datetimeformat('%d/%m/%Y') if vuln.published_date else 'N/A' }}</span>
+                                    </td>
+                                    <td>
+                                        {% if vuln.cvss_score and vuln.cvss_score > 0 %}
+                                            <span class="cvss-score {{ 'critical' if vuln.cvss_score >= 9.0 else 'high' if vuln.cvss_score >= 7.0 else 'medium' if vuln.cvss_score >= 4.0 else 'low' }}" title="Pontuação CVSS: {{ '%.1f' | format(vuln.cvss_score) }}" aria-label="Pontuação CVSS {{ '%.1f' | format(vuln.cvss_score) }}">
+                                                {{ "%.1f" | format(vuln.cvss_score) }}
+                                            </span>
+                                        {% else %}
+                                            <span class="cvss-score unknown" title="Pontuação CVSS: Não Avaliado" aria-label="Pontuação CVSS não avaliada">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="{{ url_for('vulnerability_ui.vulnerability_details', cve_id=vuln.cve_id) }}" class="btn btn-sm btn-outline-primary" title="Ver detalhes" aria-label="Ver detalhes de {{ vuln.cve_id }}">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Pagination Controls - Padrão Analytics -->
+                {% if page and total_pages and total_pages > 1 %}
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div class="pagination-controls">
+                        {% if page > 1 %}
+                            <a href="{{ url_for('main.index', page=page-1) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-chevron-left"></i> Anterior
+                            </a>
+                        {% else %}
+                            <button class="btn btn-sm btn-outline-primary" disabled>
+                                <i class="fas fa-chevron-left"></i> Anterior
+                            </button>
+                        {% endif %}
+                        <span class="mx-3">
+                            Página <span>{{ page }}</span> de <span>{{ total_pages }}</span>
+                        </span>
+                        {% if page < total_pages %}
+                            <a href="{{ url_for('main.index', page=page+1) }}" class="btn btn-sm btn-outline-primary">
+                                Próxima <i class="fas fa-chevron-right"></i>
+                            </a>
+                        {% else %}
+                            <button class="btn btn-sm btn-outline-primary" disabled>
+                                Próxima <i class="fas fa-chevron-right"></i>
+                            </button>
+                        {% endif %}
+                    </div>
+                    <div class="page-size-controls">
+                        <label for="vulnerabilities-page-size" class="form-label mb-0 me-2">Itens por página:</label>
+                        <select class="form-select form-select-sm" id="vulnerabilities-page-size" style="width: auto;">
+                            <option value="5" {{ 'selected' if (per_page|default(10)) == 5 else '' }}>5</option>
+                            <option value="10" {{ 'selected' if (per_page|default(10)) == 10 else '' }}>10</option>
+                            <option value="20" {{ 'selected' if (per_page|default(10)) == 20 else '' }}>20</option>
+                            <option value="50" {{ 'selected' if (per_page|default(10)) == 50 else '' }}>50</option>
+                        </select>
+                    </div>
+                </div>
+                {% endif %}
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                    <h3 class="empty-state-title">Nenhuma vulnerabilidade encontrada</h3>
+                    <p class="empty-state-description">Não há vulnerabilidades registradas no momento. Isso é uma boa notícia!</p>
+                    <a href="{{ url_for('vulnerability_ui.create_vulnerability_ui') }}" class="empty-state-action">
+                        <i class="bi bi-plus-circle"></i> Adicionar vulnerabilidade
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js CDN -->
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Chart.js disponível:', typeof Chart !== 'undefined');
+        
+        // Carregar dashboard.js após Chart.js estar disponível
+        if (typeof Chart !== 'undefined') {
+            const dashboardScript = document.createElement('script');
+            dashboardScript.src = '{{ url_for("static", filename="js/pages/dashboard.js") }}';
+            dashboardScript.onload = function() {
+                console.log('Dashboard.js carregado com sucesso');
+            };
+            dashboardScript.onerror = function() {
+                console.error('Erro ao carregar dashboard.js');
+            };
+            document.head.appendChild(dashboardScript);
+        } else {
+            console.error('Chart.js não está disponível');
+        }
+    });
+
+    // Controlar mudança de itens por página
+    document.addEventListener('DOMContentLoaded', function() {
+        const pageSizeSelect = document.getElementById('vulnerabilities-page-size');
+        if (pageSizeSelect) {
+            pageSizeSelect.addEventListener('change', function() {
+                const params = new URLSearchParams(window.location.search);
+                params.set('per_page', this.value);
+                params.set('page', 1);
+                window.location.search = params.toString();
+            });
+        }
+    });
+</script>
+<script src="{{ url_for('static', filename='js/features/vulnerabilities.js') }}" defer nonce="{{ nonce }}"></script>
+<script src="{{ url_for('static', filename='js/components/card-navigation.js') }}" defer nonce="{{ nonce }}"></script>
+{% endblock %}

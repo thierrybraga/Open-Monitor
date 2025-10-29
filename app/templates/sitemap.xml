@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+    <!-- Homepage -->
+    <url>
+        <loc>{{ url_for('main.index', _external=True) }}</loc>
+        <lastmod>{{ moment.format('YYYY-MM-DD') }}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>1.0</priority>
+    </url>
+
+    <!-- Dashboard -->
+    <url>
+        <loc>{{ url_for('main.dashboard', _external=True) }}</loc>
+        <lastmod>{{ moment.format('YYYY-MM-DD') }}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.9</priority>
+    </url>
+
+    <!-- Vulnerabilities List -->
+    <url>
+        <loc>{{ url_for('vulnerability_ui.list_vulnerabilities_ui', _external=True) }}</loc>
+        <lastmod>{{ moment.format('YYYY-MM-DD') }}</lastmod>
+        <changefreq>hourly</changefreq>
+        <priority>0.9</priority>
+    </url>
+
+    <!-- Search Page -->
+    <url>
+        <loc>{{ url_for('search.search_ui', _external=True) }}</loc>
+        <lastmod>{{ moment.format('YYYY-MM-DD') }}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+
+
+    <!-- Individual Vulnerabilities -->
+    {% if vulnerabilities %}
+    {% for vulnerability in vulnerabilities %}
+    <url>
+        <loc>{{ url_for('vulnerability_ui.vulnerability_details', cve_id=vulnerability.cve_id, _external=True) }}</loc>
+        <lastmod>{{ vulnerability.updated_at.strftime('%Y-%m-%d') if vulnerability.updated_at else vulnerability.created_at.strftime('%Y-%m-%d') }}</lastmod>
+        <changefreq>{% if vulnerability.severity in ['CRITICAL', 'HIGH'] %}daily{% else %}weekly{% endif %}</changefreq>
+        <priority>{% if vulnerability.severity == 'CRITICAL' %}0.9{% elif vulnerability.severity == 'HIGH' %}0.8{% elif vulnerability.severity == 'MEDIUM' %}0.7{% else %}0.6{% endif %}</priority>
+    </url>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Static Pages -->
+    <url>
+        <loc>{{ url_for('main.about', _external=True) }}</loc>
+        <lastmod>{{ moment.format('YYYY-MM-DD') }}</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <url>
+        <loc>{{ url_for('main.contact', _external=True) }}</loc>
+        <lastmod>{{ moment.format('YYYY-MM-DD') }}</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <!-- API Documentation -->
+    {% if url_for('api.docs', _external=True) %}
+    <url>
+        <loc>{{ url_for('api.docs', _external=True) }}</loc>
+        <lastmod>{{ moment.format('YYYY-MM-DD') }}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.6</priority>
+    </url>
+    {% endif %}
+
+    <!-- Newsletter -->
+    {% if url_for('newsletter.newsletter_ui', _external=True) %}
+    <url>
+        <loc>{{ url_for('newsletter.newsletter_ui', _external=True) }}</loc>
+        <lastmod>{{ moment.format('YYYY-MM-DD') }}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.7</priority>
+    </url>
+    {% endif %}
+
+</urlset>

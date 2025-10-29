@@ -1,0 +1,865 @@
+/* footer.css - Modern Footer with Unified Design System */
+
+/* ========================================
+   Modern Footer - Unified Design System
+   Enhanced with glassmorphism, modern icons, and responsive design
+   ======================================== */
+
+/* ========================================
+   Estilos Base do Footer - Glassmorphism
+   ======================================== */
+.footer {
+  /* Glassmorphism effect usando variáveis do sistema */
+  background: rgba(var(--surface-0-rgb, 255, 255, 255), 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border-light);
+  box-shadow: 0 -8px 32px rgba(var(--neutral-900-rgb, 0, 0, 0), 0.08);
+  margin-top: auto;
+  padding: 2.5rem 0 1.5rem;
+  /* Typography com melhor contraste */
+  font-size: 0.875rem;
+  color: var(--content-medium);
+  line-height: var(--line-height-relaxed);
+  position: relative;
+  width: 100%;
+  z-index: 100;
+  overflow: hidden;
+  font-family: var(--font-family-primary);
+  /* Transição suave para mudanças de tema */
+  transition: all var(--animation-duration-normal) var(--ease-standard);
+}
+
+/* Efeito de overlay sutil com melhor legibilidade */
+.footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, 
+    rgba(var(--primary-50-rgb, 240, 249, 255), 0.3) 0%, 
+    rgba(var(--primary-100-rgb, 224, 242, 254), 0.1) 100%);
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.6;
+  transition: opacity var(--animation-duration-normal) var(--ease-standard);
+}
+
+/* Container do footer */
+.footer .container {
+  max-width: var(--container-max-width);
+  padding-left: var(--spacing-lg);
+  padding-right: var(--spacing-lg);
+  position: relative;
+  z-index: 2;
+}
+
+/* ========================================
+   Seções do Footer - Layout Moderno
+   ======================================== */
+
+/* Seção principal */
+.footer-main {
+  margin-bottom: var(--spacing-2xl);
+  position: relative;
+}
+
+/* ========================================
+   🎨 FOOTER BRAND - REDESIGN MODERNO
+   ======================================== */
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: rgba(var(--surface-0-rgb, 255, 255, 255), 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  box-shadow: 
+    0 8px 32px rgba(var(--neutral-900-rgb, 0, 0, 0), 0.1),
+    inset 0 1px 0 rgba(var(--surface-0-rgb, 255, 255, 255), 0.2);
+  transition: all var(--animation-duration-normal) var(--ease-standard);
+  position: relative;
+  overflow: hidden;
+}
+
+.footer-brand::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: var(--gradient-shimmer);
+  transition: var(--transition-smooth);
+  z-index: 1;
+}
+
+.footer-brand:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-glass-xl);
+  border-color: var(--color-primary-400);
+}
+
+.footer-brand:hover::before {
+  left: 100%;
+}
+
+.footer-brand-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--primary-700) 100%);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(var(--primary-500-rgb, 14, 165, 233), 0.3);
+  transition: all var(--animation-duration-normal) var(--ease-standard);
+  flex-shrink: 0;
+}
+
+.footer-brand-icon i {
+  font-size: 24px;
+  color: var(--content-on-color-primary);
+  filter: drop-shadow(0 2px 4px rgba(var(--neutral-900-rgb, 0, 0, 0), 0.2));
+}
+
+.footer-brand-icon:hover {
+  transform: scale(1.05) rotate(5deg);
+  box-shadow: 0 6px 20px rgba(var(--primary-500-rgb, 14, 165, 233), 0.4);
+}
+
+.footer-brand-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.brand-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--primary-700) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: var(--content-strongest);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.brand-description {
+  font-size: 0.875rem;
+  color: var(--content-medium);
+  margin: 0;
+  opacity: 0.9;
+}
+
+/* ========================================
+   🧭 FOOTER NAVIGATION - MODERN DESIGN
+   ======================================== */
+
+.footer-nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2rem;
+    padding: 1.5rem;
+    background: rgba(var(--surface-0-rgb, 255, 255, 255), 0.05);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(var(--neutral-900-rgb, 0, 0, 0), 0.08);
+}
+
+.footer-nav a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--content-medium);
+    text-decoration: none;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    transition: all var(--animation-duration-normal) var(--ease-standard);
+    position: relative;
+    overflow: hidden;
+    background: transparent;
+    border: 1px solid transparent;
+    font-size: 0.875rem;
+}
+
+.footer-nav a::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(var(--primary-500-rgb, 14, 165, 233), 0.1), transparent);
+    transition: left var(--animation-duration-slow) var(--ease-out);
+}
+
+.footer-nav a:hover::before {
+    left: 100%;
+}
+
+.footer-nav a:hover {
+    color: var(--content-strongest);
+    background: var(--ui-bg-hover);
+    border-color: var(--border-medium);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(var(--neutral-900-rgb, 0, 0, 0), 0.15);
+}
+
+.footer-nav a:focus-visible {
+    outline: var(--focus-visible-outline);
+    outline-offset: var(--focus-visible-outline-offset);
+}
+
+.footer-nav a i {
+  font-size: 1rem;
+  transition: var(--transition-fast);
+}
+
+.footer-nav a:hover i {
+  transform: scale(1.1);
+  color: var(--color-primary-500);
+}
+
+/* ========================================
+   Social Links Section - Nova Seção
+   ======================================== */
+.footer-social {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  align-items: center;
+  padding: var(--spacing-lg);
+  background: var(--glass-bg-secondary);
+  backdrop-filter: blur(var(--blur-medium));
+  -webkit-backdrop-filter: blur(var(--blur-medium));
+  border: 1px solid var(--border-glass);
+  border-radius: var(--border-radius-xl);
+  box-shadow: var(--shadow-glass-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.footer-social-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: rgba(var(--surface-0-rgb, 255, 255, 255), 0.05);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  color: var(--content-medium);
+  text-decoration: none;
+  transition: all var(--animation-duration-normal) var(--ease-standard);
+  position: relative;
+  overflow: hidden;
+}
+
+.footer-social-link::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: radial-gradient(circle, rgba(var(--primary-100-rgb, 224, 242, 254), 0.8) 0%, transparent 70%);
+  border-radius: 50%;
+  transition: all var(--animation-duration-normal) var(--ease-standard);
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
+
+.footer-social-link i {
+  font-size: 1.125rem;
+  z-index: 2;
+  position: relative;
+  transition: all var(--animation-duration-fast) var(--ease-standard);
+}
+
+.footer-social-link:hover {
+  background: rgba(var(--primary-50-rgb, 240, 249, 255), 0.8);
+  border-color: var(--border-medium);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(var(--primary-500-rgb, 14, 165, 233), 0.2);
+  color: var(--color-primary);
+}
+
+.footer-social-link:hover::before {
+  width: 120%;
+  height: 120%;
+}
+
+.footer-social-link:hover i {
+  transform: scale(1.15);
+}
+
+.footer-social-link:focus-visible {
+  outline: var(--focus-visible-outline);
+  outline-offset: var(--focus-visible-outline-offset);
+}
+
+/* ========================================
+   Action Buttons - Glassmorphism Style
+   ======================================== */
+.footer-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 1.5rem;
+}
+
+.footer-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  background: rgba(var(--surface-0-rgb, 255, 255, 255), 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-medium);
+  border-radius: 12px;
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: all var(--animation-duration-normal) var(--ease-standard);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(var(--neutral-900-rgb, 0, 0, 0), 0.1);
+}
+
+.footer-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: radial-gradient(circle, rgba(var(--primary-100-rgb, 224, 242, 254), 0.8) 0%, transparent 70%);
+  border-radius: 50%;
+  transition: all var(--animation-duration-normal) var(--ease-standard);
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
+
+.footer-btn i {
+  font-size: 1.25rem;
+  z-index: 2;
+  position: relative;
+  transition: all var(--animation-duration-fast) var(--ease-standard);
+}
+
+.footer-btn:hover {
+  background: rgba(var(--primary-50-rgb, 240, 249, 255), 0.8);
+  border-color: var(--border-strong);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(var(--primary-500-rgb, 14, 165, 233), 0.3);
+  color: var(--primary-700);
+}
+
+.footer-btn:hover::before {
+  width: 120%;
+  height: 120%;
+}
+
+.footer-btn:hover i {
+  transform: scale(1.1);
+}
+
+.footer-btn:active {
+  transform: translateY(-1px);
+}
+
+.footer-btn:focus-visible {
+  outline: var(--focus-visible-outline);
+  outline-offset: var(--focus-visible-outline-offset);
+}
+
+/* ========================================
+   Copyright Section - Minimalista
+   ======================================== */
+.footer-copyright {
+  border-top: 1px solid var(--border-light);
+  padding-top: 2rem;
+  margin-top: 2rem;
+  background: rgba(var(--surface-0-rgb, 255, 255, 255), 0.03);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: inset 0 1px 0 rgba(var(--surface-0-rgb, 255, 255, 255), 0.1);
+}
+
+.footer-copyright-text {
+  color: var(--content-weak);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.footer-copyright-text strong {
+  color: var(--content-medium);
+  font-weight: 600;
+}
+
+.footer-copyright-text a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--animation-duration-fast) var(--ease-standard);
+}
+
+.footer-copyright-text a:hover {
+  color: var(--primary-700);
+  text-decoration: underline;
+}
+
+.footer-copyright-text a:focus-visible {
+  outline: var(--focus-visible-outline);
+  outline-offset: var(--focus-visible-outline-offset);
+}
+}
+
+.footer-copyright-text strong {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.footer-version {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-lg);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  flex-wrap: wrap;
+}
+
+.footer-version-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(var(--surface-0-rgb, 255, 255, 255), 0.05);
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+  transition: all var(--animation-duration-fast) var(--ease-standard);
+}
+
+.footer-version-item:hover {
+  background: rgba(var(--surface-0-rgb, 255, 255, 255), 0.08);
+  border-color: var(--border-medium);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(var(--neutral-900-rgb, 0, 0, 0), 0.15);
+}
+
+.footer-version-item i {
+  font-size: 0.875rem;
+  color: var(--content-medium);
+}
+
+.footer-version .version-number {
+  font-weight: 600;
+  color: var(--content-strong);
+}
+
+.footer-version .open-source {
+  color: var(--content-medium);
+}
+
+.footer-version .open-source i {
+  color: var(--error-600);
+  animation: heartbeat 2s ease-in-out infinite;
+}
+
+/* ========================================
+   Animações Modernas
+   ======================================== */
+@keyframes heartbeat {
+  0%, 100% { 
+    transform: scale(1); 
+  }
+  50% { 
+    transform: scale(1.15); 
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.footer-brand-icon {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* ========================================
+   Responsividade Avançada
+   ======================================== */
+
+/* Container Queries para Responsividade Moderna */
+@container (max-width: 992px) {
+  .footer-actions {
+    justify-content: center;
+    margin-top: var(--spacing-lg);
+  }
+  
+  .footer-nav {
+    justify-content: center;
+  }
+  
+  .footer-version {
+    justify-content: center;
+    margin-top: var(--spacing-lg);
+  }
+  
+  .footer-social {
+    justify-content: center;
+  }
+}
+
+/* Tablets */
+@media (max-width: 992px) {
+  .footer {
+    padding: var(--spacing-lg) 0;
+  }
+  
+  .footer-main {
+    margin-bottom: var(--spacing-xl);
+  }
+  
+  .footer-actions {
+    justify-content: center;
+    margin-top: var(--spacing-lg);
+  }
+  
+  .footer-nav {
+    justify-content: center;
+  }
+  
+  .footer-version {
+    justify-content: center;
+    margin-top: var(--spacing-lg);
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .footer {
+    padding: var(--spacing-lg) 0;
+  }
+  
+  .footer .container {
+    padding-left: var(--spacing-md);
+    padding-right: var(--spacing-md);
+  }
+  
+  .footer-main {
+    margin-bottom: var(--spacing-lg);
+  }
+  
+  .footer-brand {
+    flex-direction: column;
+    text-align: center;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-lg);
+  }
+  
+  .footer-brand-content {
+    text-align: center;
+  }
+  
+  .footer-nav {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-lg);
+  }
+  
+  .footer-nav a {
+    width: 100%;
+    max-width: 280px;
+    justify-content: center;
+    padding: var(--spacing-lg) var(--spacing-xl);
+  }
+  
+  .footer-social {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+  }
+  
+  .footer-actions {
+    justify-content: center;
+    margin-top: var(--spacing-xl);
+  }
+  
+  .footer-copyright {
+    text-align: center;
+    padding: var(--spacing-lg);
+  }
+  
+  .footer-version {
+    justify-content: center;
+    margin-top: var(--spacing-lg);
+    gap: var(--spacing-md);
+  }
+  
+  .footer-version-item {
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+}
+
+/* Mobile pequeno */
+@media (max-width: 480px) {
+  .footer {
+    padding: var(--spacing-md) 0;
+  }
+  
+  .footer-btn {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .footer-btn i {
+    font-size: 1.125rem;
+  }
+  
+  .footer-brand-icon {
+    width: 52px;
+    height: 52px;
+  }
+  
+  .footer-brand-icon i {
+    font-size: 1.5rem;
+  }
+  
+  .footer-social-link {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .footer-social-link i {
+    font-size: 1rem;
+  }
+  
+  .footer-version {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+}
+
+/* ========================================
+   Estados de Foco e Acessibilidade
+   ======================================== */
+.footer a:focus,
+.footer button:focus {
+  outline: var(--focus-visible-outline);
+  outline-offset: var(--focus-visible-outline-offset);
+  border-radius: 12px;
+}
+
+.footer a:focus-visible,
+.footer button:focus-visible {
+  outline: var(--focus-visible-outline);
+  outline-offset: var(--focus-visible-outline-offset);
+  box-shadow: 0 0 0 4px rgba(var(--primary-500-rgb, 59, 130, 246), 0.2);
+}
+
+/* ========================================
+   Preferências de Movimento
+   ======================================== */
+@media (prefers-reduced-motion: reduce) {
+  .footer *,
+  .footer *::before,
+  .footer *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ========================================
+   Modo de Alto Contraste
+   ======================================== */
+@media (prefers-contrast: high) {
+  .footer {
+    background: rgba(255, 255, 255, 0.95);
+    border-top: 2px solid var(--color-gray-900);
+  }
+  
+  .footer-brand,
+  .footer-nav,
+  .footer-social,
+  .footer-copyright {
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid var(--color-gray-800);
+  }
+  
+  .footer-nav a,
+  .footer-social-link,
+  .footer-btn {
+    border: 2px solid var(--color-gray-700);
+  }
+}
+
+/* ========================================
+   Tema Claro Forçado
+   ======================================== */
+.footer {
+  color-scheme: light only;
+}
+
+/* ========================================
+   Footer Minimal Variant - Integrated with Design System
+   ======================================== */
+.footer.footer-minimal {
+  background: var(--surface-0);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  border-top: 1px solid var(--border-light);
+  padding: 0.75rem 0; /* ainda mais minimal */
+}
+
+.footer.footer-minimal .footer-main {
+  margin-bottom: 0.5rem; /* reduzir separação entre seções */
+}
+
+.footer.footer-minimal .footer-brand {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.footer.footer-minimal .footer-brand .brand-name {
+  color: var(--content-strong);
+  -webkit-text-fill-color: initial;
+  background: none;
+}
+
+.footer.footer-minimal .footer-brand .brand-description {
+  color: var(--content-medium);
+}
+
+.footer.footer-minimal .footer-nav {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  gap: 1rem;
+}
+
+.footer.footer-minimal .footer-nav a {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0.25rem 0.5rem;
+  color: var(--content-medium);
+  text-decoration: none; /* remover sublinhado padrão para estética limpa */
+}
+
+.footer.footer-minimal .footer-actions .footer-btn {
+  background: transparent;
+  border: 0;
+  padding: 0.25rem 0.5rem;
+  color: var(--content-medium);
+  text-decoration: none;
+}
+
+.footer.footer-minimal .footer-social,
+.footer.footer-minimal .footer-social-section { display: flex; gap: 0.5rem; }
+
+.footer.footer-minimal .footer-version .version-number { color: var(--content-medium); }
+
+/* Responsividade alinhada aos breakpoints globais */
+@media (max-width: var(--breakpoint-md)) {
+  .footer.footer-minimal { padding: 0.5rem 0; } /* reduzir ainda mais em mobile */
+  .footer.footer-minimal .footer-nav { justify-content: flex-start; gap: 0.5rem; }
+  .footer.footer-minimal .footer-actions { margin-top: 0.25rem; }
+}
+
+@media (min-width: var(--breakpoint-lg)) {
+  .footer.footer-minimal { padding: 1.5rem 0; } /* aumentar levemente em desktop */
+  .footer.footer-minimal .footer-nav { gap: 1.25rem; }
+}
+
+/* Hover harmonizado: cor forte, sem decoração pesada */
+.footer.footer-minimal .footer-nav a:hover,
+.footer.footer-minimal .footer-actions .footer-btn:hover {
+  color: var(--content-strong);
+}
+
+/* Acessibilidade: foco visível padrão do sistema */
+.footer.footer-minimal a:focus-visible,
+.footer.footer-minimal button:focus-visible {
+  outline: var(--focus-visible-outline);
+  outline-offset: var(--focus-visible-outline-offset);
+}
+
+/* Tema alto contraste */
+@media (prefers-contrast: more) {
+  .footer.footer-minimal { border-top-color: var(--border-strong); }
+  .footer.footer-minimal .footer-nav a,
+  .footer.footer-minimal .footer-actions .footer-btn { color: var(--content-strongest); }
+}
+
+/* Ícones sutis nos links principais */
+.footer.footer-minimal .footer-nav a .bi {
+  font-size: 1rem;
+  margin-right: 0.375rem;
+  color: currentColor; /* acompanha a cor do link */
+  opacity: 0.9;
+}
+.footer.footer-minimal .footer-nav a:hover .bi {
+  color: var(--content-strong);
+  opacity: 1;
+}
+
+/* Barra de utilidades (oculta por padrão; exiba com .has-utility) */
+.footer.footer-minimal .footer-utility {
+  display: none;
+  border-top: 1px solid var(--border-light);
+  padding-top: 0.5rem;
+  margin-top: 0.75rem;
+}
+.footer.footer-minimal.has-utility .footer-utility {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+.footer.footer-minimal .footer-utility a {
+  color: var(--content-medium);
+  padding: 0.25rem 0.5rem;
+}
+.footer.footer-minimal .footer-utility a:hover {
+  color: var(--content-strong);
+}
+@media (max-width: var(--breakpoint-md)) {
+  .footer.footer-minimal.has-utility .footer-utility { justify-content: flex-start; }
+}
+
+/* Microcopy na versão */
+.footer.footer-minimal .footer-version .microcopy {
+  color: var(--content-medium);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}

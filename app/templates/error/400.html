@@ -1,0 +1,9 @@
+{% extends "error/base_error.html" %}
+
+{% block title %}400 - Requisição Inválida{% endblock %}
+
+{% set error_code = "400" %}
+{% set error_title = "Requisição Inválida" %}
+{% set error_message = "A requisição enviada não pôde ser processada devido a dados inválidos ou malformados." %}
+{% set error_type = "danger" %}
+{% set error_details = error if error %}

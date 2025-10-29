@@ -1,0 +1,387 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Lista de Ativos{% endblock %}
+
+{% block extra_css %}
+  {# Removido: CSS de página já importado via main.css #}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 fade-in">
+  <!-- Page Header -->
+  <header class="page-header mb-5">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+      <div>
+        <h1 class="h3 fw-semibold mb-2">
+          <i class="bi bi-server me-2 text-primary"></i>
+          Lista de Ativos
+        </h1>
+        <p class="text-muted fs-6 mb-0">
+          Gerencie todos os ativos de infraestrutura do sistema
+        </p>
+      </div>
+      <a href="{{ url_for('asset.create_asset') }}" class="btn btn-primary btn-lg">
+        <i class="bi bi-plus-circle me-2"></i>Adicionar Novo Ativo
+      </a>
+    </div>
+  </header>
+
+  <!-- Search and Filter Bar -->
+  <div class="search-filter-bar">
+    <div class="row align-items-center">
+      <div class="col-md-6">
+        <div class="search-input-group">
+          <i class="bi bi-search search-icon"></i>
+          <input type="text" class="form-control" placeholder="Buscar por nome, IP ou responsável..." id="asset-search">
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="d-flex gap-2 justify-content-md-end mt-3 mt-md-0">
+          <select class="form-select" style="width: auto;" id="status-filter">
+            <option value="">Todos os status</option>
+            <option value="active">Ativo</option>
+            <option value="inactive">Inativo</option>
+            <option value="maintenance">Manutenção</option>
+            <option value="warning">Alerta</option>
+          </select>
+          <button class="btn btn-outline-secondary" id="clear-filters">
+            <i class="bi bi-x-circle"></i>
+            Limpar filtros
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Asset Table -->
+  <div class="asset-table-container mt-4">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <th>
+              <i class="bi bi-hdd-network me-1"></i>Ativo
+            </th>
+            <th>
+              <i class="bi bi-diagram-3 me-1"></i>Tipo
+            </th>
+            <th>
+              <i class="bi bi-globe me-1"></i>IP
+            </th>
+            <th>
+              <i class="bi bi-geo-alt me-1"></i>Localização
+            </th>
+            <th>
+              <i class="bi bi-person-badge me-1"></i>Responsável
+            </th>
+            <th>
+              <i class="bi bi-activity me-1"></i>Status
+            </th>
+            <th>
+              <i class="bi bi-gear me-1"></i>Ações
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for asset in assets %}
+            <tr data-asset-id="{{ asset.id }}">
+              <td>
+                <div class="d-flex align-items-center gap-3">
+                  <div class="avatar bg-light rounded-circle p-2">
+                    <i class="bi bi-hdd-network text-primary"></i>
+                  </div>
+                  <div>
+                    <a href="{{ url_for('asset.asset_detail', asset_id=asset.id) }}" class="fw-semibold text-decoration-none">{{ asset.name }}</a>
+                    <div class="text-muted small">Criado por {{ asset.owner.username if asset.owner else 'N/A' }}</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="badge bg-secondary">Serviço</span></td>
+              <td><code>{{ asset.ip_address }}</code></td>
+              <td><span class="text-muted">Data Center</span></td>
+              <td><span class="text-muted">{{ asset.owner.username if asset.owner else 'N/A' }}</span></td>
+              <td><span class="status-badge badge bg-success">Ativo</span></td>
+              <td>
+                <div class="btn-group" role="group" aria-label="Ações">
+                  <a href="{{ url_for('asset.asset_detail', asset_id=asset.id) }}" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Detalhes">
+                    <i class="bi bi-eye"></i>
+                  </a>
+                  <a href="{{ url_for('asset.edit_asset', asset_id=asset.id) }}" class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" title="Editar">
+                    <i class="bi bi-pencil"></i>
+                  </a>
+                  <button class="btn btn-sm btn-outline-danger delete-asset-btn"
+                          data-asset-id="{{ asset.id }}"
+                          data-asset-name="{{ asset.name }}"
+                          data-delete-url="{{ url_for('asset.delete_asset', asset_id=asset.id) }}"
+                          data-bs-toggle="tooltip" title="Excluir">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination (placeholder static) -->
+    <div class="d-flex justify-content-between align-items-center mt-3">
+      <div>
+        <span class="text-muted">Mostrando <span id="current-range">1-{{ assets|length }}</span> de <span id="total-assets">{{ assets|length }}</span> ativos</span>
+      </div>
+      <div class="pagination-controls">
+        <div class="d-flex align-items-center">
+          <button class="pagination-btn" id="prev-page" disabled>
+            <i class="bi bi-arrow-left"></i>
+          </button>
+          <div class="mx-2">
+            Página <span id="current-page">1</span> de <span id="total-pages">2</span>
+          </div>
+          <button class="pagination-btn" id="next-page">
+            <i class="bi bi-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteAssetModal" tabindex="-1" aria-labelledby="deleteAssetModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-semibold" id="deleteAssetModalLabel">
+          <i class="bi bi-exclamation-triangle text-warning me-2"></i>
+          Confirmar Exclusão
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3">Tem certeza que deseja excluir o ativo <strong id="asset-name-to-delete"></strong>?</p>
+        <div class="alert alert-warning d-flex align-items-center" role="alert">
+          <i class="bi bi-exclamation-triangle me-2"></i>
+          <div>Esta ação não pode ser desfeita.</div>
+        </div>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle me-1"></i>Cancelar
+        </button>
+        <form method="POST" id="delete-asset-form" class="d-inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-danger" id="delete-btn">
+            <i class="bi bi-trash me-1"></i>
+            <span class="btn-text">Excluir Ativo</span>
+            <span class="btn-loading d-none">
+              <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+              Excluindo...
+            </span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast for Feedback -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+  <div id="feedback-toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="toast-header">
+      <i class="bi bi-check-circle-fill text-success me-2"></i>
+      <strong class="me-auto">Sucesso</strong>
+      <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+    <div class="toast-body">
+      Operação realizada com sucesso!
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Asset management functionality
+// Executa após o DOM estar pronto para garantir que base.js esteja carregado
+
+document.addEventListener('DOMContentLoaded', function() {
+  'use strict';
+  
+  // Delete asset functionality
+  const deleteButtons = document.querySelectorAll('.delete-asset-btn');
+  const modalEl = document.getElementById('deleteAssetModal');
+  const getModalSafely = (typeof window.getModalInstance === 'function')
+    ? window.getModalInstance
+    : function(el, options) {
+        if (!el) return null;
+        try {
+          if (typeof window.bootstrap !== 'undefined' && bootstrap.Modal) {
+            return bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el, options);
+          }
+        } catch (e) {
+          console.warn('Bootstrap Modal init failed:', e);
+        }
+        return {
+          show() {
+            el.classList.add('show');
+            el.style.display = 'block';
+            document.body.classList.add('modal-open');
+          },
+          hide() {
+            el.classList.remove('show');
+            el.style.display = 'none';
+            document.body.classList.remove('modal-open');
+            document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+          }
+        };
+      };
+  const deleteModal = getModalSafely(modalEl);
+  const deleteForm = document.getElementById('delete-asset-form');
+  const assetNameElement = document.getElementById('asset-name-to-delete');
+  let currentAssetId = null;
+  
+  deleteButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      const assetId = this.dataset.assetId;
+      const assetName = this.dataset.assetName;
+      const deleteUrl = this.dataset.deleteUrl || `/assets/${assetId}/delete`;
+      currentAssetId = assetId;
+      
+      assetNameElement.textContent = assetName;
+      deleteForm.action = deleteUrl;
+      
+      deleteModal.show();
+    });
+  });
+
+  // Intercepta o submit para exclusão via AJAX com toast
+  if (deleteForm) {
+    deleteForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const submitBtn = document.getElementById('delete-btn');
+      submitBtn.disabled = true;
+      submitBtn.querySelector('.btn-text').classList.add('d-none');
+      submitBtn.querySelector('.btn-loading').classList.remove('d-none');
+
+      try {
+        const formData = new FormData(deleteForm);
+        const res = await fetch(deleteForm.action, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+          },
+          body: formData
+        });
+
+        const contentType = (res.headers.get('content-type') || '').toLowerCase();
+        const isJson = contentType.includes('application/json');
+        const data = isJson ? (await res.json().catch(() => ({}))) : {};
+        if (!res.ok) {
+          throw new Error(data.message || `Falha ao excluir ativo (status ${res.status})`);
+        }
+
+        // Fechar modal
+        deleteModal && deleteModal.hide();
+
+        // Remover linha da tabela
+        if (currentAssetId) {
+          const row = document.querySelector(`tr[data-asset-id="${currentAssetId}"]`);
+          if (row) row.remove();
+        }
+
+        // Atualizar contadores
+        const rows = document.querySelectorAll('tbody tr');
+        const totalEl = document.getElementById('total-assets');
+        const rangeEl = document.getElementById('current-range');
+        if (totalEl) totalEl.textContent = rows.length;
+        if (rangeEl) rangeEl.textContent = rows.length ? `1-${rows.length}` : '0-0';
+
+        // Mostrar toast de sucesso
+        if (typeof window.safeNotify === 'function') {
+          window.safeNotify('success', null, 'Ativo removido com sucesso.', 4000);
+        } else {
+          const toastEl = document.getElementById('feedback-toast');
+          const toast = window.getToastInstance(toastEl, { delay: 4000 });
+          const toastIcon = document.querySelector('#feedback-toast .toast-header i');
+          const toastTitle = document.querySelector('#feedback-toast .toast-header strong');
+          const toastBody = document.querySelector('#feedback-toast .toast-body');
+          toastIcon.className = 'bi bi-check-circle-fill text-success me-2';
+          toastTitle.textContent = 'Excluído';
+          toastBody.textContent = 'Ativo removido com sucesso.';
+          toast.show();
+        }
+
+      } catch (err) {
+        if (typeof window.safeNotify === 'function') {
+          window.safeNotify('error', null, (err && err.message) ? err.message : 'Erro ao excluir ativo.', 5000);
+        } else {
+          const toastEl = document.getElementById('feedback-toast');
+          const toast = window.getToastInstance(toastEl, { delay: 5000 });
+          const toastIcon = document.querySelector('#feedback-toast .toast-header i');
+          const toastTitle = document.querySelector('#feedback-toast .toast-header strong');
+          const toastBody = document.querySelector('#feedback-toast .toast-body');
+          toastIcon.className = 'bi bi-exclamation-triangle text-warning me-2';
+          toastTitle.textContent = 'Erro';
+          toastBody.textContent = err && err.message ? err.message : 'Erro ao excluir ativo.';
+          toast.show();
+        }
+      } finally {
+        submitBtn.querySelector('.btn-loading').classList.add('d-none');
+        submitBtn.querySelector('.btn-text').classList.remove('d-none');
+        submitBtn.disabled = false;
+      }
+    });
+  }
+  
+  // Search functionality
+  const searchInput = document.getElementById('asset-search');
+  const statusFilter = document.getElementById('status-filter');
+  
+  function filterAssets() {
+    const searchTerm = (searchInput.value || '').toLowerCase();
+    const status = (statusFilter.value || '').toLowerCase();
+    
+    const rows = document.querySelectorAll('tbody tr');
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+      const nameCell = row.querySelector('.fw-semibold');
+      const ipCell = row.querySelector('code');
+      const ownerCell = row.querySelector('.text-muted');
+      const statusBadge = row.querySelector('.status-badge');
+      
+      const name = nameCell ? nameCell.textContent.toLowerCase() : '';
+      const ip = ipCell ? ipCell.textContent.toLowerCase() : '';
+      const owner = ownerCell ? ownerCell.textContent.toLowerCase() : '';
+      const rowStatus = statusBadge ? statusBadge.textContent.toLowerCase() : '';
+      
+      const matchesSearch = !searchTerm || name.includes(searchTerm) || ip.includes(searchTerm) || owner.includes(searchTerm);
+      const matchesStatus = !status || rowStatus.includes(status);
+      
+      const visible = matchesSearch && matchesStatus;
+      row.style.display = visible ? '' : 'none';
+      if (visible) visibleCount++;
+    });
+    
+    // Update result count
+    const totalEl = document.getElementById('total-assets');
+    const rangeEl = document.getElementById('current-range');
+    if (totalEl) totalEl.textContent = visibleCount;
+    if (rangeEl) rangeEl.textContent = visibleCount ? `1-${visibleCount}` : '0-0';
+  }
+  
+  searchInput.addEventListener('input', filterAssets);
+  statusFilter.addEventListener('change', filterAssets);
+  
+  document.getElementById('clear-filters').addEventListener('click', function() {
+    searchInput.value = '';
+    statusFilter.value = '';
+    filterAssets();
+  });
+});
+</script>
+{% endblock %}

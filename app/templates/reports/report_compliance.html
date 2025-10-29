@@ -1,0 +1,718 @@
+{% extends "reports/report_view.html" %}
+
+{% block page_title %}Relatório de Compliance - {{ report.title }}{% endblock %}
+
+{% block report_specific_content %}
+<div class="compliance-report">
+    <!-- Compliance Overview -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-shield-check me-2"></i>
+                        Visão Geral de Compliance
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="compliance-score-circle" data-score="{{ report.content.compliance_score or 0 }}">
+                                    <span class="score-value">{{ report.content.compliance_score or 0 }}%</span>
+                                </div>
+                                <h6 class="mt-2">Score de Compliance</h6>
+                            </div>
+                        </div>
+                        <div class="col-md-9">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="compliance-metric">
+                                        <h3 class="text-success">{{ report.content.compliant_controls or 0 }}</h3>
+                                        <p class="text-muted mb-0">Controles Conformes</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="compliance-metric">
+                                        <h3 class="text-warning">{{ report.content.partial_controls or 0 }}</h3>
+                                        <p class="text-muted mb-0">Parcialmente Conformes</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="compliance-metric">
+                                        <h3 class="text-danger">{{ report.content.non_compliant_controls or 0 }}</h3>
+                                        <p class="text-muted mb-0">Não Conformes</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Frameworks de Compliance -->
+    {% if report.content.frameworks %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-check me-2"></i>
+                        Frameworks Avaliados
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for framework in report.content.frameworks %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="framework-card">
+                                <div class="framework-header">
+                                    <h6 class="framework-name">{{ framework.name }}</h6>
+                                    <span class="badge bg-{{ 'success' if framework.compliance_percentage >= 80 else 'warning' if framework.compliance_percentage >= 60 else 'danger' }}">
+                                        {{ framework.compliance_percentage }}%
+                                    </span>
+                                </div>
+                                <div class="framework-progress">
+                                    <div class="progress">
+                                        <div class="progress-bar bg-{{ 'success' if framework.compliance_percentage >= 80 else 'warning' if framework.compliance_percentage >= 60 else 'danger' }}" 
+                                             style="width: {{ framework.compliance_percentage }}%"></div>
+                                    </div>
+                                </div>
+                                <div class="framework-details">
+                                    <small class="text-muted">
+                                        {{ framework.compliant_controls }}/{{ framework.total_controls }} controles conformes
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Controles por Categoria -->
+    {% if report.content.control_categories %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-diagram-3 me-2"></i>
+                        Controles por Categoria
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="accordion" id="controlCategoriesAccordion">
+                        {% for category in report.content.control_categories %}
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading{{ loop.index }}">
+                                <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" 
+                                        type="button" data-bs-toggle="collapse" 
+                                        data-bs-target="#collapse{{ loop.index }}" 
+                                        aria-expanded="{% if loop.first %}true{% else %}false{% endif %}" 
+                                        aria-controls="collapse{{ loop.index }}">
+                                    <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                                        <span>
+                                            <i class="bi bi-folder me-2"></i>
+                                            {{ category.name }}
+                                        </span>
+                                        <div class="category-badges">
+                                            <span class="badge bg-success me-1">{{ category.compliant }}</span>
+                                            <span class="badge bg-warning me-1">{{ category.partial }}</span>
+                                            <span class="badge bg-danger">{{ category.non_compliant }}</span>
+                                        </div>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div id="collapse{{ loop.index }}" 
+                                 class="accordion-collapse collapse {% if loop.first %}show{% endif %}" 
+                                 aria-labelledby="heading{{ loop.index }}" 
+                                 data-bs-parent="#controlCategoriesAccordion">
+                                <div class="accordion-body">
+                                    {% if category.controls %}
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Controle</th>
+                                                    <th>Descrição</th>
+                                                    <th>Status</th>
+                                                    <th>Evidências</th>
+                                                    <th>Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for control in category.controls %}
+                                                <tr>
+                                                    <td>
+                                                        <code>{{ control.id }}</code>
+                                                    </td>
+                                                    <td>{{ control.description[:100] }}{% if control.description|length > 100 %}...{% endif %}</td>
+                                                    <td>
+                                                        <span class="badge bg-{{ 'success' if control.status == 'compliant' else 'warning' if control.status == 'partial' else 'danger' }}">
+                                                            {% if control.status == 'compliant' %}
+                                                                <i class="bi bi-check-circle me-1"></i>Conforme
+                                                            {% elif control.status == 'partial' %}
+                                                                <i class="bi bi-exclamation-triangle me-1"></i>Parcial
+                                                            {% else %}
+                                                                <i class="bi bi-x-circle me-1"></i>Não Conforme
+                                                            {% endif %}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        {% if control.evidences %}
+                                                            <span class="badge bg-info">{{ control.evidences|length }} evidência(s)</span>
+                                                        {% else %}
+                                                            <span class="text-muted">Nenhuma</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        <button class="btn btn-sm btn-outline-primary" 
+                                                                onclick="showControlDetails('{{ control.id }}')">
+                                                            <i class="bi bi-eye"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {% else %}
+                                    <p class="text-muted">Nenhum controle encontrado nesta categoria.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Gaps e Recomendações -->
+    {% if report.content.gaps or report.content.recommendations %}
+    <div class="row mb-4">
+        <div class="col-md-6">
+            {% if report.content.gaps %}
+            <div class="card h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Gaps Identificados
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for gap in report.content.gaps %}
+                    <div class="gap-item mb-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h6 class="gap-title">{{ gap.title }}</h6>
+                            <span class="badge bg-{{ 'danger' if gap.severity == 'high' else 'warning' if gap.severity == 'medium' else 'info' }}">
+                                {{ gap.severity|title }}
+                            </span>
+                        </div>
+                        <p class="gap-description text-muted">{{ gap.description }}</p>
+                        {% if gap.affected_controls %}
+                        <div class="affected-controls">
+                            <small class="text-muted">Controles afetados:</small>
+                            {% for control in gap.affected_controls %}
+                            <code class="me-1">{{ control }}</code>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if not loop.last %}<hr>{% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        <div class="col-md-6">
+            {% if report.content.recommendations %}
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightbulb me-2"></i>
+                        Recomendações
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for recommendation in report.content.recommendations %}
+                    <div class="recommendation-item mb-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h6 class="recommendation-title">{{ recommendation.title }}</h6>
+                            <span class="badge bg-{{ 'danger' if recommendation.priority == 'high' else 'warning' if recommendation.priority == 'medium' else 'secondary' }}">
+                                {{ recommendation.priority|title }}
+                            </span>
+                        </div>
+                        <p class="recommendation-description text-muted">{{ recommendation.description }}</p>
+                        {% if recommendation.timeline %}
+                        <div class="timeline">
+                            <small class="text-muted">
+                                <i class="bi bi-clock me-1"></i>
+                                Prazo: {{ recommendation.timeline }}
+                            </small>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if not loop.last %}<hr>{% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Plano de Ação -->
+    {% if report.content.action_plan %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-calendar-check me-2"></i>
+                        Plano de Ação
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Ação</th>
+                                    <th>Responsável</th>
+                                    <th>Prazo</th>
+                                    <th>Prioridade</th>
+                                    <th>Status</th>
+                                    <th>Progresso</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for action in report.content.action_plan %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ action.title }}</strong>
+                                        {% if action.description %}
+                                        <br><small class="text-muted">{{ action.description }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ action.responsible or 'Não atribuído' }}</td>
+                                    <td>
+                                        {% if action.due_date %}
+                                        <span class="{% if action.due_date < now() %}text-danger{% elif action.due_date < now() + timedelta(days=7) %}text-warning{% endif %}">
+                                            {{ action.due_date.strftime('%d/%m/%Y') }}
+                                        </span>
+                                        {% else %}
+                                        <span class="text-muted">Não definido</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'danger' if action.priority == 'high' else 'warning' if action.priority == 'medium' else 'secondary' }}">
+                                            {{ action.priority|title }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if action.status == 'completed' else 'primary' if action.status == 'in_progress' else 'secondary' }}">
+                                            {% if action.status == 'completed' %}
+                                                <i class="bi bi-check-circle me-1"></i>Concluído
+                                            {% elif action.status == 'in_progress' %}
+                                                <i class="bi bi-arrow-clockwise me-1"></i>Em Andamento
+                                            {% else %}
+                                                <i class="bi bi-clock me-1"></i>Pendente
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar" 
+                                                 style="width: {{ action.progress or 0 }}%"
+                                                 role="progressbar">
+                                                {{ action.progress or 0 }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Evidências e Documentação -->
+    {% if report.content.evidences %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-file-earmark-text me-2"></i>
+                        Evidências e Documentação
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for evidence in report.content.evidences %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="evidence-card">
+                                <div class="evidence-header">
+                                    <h6 class="evidence-title">{{ evidence.title }}</h6>
+                                    <span class="badge bg-{{ 'success' if evidence.status == 'verified' else 'warning' if evidence.status == 'pending' else 'danger' }}">
+                                        {{ evidence.status|title }}
+                                    </span>
+                                </div>
+                                <p class="evidence-description">{{ evidence.description }}</p>
+                                {% if evidence.files %}
+                                <div class="evidence-files">
+                                    {% for file in evidence.files %}
+                                    <a href="{{ file.url }}" class="btn btn-sm btn-outline-primary me-1 mb-1" target="_blank">
+                                        <i class="bi bi-download me-1"></i>{{ file.name }}
+                                    </a>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal para Detalhes do Controle -->
+<div class="modal fade" id="controlDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalhes do Controle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="controlDetailsContent">
+                <!-- Conteúdo carregado dinamicamente -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block report_specific_styles %}
+<style>
+.compliance-report {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.compliance-score-circle {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: conic-gradient(#28a745 0deg, #28a745 calc(var(--score) * 3.6deg), #e9ecef calc(var(--score) * 3.6deg), #e9ecef 360deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    position: relative;
+}
+
+.compliance-score-circle::before {
+    content: '';
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: white;
+    position: absolute;
+}
+
+.score-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #28a745;
+    z-index: 1;
+}
+
+.compliance-metric {
+    text-align: center;
+    padding: 15px;
+    border-left: 1px solid #dee2e6;
+}
+
+.compliance-metric:first-child {
+    border-left: none;
+}
+
+.compliance-metric h3 {
+    font-size: 2rem;
+    margin-bottom: 5px;
+}
+
+.framework-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    height: 100%;
+}
+
+.framework-header {
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.framework-name {
+    margin: 0;
+    font-weight: 600;
+}
+
+.framework-progress {
+    margin-bottom: 10px;
+}
+
+.framework-details {
+    text-align: center;
+}
+
+.category-badges {
+    display: flex;
+    gap: 5px;
+}
+
+.gap-item, .recommendation-item {
+    border-left: 4px solid #ffc107;
+    padding-left: 15px;
+}
+
+.recommendation-item {
+    border-left-color: #17a2b8;
+}
+
+.gap-title, .recommendation-title {
+    margin-bottom: 8px;
+    color: #495057;
+}
+
+.gap-description, .recommendation-description {
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.affected-controls code {
+    background: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.evidence-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    height: 100%;
+}
+
+.evidence-header {
+    display: flex;
+    justify-content: between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.evidence-title {
+    margin: 0;
+    font-weight: 600;
+    flex: 1;
+    margin-right: 10px;
+}
+
+.evidence-description {
+    font-size: 14px;
+    color: #6c757d;
+    margin-bottom: 15px;
+}
+
+.evidence-files {
+    margin-top: 10px;
+}
+
+.progress {
+    background-color: #e9ecef;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+}
+
+.accordion-button:not(.collapsed) {
+    background-color: #f8f9fa;
+    color: #495057;
+}
+
+@media (max-width: 768px) {
+    .compliance-score-circle {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .compliance-score-circle::before {
+        width: 75px;
+        height: 75px;
+    }
+    
+    .score-value {
+        font-size: 18px;
+    }
+    
+    .compliance-metric {
+        border-left: none;
+        border-top: 1px solid #dee2e6;
+        margin-top: 15px;
+        padding-top: 15px;
+    }
+    
+    .compliance-metric:first-child {
+        border-top: none;
+        margin-top: 0;
+        padding-top: 15px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block report_specific_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Configurar círculo de score de compliance
+    const scoreCircle = document.querySelector('.compliance-score-circle');
+    if (scoreCircle) {
+        const score = scoreCircle.dataset.score || 0;
+        scoreCircle.style.setProperty('--score', score);
+        
+        // Animar o círculo
+        setTimeout(() => {
+            scoreCircle.style.background = `conic-gradient(
+                #28a745 0deg, 
+                #28a745 ${score * 3.6}deg, 
+                #e9ecef ${score * 3.6}deg, 
+                #e9ecef 360deg
+            )`;
+        }, 500);
+    }
+    
+    // Tooltips são inicializados globalmente em base.js
+});
+
+function showControlDetails(controlId) {
+    // Buscar detalhes do controle
+    fetch(`/api/reports/{{ report.id }}/controls/${controlId}`)
+        .then(response => response.json())
+        .then(data => {
+            const content = document.getElementById('controlDetailsContent');
+            content.innerHTML = `
+                <div class="control-details">
+                    <h6>Controle: <code>${data.id}</code></h6>
+                    <p><strong>Descrição:</strong> ${data.description}</p>
+                    <p><strong>Status:</strong> 
+                        <span class="badge bg-${data.status === 'compliant' ? 'success' : data.status === 'partial' ? 'warning' : 'danger'}">
+                            ${data.status === 'compliant' ? 'Conforme' : data.status === 'partial' ? 'Parcial' : 'Não Conforme'}
+                        </span>
+                    </p>
+                    
+                    ${data.implementation ? `
+                        <div class="mt-3">
+                            <h6>Implementação:</h6>
+                            <p>${data.implementation}</p>
+                        </div>
+                    ` : ''}
+                    
+                    ${data.evidences && data.evidences.length > 0 ? `
+                        <div class="mt-3">
+                            <h6>Evidências:</h6>
+                            <ul class="list-group list-group-flush">
+                                ${data.evidences.map(evidence => `
+                                    <li class="list-group-item">
+                                        <strong>${evidence.title}</strong>
+                                        <br><small class="text-muted">${evidence.description}</small>
+                                        ${evidence.files ? evidence.files.map(file => `
+                                            <br><a href="${file.url}" class="btn btn-sm btn-outline-primary mt-1" target="_blank">
+                                                <i class="bi bi-download me-1"></i>${file.name}
+                                            </a>
+                                        `).join('') : ''}
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                    
+                    ${data.gaps && data.gaps.length > 0 ? `
+                        <div class="mt-3">
+                            <h6>Gaps Identificados:</h6>
+                            <ul class="list-group list-group-flush">
+                                ${data.gaps.map(gap => `
+                                    <li class="list-group-item">
+                                        <span class="badge bg-${gap.severity === 'high' ? 'danger' : gap.severity === 'medium' ? 'warning' : 'info'} me-2">
+                                            ${gap.severity}
+                                        </span>
+                                        <strong>${gap.title}</strong>
+                                        <br><small class="text-muted">${gap.description}</small>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                    
+                    ${data.recommendations && data.recommendations.length > 0 ? `
+                        <div class="mt-3">
+                            <h6>Recomendações:</h6>
+                            <ul class="list-group list-group-flush">
+                                ${data.recommendations.map(rec => `
+                                    <li class="list-group-item">
+                                        <span class="badge bg-${rec.priority === 'high' ? 'danger' : rec.priority === 'medium' ? 'warning' : 'secondary'} me-2">
+                                            ${rec.priority}
+                                        </span>
+                                        <strong>${rec.title}</strong>
+                                        <br><small class="text-muted">${rec.description}</small>
+                                        ${rec.timeline ? `<br><small class="text-info"><i class="bi bi-clock me-1"></i>Prazo: ${rec.timeline}</small>` : ''}
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+    const modal = window.getModalInstance(document.getElementById('controlDetailsModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Erro ao carregar detalhes do controle:', error);
+            alert('Erro ao carregar detalhes do controle');
+        });
+}
+
+// Função para exportar dados de compliance
+function exportComplianceData(format) {
+    const url = `/api/reports/{{ report.id }}/export/compliance?format=${format}`;
+    window.open(url, '_blank');
+}
+
+// Função para gerar relatório de gaps
+function generateGapReport() {
+    const url = `/api/reports/{{ report.id }}/gaps/report`;
+    window.open(url, '_blank');
+}
+</script>
+{% endblock %}

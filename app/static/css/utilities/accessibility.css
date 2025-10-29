@@ -1,0 +1,1032 @@
+/* ==========================================================================
+   ACCESSIBILITY.CSS - ESTILOS DE ACESSIBILIDADE MODERNOS
+   v4.0 - Melhorias para tema claro com foco em usabilidade
+   ========================================================================== */
+
+/*
+ * Este arquivo implementa melhorias de acessibilidade modernas
+ * utilizando as variáveis do sistema de design unificado.
+ */
+
+/* ========================================\
+   🎯 FOCO VISUAL APRIMORADO
+   ======================================== */
+
+/* Foco visível moderno para todos os elementos interativos */
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 var(--focus-ring-width) rgba(var(--primary-500-rgb), var(--focus-ring-opacity));
+  transition: var(--transition-fast);
+}
+
+/* Foco específico para botões */
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--focus-ring-width) rgba(var(--primary-500-rgb), var(--focus-ring-opacity)),
+              var(--shadow-soft-md);
+  transform: var(--transform-hover-scale);
+}
+
+/* Foco específico para inputs */
+.form-control:focus-visible {
+  outline: none;
+  border-color: var(--ui-border-interactive);
+  box-shadow: 0 0 0 var(--focus-ring-width) rgba(var(--primary-500-rgb), var(--focus-ring-opacity)),
+              var(--shadow-soft-md);
+}
+
+/* Foco para links */
+a:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  background: rgba(var(--primary-500-rgb), 0.1);
+  padding: 2px 4px;
+  margin: -2px -4px;
+}
+
+/* ========================================\
+   🎨 PREFERÊNCIAS DO USUÁRIO
+   ======================================== */
+
+/* Respeitar preferência de movimento reduzido */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Suporte a alto contraste */
+@media (prefers-contrast: high) {
+  :root {
+    --ui-border-subtle: var(--neutral-800);
+    --ui-border-medium: var(--neutral-900);
+    --content-subtle: var(--neutral-900);
+    --content-medium: var(--neutral-950);
+    --shadow-soft-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-soft-md: 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Suporte a esquema de cores preferido */
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+  }
+}
+
+/* ========================================\
+   ♿ MELHORIAS DE NAVEGAÇÃO
+   ======================================== */
+
+/* Skip links para navegação por teclado */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: var(--surface-1);
+  color: var(--content-strong);
+  padding: var(--space-sm) var(--space-md);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--ui-border-medium);
+  z-index: var(--z-modal);
+  transition: var(--transition-standard);
+}
+
+.skip-link:focus {
+  top: 6px;
+}
+
+/* Indicadores visuais para elementos interativos */
+[role="button"],
+[role="link"],
+button,
+a,
+input,
+select,
+textarea {
+  cursor: pointer;
+}
+
+[disabled],
+[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: var(--opacity-disabled);
+}
+
+/* ========================================\
+   📱 EXPERIÊNCIA MÓVEL APRIMORADA
+   ======================================== */
+
+/* Tamanhos de toque adequados */
+@media (hover: none) and (pointer: coarse) {
+  .btn,
+  .form-control,
+  a,
+  button,
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Espaçamento adicional em dispositivos móveis */
+  .btn {
+    padding: var(--space-md) var(--space-lg);
+  }
+}
+
+/* ========================================\
+   1. RECURSOS CRÍTICOS COM PRELOAD
+   ======================================== */
+/*
+<link rel="preload" href="fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin="anonymous" fetchpriority="high">
+<link rel="preload" href="fonts/icons.woff2" as="font" type="font/woff2" crossorigin="anonymous">
+*/
+
+/* ========================================\
+   2. FONTES E ÍCONES COM FALLBACKS
+   ======================================== */
+/* Fontes locais como fallback antes de carregar webfonts */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 700; /* Range de pesos */
+  src: local('Inter Regular'), local('Inter-Regular'),
+       url('/static/fonts/inter-var.woff2') format('woff2'); /* Caminho otimizado */
+  font-display: swap; /* Carrega a fonte em background e troca quando pronta */
+}
+
+/* Exemplo de fallback para ícones se estiverem em fonte */
+/*
+@font-face {
+  font-family: 'Icons'; /* Nome da sua fonte de ícones */
+/* src: local('Icons'),
+       url('/fonts/icons.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+*/
+
+
+/* ========================================\
+   3. RESET BASE (Movido para reset.css ou base.css)
+   ======================================== */
+
+/* --- START: Styles that should be in reset.css or base.css --- */
+/*
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed,
+figure, figcaption, footer, header, hgroup,
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video, input, select, textarea, button, progress {
+  display: block; /* Muitos elementos padrão não devem ser display: block */
+/* Este reset é muito agressivo e provavelmente causa problemas.
+    Um reset mais recomendado como Normalize.css ou Reset CSS deve ser usado.
+}
+*/
+
+/*
+html {
+  line-height: 1.15;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  height: 100%;
+  font-size: 100%; /* Base para rem */
+  scroll-behavior: smooth; /* Suaviza a rolagem com âncoras */
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: var(--font-family-base); /* Usar variável de variables.css */
+  font-size: var(--font-size-base); /* Usar variável de variables.css */
+  line-height: var(--line-height-base); /* Usar variável de variables.css */
+  color: var(--content-strong); /* Usar variável de cor de texto semântica de variables.css */
+  background-color: var(--surface-0); /* Usar variável de cor de fundo semântica de variables.css */
+  text-rendering: optimizeLegibility; /* Melhora a renderização de fontes */
+  -webkit-font-smoothing: antialiased; /* Suaviza fontes no Chrome/Safari */
+  -moz-osx-font-smoothing: grayscale; /* Suaviza fontes no Firefox */
+}
+
+*, *::before, *::after {
+  box-sizing: border-box; /* Modelo de caixa intuitivo */
+  margin: 0;
+  padding: 0;
+  /* Transições base - definir em variables.css e usar aqui ou em base.css */
+  /* transition-property: all; */
+  /* transition-duration: var(--animation-duration-normal); */
+  /* transition-timing-function: var(--ease-standard); */
+}
+
+/* Links */
+a {
+  color: var(--color-primary); /* Usar variável de cor de link semântica de variables.css */
+  text-decoration: none; /* Padrão sem sublinhado, adicionar em hover/focus */
+  transition: color var(--animation-duration-fast) var(--ease-standard), text-decoration-color var(--animation-duration-fast) var(--ease-standard);
+}
+
+a:hover {
+  color: var(--color-primary-hover); /* Usar variável de cor de link hover de variables.css */
+  text-decoration: underline; /* Sublinhado no hover */
+  text-decoration-color: var(--color-primary-hover);
+}
+
+
+/* Imagens e mídia */
+img, svg, video, canvas, audio, iframe, embed, object {
+  display: block; /* Geralmente block é mais previsível */
+  max-width: 100%; /* Evita que mídia transborde seus contêineres */
+  height: auto; /* Mantém a proporção */
+}
+
+/* Outros elementos base que DEVEM SER MOVIDOS (tabelas, listas, etc.) */
+/*
+table { border-collapse: collapse; }
+blockquote { border-left: 4px solid var(--border-medium); color: var(--content-medium); }
+ul, ol { list-style: disc; margin-left: var(--space-md); }
+li { margin-bottom: var(--space-sm); }
+strong, b { font-weight: var(--font-weight-bold); }
+*/
+
+/* --- END: Styles that should be in reset.css or base.css --- */
+
+
+/* ========================================\
+   4. EXPERIÊNCIA DE TOQUE - Ajustes para dispositivos de toque
+   ======================================== */
+@media (hover: none) and (pointer: coarse) {
+  /*
+   * REMOVIDO: Definição local de --touch-target-size.
+   * Essa variável DEVE SER DEFINIDA em variables.css (ex: --layout-touch-target-size).
+   */
+  /* :root { --touch-target-size: 40px; } */
+
+
+  /* Garantir que elementos interativos tenham um tamanho mínimo de toque */
+  a, button, input[type="button"], input[type="submit"], input[type="reset"],
+  input[type="checkbox"], input[type="radio"], select, label {
+    min-height: var(--layout-touch-target-size, 44px); /* Usar variável de variables.css com fallback */
+    min-width: var(--layout-touch-target-size, 44px); /* Usar variável de variables.css com fallback */
+  }
+
+  /* Remover efeitos de hover em dispositivos de toque (geralmente Bootstrap já faz isso) */
+  a:hover, button:hover {
+    background-color: initial;
+    color: initial;
+    transform: none;
+    /* Outros estilos de hover que não devem aplicar em toque */
+  }
+}
+
+
+/* ========================================\
+   5. ESTADO DE FOCO - Indicadores visuais para navegação por teclado
+   ======================================== */
+/*
+ * Implementação robusta de :focus-visible para destacar apenas quando navegando por teclado.
+ * Utiliza variáveis de variables.css para consistência visual.
+ * Esta regra pode estar aqui ou em reset.css/a11y.css.
+ */
+:focus {
+    /* Remover outline padrão para gerenciar com :focus-visible */
+    outline: none;
+}
+
+:focus-visible {
+  /* Usa a variável completa de outline e offset de variables.css */
+  outline: var(--focus-visible-outline);
+  outline-offset: var(--focus-visible-outline-offset);
+  box-shadow: 0 0 0 4px rgba(var(--color-primary-rgb), 0.2);
+  border-radius: 4px;
+}
+
+/* Enhanced focus for interactive elements */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(var(--color-primary-rgb), 0.2);
+}
+
+/* Focus for table headers */
+th.sortable:focus-visible {
+    background-color: rgba(var(--color-primary-rgb), 0.1);
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: -2px;
+}
+
+/* Focus for pagination */
+.pagination .page-link:focus-visible {
+    z-index: 3;
+    box-shadow: 0 0 0 0.25rem rgba(var(--color-primary-rgb), 0.25);
+}
+
+/* Exemplo: Remover outline em elementos não interativos que podem receber foco programaticamente */
+div:focus, span:focus {
+    outline: none;
+}
+
+
+/* ========================================\
+   6. TEXTO PARA LEITORES DE TELA (SR-ONLY)
+   ======================================== */
+/* Classes para esconder conteúdo visualmente, mas mantê-lo disponível para leitores de tela */
+.sr-only,
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important; /* Colapsa margem */
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important; /* Corta o conteúdo visível */
+  white-space: nowrap !important; /* Evita quebra de linha */
+  border: 0 !important;
+}
+
+/* Show on focus for screen reader content that should be focusable */
+.sr-only-focusable:focus,
+.sr-only-focusable:active,
+.visually-hidden-focusable:focus {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  padding: inherit !important;
+  margin: inherit !important;
+  overflow: visible !important;
+  clip: auto !important;
+  white-space: normal !important;
+}
+
+/* ========================================\
+   6.1. MELHORIAS ARIA E SEMÂNTICA
+   ======================================== */
+
+/* Indicadores visuais para elementos ARIA */
+[aria-expanded="true"] .collapse-icon::before {
+  content: "−"; /* Sinal de menos quando expandido */
+}
+
+[aria-expanded="false"] .collapse-icon::before {
+  content: "+"; /* Sinal de mais quando colapsado */
+}
+
+/* Estilos para elementos com aria-hidden */
+[aria-hidden="true"] {
+  display: none !important;
+}
+
+/* Estilos para elementos com aria-disabled */
+[aria-disabled="true"] {
+  opacity: 0.6;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+/* Estilos para elementos com aria-invalid */
+[aria-invalid="true"] {
+  border-color: var(--color-danger-500) !important;
+  box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.25);
+}
+
+/* Estilos para elementos com aria-required */
+[aria-required="true"]::after {
+  content: " *";
+  color: var(--color-danger-500);
+  font-weight: bold;
+}
+
+/* Estilos para elementos com aria-selected */
+[aria-selected="true"] {
+  background-color: var(--color-primary-100);
+  border-color: var(--color-primary-500);
+}
+
+/* Estilos para elementos com aria-current */
+[aria-current="page"],
+[aria-current="step"],
+[aria-current="location"] {
+  font-weight: bold;
+  color: var(--color-primary-700);
+  background-color: var(--color-primary-50);
+}
+
+/* ========================================\
+   6.2. NAVEGAÇÃO POR TECLADO
+   ======================================== */
+
+/* Skip links para navegação rápida */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: var(--color-primary-600);
+  color: white;
+  padding: 8px 12px;
+  text-decoration: none;
+  border-radius: 0 0 4px 4px;
+  z-index: 10000;
+  font-weight: 600;
+  font-size: 14px;
+  border: 2px solid transparent;
+  transition: top 0.3s ease;
+}
+
+.skip-link:focus {
+  top: 0;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.skip-link:hover {
+  background: var(--color-primary-700);
+  color: white;
+  text-decoration: none;
+}
+
+/* Indicadores de navegação por teclado */
+.keyboard-navigation {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+/* Melhorar visibilidade de elementos focáveis */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(var(--color-primary-rgb), 0.2);
+}
+
+/* Estilos para elementos com tabindex negativo */
+[tabindex="-1"]:focus {
+  outline: none;
+}
+
+/* ========================================\
+   6.3. CONTRASTE E LEGIBILIDADE
+   ======================================== */
+
+/* Garantir contraste mínimo para texto pequeno */
+.text-small,
+.small,
+small {
+  color: var(--color-neutral-700);
+  font-weight: 500;
+}
+
+/* Garantir contraste para links em texto */
+a:not(.btn) {
+  color: var(--color-primary-700);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: text-decoration-color 0.2s ease;
+}
+
+a:not(.btn):hover,
+a:not(.btn):focus {
+  text-decoration-color: currentColor;
+}
+
+/* Melhorar legibilidade de placeholders */
+::placeholder {
+  color: var(--color-neutral-500);
+  opacity: 1;
+}
+
+/* ========================================\
+   6.4. ESTADOS DE ERRO E VALIDAÇÃO
+   ======================================== */
+
+/* Estilos para campos com erro */
+.form-control.is-invalid,
+.form-control:invalid {
+  border-color: var(--color-danger-500);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='m5.8 3.6.4.4.4-.4M6 7v1'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+}
+
+/* Estilos para campos válidos */
+.form-control.is-valid,
+.form-control:valid {
+  border-color: var(--color-success-500);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='m2.3 6.73.4.4 3.4-3.4-.4-.4L3 5.67l-1.3-1.3-.4.4z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+}
+
+/* Mensagens de erro acessíveis */
+.invalid-feedback,
+.error-message {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  font-size: 0.875rem;
+  color: var(--color-danger-600);
+  font-weight: 500;
+}
+
+/* Mensagens de sucesso acessíveis */
+.valid-feedback,
+.success-message {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  font-size: 0.875rem;
+  color: var(--color-success-600);
+  font-weight: 500;
+}
+
+/* ========================================\
+   6.5. TECNOLOGIAS ASSISTIVAS
+   ======================================== */
+
+/* Estilos para leitores de tela */
+@media speech {
+  /* Pausas para leitores de tela */
+  .pause-before {
+    speak: none;
+  }
+  
+  .pause-before::before {
+    content: "";
+    speak: literal-punctuation;
+  }
+}
+
+/* Estilos para modo de alto contraste do Windows */
+@media (prefers-contrast: high), (-ms-high-contrast: active) {
+  /* Garantir bordas visíveis */
+  button,
+  input,
+  select,
+  textarea {
+    border: 2px solid;
+  }
+  
+  /* Garantir que ícones sejam visíveis */
+  .icon,
+  [class*="icon-"],
+  [class*="bi-"] {
+    filter: contrast(2);
+  }
+}
+
+/* ========================================\
+   6.6. MELHORIAS PARA DISPOSITIVOS MÓVEIS
+   ======================================== */
+
+/* Aumentar área de toque em dispositivos móveis */
+@media (max-width: 768px) {
+  button,
+  .btn,
+  a,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"] {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px 16px;
+  }
+  
+  /* Melhorar espaçamento entre elementos interativos */
+  .btn + .btn,
+  button + button {
+    margin-left: 8px;
+  }
+  
+  /* Aumentar tamanho de checkboxes e radios */
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* ========================================\
+   6.7. INDICADORES DE CARREGAMENTO ACESSÍVEIS
+   ======================================== */
+
+/* Spinner acessível */
+.spinner[role="status"] {
+  width: 2rem;
+  height: 2rem;
+}
+
+.spinner[role="status"] .sr-only {
+  position: absolute !important;
+}
+
+/* Loading states acessíveis */
+[aria-busy="true"] {
+  cursor: wait;
+  pointer-events: none;
+}
+
+[aria-busy="true"]::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  z-index: 1;
+}
+
+/* ========================================\
+   6.8. MELHORIAS PARA FORMULÁRIOS
+   ======================================== */
+
+/* Labels obrigatórios */
+label.required::after,
+.form-label.required::after {
+  content: " *";
+  color: var(--color-danger-500);
+  font-weight: bold;
+}
+
+/* Grupos de campos relacionados */
+fieldset {
+  border: 1px solid var(--color-neutral-300);
+  border-radius: 4px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+legend {
+  font-weight: bold;
+  padding: 0 8px;
+  color: var(--color-neutral-700);
+}
+
+/* Melhorar visibilidade de campos obrigatórios */
+input:required,
+select:required,
+textarea:required {
+  box-shadow: inset 0 0 0 1px rgba(220, 53, 69, 0.1);
+}
+
+/* ========================================\
+   6.9. TOOLTIPS E AJUDA CONTEXTUAL
+   ======================================== */
+
+/* Tooltips acessíveis */
+.tooltip {
+  position: relative;
+}
+
+.tooltip[aria-describedby]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-neutral-800);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+
+.tooltip:hover::after,
+.tooltip:focus::after {
+  opacity: 1;
+}
+
+/* Ícones de ajuda */
+.help-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-neutral-200);
+  color: var(--color-neutral-600);
+  font-size: 12px;
+  cursor: help;
+  margin-left: 4px;
+}
+
+.help-icon:hover,
+.help-icon:focus {
+  background: var(--color-primary-100);
+  color: var(--color-primary-700);
+}
+
+
+/* ========================================\
+   7. PREFERÊNCIAS DO USUÁRIO E ACESSIBILIDADE - MEDIA QUERIES
+   ======================================== */
+/*
+ * Implementação baseada nas preferências do usuário, utilizando variáveis de variables.css.
+ * A lógica de ajuste das *variáveis semânticas* para temas e contraste DEVE ESTAR EM variables.css.
+ * As regras AQUI apenas referenciam essas variáveis ajustadas ou aplicam estilos baseados nas preferências.
+ */
+
+/* Preferência: Movimento Reduzido */
+@media (prefers-reduced-motion: reduce) {
+  /* Ajustes de animação e transição (variáveis já ajustadas em variables.css) */
+  /* Regras aqui podem ser redundantes se variáveis forem usadas consistentemente,
+     mas podem ser usadas para garantir overrides ou desativar comportamentos específicos. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  html {
+    scroll-behavior: auto; /* Desativa rolagem suave */
+  }
+  
+  /* Keep essential animations for loading states */
+  .spinner-border,
+  .spinner-grow,
+  .loading-spinner {
+    animation-duration: 1s !important;
+  }
+  /* Remover ou ajustar transições/animações específicas se necessário */
+  /* Ex: .modal { transition: none; } */
+}
+
+/* Keyboard navigation styles */
+.table-row-focused {
+    background-color: var(--bs-primary-bg-subtle) !important;
+    border: 2px solid var(--bs-primary) !important;
+    box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.25) !important;
+    outline: none !important;
+}
+
+.table tbody tr[tabindex]:focus {
+    background-color: var(--bs-primary-bg-subtle) !important;
+    border: 2px solid var(--bs-primary) !important;
+    box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.25) !important;
+    outline: none !important;
+}
+
+/* Keyboard shortcuts help */
+.keyboard-shortcuts-help {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--surface-100);
+    color: var(--bs-light);
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    z-index: 1050;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+.keyboard-shortcuts-help.show {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.keyboard-shortcuts-help h6 {
+    margin-bottom: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.keyboard-shortcuts-help ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.keyboard-shortcuts-help li {
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.keyboard-shortcuts-help kbd {
+    background: var(--bs-secondary);
+    color: var(--bs-light);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    margin-left: 8px;
+}
+
+/* Enhanced focus indicators for interactive elements */
+.btn:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible,
+.page-link:focus-visible {
+    box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), 0.25) !important;
+    border-color: var(--bs-primary) !important;
+}
+
+/* Improved modal focus management */
+.modal:focus {
+    outline: none;
+}
+
+.modal-content:focus-within {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15), 0 0 0 3px rgba(var(--bs-primary-rgb), 0.25);
+}
+
+/* Screen reader announcements */
+.sr-announcement {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+/* High contrast mode improvements */
+@media (prefers-contrast: high) {
+    .table-row-focused,
+    .table tbody tr[tabindex]:focus {
+        border-width: 3px !important;
+        box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), 0.5) !important;
+    }
+    
+    .keyboard-shortcuts-help {
+        border: 2px solid var(--bs-light);
+    }
+}
+
+/* Preferência: Alto Contraste */
+@media (prefers-contrast: more) {
+  /*
+   * REMOVIDO: Blocos :root que redefinem variáveis de cor localmente.
+   * A lógica de ajuste das variáveis semânticas (ex: --content-strong, --border-medium)
+   * PARA ALTO CONTRASTE DEVE ESTAR NO :root DENTRO DESTA MEDIA QUERY EM variables.css.
+   */
+
+  /* Exemplos de estilos que podem ser úteis AQUI, referenciando variáveis ajustadas em variables.css */
+  /* Garantir que elementos com borda tenham contraste suficiente */
+  button, input, select, textarea {
+     border-color: var(--border-strong); /* Usar variável de borda forte (ajustada em variables.css) */
+     border-width: 2px;
+     font-weight: 600;
+  }
+
+  /* Garantir que links sejam visíveis e com contraste */
+  a {
+    text-decoration: underline; /* Adicionar sublinhado explícito */
+    border-bottom: none; /* Remover sublinhado fake ou estilos de borda inferiores se houverem */
+  }
+
+  .table {
+    border: 2px solid;
+  }
+  
+  .table th,
+  .table td {
+    border-width: 1px;
+  }
+  
+  .card {
+    border-width: 2px;
+  }
+  
+  .badge {
+    border: 1px solid;
+    font-weight: 600;
+  }
+  
+  .severity-critical {
+    border: 2px solid #dc3545;
+  }
+  
+  .severity-high {
+    border: 2px solid #fd7e14;
+  }
+  
+  .severity-medium {
+    border: 2px solid #ffc107;
+  }
+  
+  .severity-low {
+    border: 2px solid #198754;
+  }
+
+  /* @media (prefers-color-scheme: dark) { ... } - REMOVIDO: Lógica aninhada de tema/contraste */
+
+}
+
+/* Preferência: Contraste Reduzido (prefers-contrast: less) - Se necessário */
+/* @media (prefers-contrast: less) { ... } */
+
+
+/* ========================================\
+   8. SUPORTE A COLOR SPACE (Opcional)
+   ======================================== */
+/*
+ * Ajustes de cores para displays com maior gama de cores, utilizando variáveis.
+ * Exemplo: Definir cores primárias ou de destaque com color(display-p3 ...)
+ * As variáveis em variables.css podem ter fallbacks ou ser ajustadas aqui.
+ */
+/*
+@supports (color: color(display-p3 0 0 0)) {
+  :root {
+    --color-primary: color(display-p3 0.2 0.6 1);
+    --color-primary-hover: color(display-p3 0.1 0.5 0.9);
+  }
+}
+*/
+
+
+/* ========================================\
+   9. MELHORIAS PARA IMPRESSÃO
+   ======================================== */
+@media print {
+  /* Remover variáveis locais se houverem (já removidas na refatoração principal) */
+  /* :root { ... } */
+
+  /* Garantir que cores e fundos sejam impressos */
+  * {
+    color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+
+  /* Ajustar margens da página */
+  @page {
+    margin: 2cm; /* Usar unidade absoluta */
+  }
+
+  /* Esconder elementos não essenciais na impressão */
+  .sidebar, .navbar, .footer, .back-to-top-btn {
+    display: none !important;
+  }
+
+  /* Ajustar layout do conteúdo principal para impressão */
+  .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  /* Outros ajustes de tipografia, links, etc. para impressão */
+  a {
+    text-decoration: underline; /* Sublinhar links */
+    color: #000 !important; /* Cor preta para links */
+  }
+
+  /* Exibir URLs de links após o texto (opcional) */
+  /* a[href]:after { content: " (" attr(href) ")"; } */
+}
+
+
+/* ========================================\
+   10. COMENTÁRIOS E RECOMENDAÇÕES DE IMPLEMENTAÇÃO
+   ======================================== */
+/*
+Recomendações de implementação:
+1. Utilize um bundler CSS (PostCSS, SASS) para processar @imports e otimizar CSS.
+2. Implemente CSP header: style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:;
+3. Considere adicionar suporte para outras preferências do usuário (ex: prefers-reduced-transparency, forced-colors).
+4. Realize testes de acessibilidade com usuários reais e tecnologias assistivas.
+5. Mova estilos base genéricos para reset.css ou base.css.
+*/

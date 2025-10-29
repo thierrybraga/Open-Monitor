@@ -1,0 +1,24 @@
+{% extends "core/base.html" %}
+
+{% block title %}Teste Vulnerabilidades{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1>Teste de Vulnerabilidades</h1>
+    
+    <p>Vulnerabilities type: {{ vulnerabilities.__class__.__name__ }}</p>
+    <p>Vulnerabilities length: {{ vulnerabilities|length }}</p>
+    <p>Vulnerabilities is truthy: {{ vulnerabilities|bool }}</p>
+    
+    {% if vulnerabilities %}
+        <h2>Vulnerabilidades encontradas: {{ vulnerabilities|length }}</h2>
+        <ul>
+        {% for vuln in vulnerabilities %}
+            <li>{{ vuln.cve_id }} - {{ vuln.description[:50] }}...</li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <h2>Nenhuma vulnerabilidade encontrada</h2>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,128 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Revisão do Relatório{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex align-items-center mb-3">
+        <i class="bi bi-clipboard-check me-2"></i>
+        <h4 class="m-0">Revisão do Relatório</h4>
+    </div>
+    <p class="text-muted">Confira abaixo as configurações selecionadas antes de confirmar a geração.</p>
+
+    <div class="row g-4">
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <strong>Configuração Básica</strong>
+                </div>
+                <div class="card-body">
+                    <p><strong>Título:</strong> {{ review.title or '—' }}</p>
+                    <p><strong>Descrição:</strong> {{ review.description or '—' }}</p>
+                    <p><strong>Tipo de Relatório:</strong> {{ review.report_type or '—' }}</p>
+                    <p><strong>Nível de Detalhe:</strong> {{ review.detail_level or '—' }}</p>
+                    <p><strong>Período:</strong> {{ review.period_start }} até {{ review.period_end }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <strong>Escopo</strong>
+                </div>
+                <div class="card-body">
+                    <p><strong>Tipo de Escopo:</strong> {{ review.scope or '—' }}</p>
+                    {% if review.scope == 'por_tags' %}
+                        <p><strong>Tags selecionadas:</strong>
+                            {% if review.selected_tags_labels %}
+                                {{ review.selected_tags_labels|join(', ') }}
+                            {% else %}—{% endif %}
+                        </p>
+                    {% elif review.scope == 'por_grupos' %}
+                        <p><strong>Grupos selecionados:</strong>
+                            {% if review.selected_groups_labels %}
+                                {{ review.selected_groups_labels|join(', ') }}
+                            {% else %}—{% endif %}
+                        </p>
+                    {% elif review.scope == 'customizado' %}
+                        <p><strong>Ativos selecionados:</strong>
+                            {% if review.custom_assets_labels %}
+                                {{ review.custom_assets_labels|join(', ') }}
+                            {% else %}—{% endif %}
+                        </p>
+                    {% else %}
+                        <p class="text-muted">Todos os ativos.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <strong>Opções Avançadas</strong>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <p><strong>Gráficos:</strong> {{ 'Sim' if review.include_charts else 'Não' }}</p>
+                            {% if review.include_charts %}
+                                <p><strong>Tipos:</strong> {{ review.chart_types_labels|join(', ') if review.chart_types_labels else '—' }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <p><strong>Análise com IA:</strong> {{ 'Sim' if review.include_ai_analysis else 'Não' }}</p>
+                            {% if review.include_ai_analysis %}
+                                <p><strong>Tipos:</strong> {{ review.ai_analysis_types_labels|join(', ') if review.ai_analysis_types_labels else '—' }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <p><strong>Resumo Executivo:</strong> {{ 'Sim' if review.include_executive_summary else 'Não' }}</p>
+                            <p><strong>Recomendações:</strong> {{ 'Sim' if review.include_recommendations else 'Não' }}</p>
+                        </div>
+                    </div>
+                    <hr/>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <p><strong>Exportação Automática:</strong> {{ 'Sim' if review.auto_export else 'Não' }}</p>
+                            <p><strong>Formato:</strong> {{ review.export_format or '—' }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <p><strong>Notificar Conclusão:</strong> {{ 'Sim' if review.notify_completion else 'Não' }}</p>
+                            <p><strong>E-mail:</strong> {{ review.notification_email or '—' }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <p><strong>Tags personalizadas:</strong> {{ review.custom_tags or '—' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('report.create_report') }}" class="btn btn-outline-secondary" onclick="history.back(); return false;">
+                    <i class="bi bi-arrow-left me-1"></i> Voltar e editar
+                </a>
+                <form method="post" action="{{ url_for('report.create_report') }}" class="d-inline">
+                    {{ form.csrf_token }}
+                    <input type="hidden" name="confirm" value="1" />
+                    {% for name, values in form_data.items() %}
+                        {% if name != 'csrf_token' %}
+                            {% for v in values %}
+                                <input type="hidden" name="{{ name }}" value="{{ v }}" />
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check2-circle me-1"></i> Confirmar e Gerar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

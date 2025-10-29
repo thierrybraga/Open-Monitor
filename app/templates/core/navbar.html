@@ -1,0 +1,98 @@
+{# templates/navbar.html - VERSÃO REFATORADA COM STATUS E SYNC JUNTOS #}
+
+{# Removidos scripts injetados que não fazem parte do código fonte #}
+
+<header class="navbar flex-shrink-0">
+  <div class="container-fluid d-flex align-items-center justify-content-between">
+    {# Sidebar toggle button - visível apenas em telas pequenas #}
+     <button id="sidebarToggle"
+             class="sidebar-toggle btn btn-sm btn-outline-primary d-md-none"
+             type="button"
+             tabindex="0"
+             aria-controls="sidebar"
+             aria-expanded="false"
+             aria-label="Abrir menu de navegação"
+             title="Abrir menu de navegação"
+             data-bs-toggle="offcanvas"
+             data-bs-target="#sidebar">
+       <i class="bi bi-list" aria-hidden="true"></i>
+       <span class="visually-hidden">Abrir menu de navegação</span>
+     </button>
+
+    {# Link da Marca na Navbar - Um link simples para a Home #}
+    {# Removemos o status daqui. O nome do app é uma opção para texto do link. #}
+    <a href="{{ url_for('main.index') }}" class="navbar-brand text-decoration-none" aria-label="{{ app_name | default('Home') }}">
+       {# Você pode adicionar um ícone de marca aqui se desejar #}
+       <span class="fw-bold">{{ app_name | default('Home') }}</span> {# Exibe o nome do app como texto do link #}
+    </a>
+
+
+    {# Elementos do lado direito da navbar #}
+    {# Usando gap-3 para espaçamento entre os grupos de elementos (Status/Sync, Refresh, Account) #}
+    <div class="d-flex align-items-center gap-3">
+
+      {# Badge de Última Sincronização #}
+      {# Visibilidade controlada por CSS no navbar.css #}
+      <div class="sync-badge" tabindex="0" role="button" aria-label="Informações de sincronização">
+        <i class="bi bi-clock" aria-hidden="true"></i>
+        <span class="last-sync-time" id="lastSyncTime">--:--</span>
+      </div>
+
+
+      {# Botão de refresh/sincronização #}
+      {# Mantido no nível superior do flexbox da direita #}
+      <button id="refreshButton"
+              class="btn btn-sm btn-outline-secondary ripple-effect"
+              type="button"
+              title="Atualizar dados"
+              aria-label="Refresh data">
+        <i class="bi bi-arrow-clockwise"></i>
+        <span class="visually-hidden">Refresh data</span>
+      </button>
+
+      {# Espaço reservado para ações customizadas na navbar: se necessário, use macros ou variáveis de contexto #}
+
+      {# Avatar da conta e link/dropdown #}
+      {# Mantido no nível superior do flexbox da direita #}
+      {% if 'account' in nav_items|map(attribute='endpoint')|list %}
+        <div class="account-avatar-container dropdown">
+          <a class="btn btn-outline-secondary avatar-button"
+             href="{{ url_for('main.account') }}"
+             role="button"
+             id="accountDropdown"
+             data-bs-toggle="dropdown"
+             aria-expanded="false"
+             aria-label="User account menu"
+             title="User account">
+            <i class="bi bi-person-circle text-muted" aria-hidden="true"></i>
+            <span class="username d-none d-md-inline ms-1">
+              Visitante
+            </span>
+          </a>
+           <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="accountDropdown">
+             <li><h6 class="dropdown-header">Visitante</h6></li>
+             <li><hr class="dropdown-divider"></li>
+             
+             {# Links para acesso público #}
+             {% if 'account' in nav_items|map(attribute='endpoint')|list %}
+             <li><a class="dropdown-item" href="{{ url_for('main.account') }}">
+               <i class="bi bi-person me-2" aria-hidden="true"></i>Minha Conta
+             </a></li>
+             {% endif %}
+             {% if 'settings' in nav_items|map(attribute='endpoint')|list %}
+             <li><a class="dropdown-item" href="{{ url_for('main.settings') }}">
+               <i class="bi bi-gear me-2" aria-hidden="true"></i>Configurações
+             </a></li>
+             {% endif %}
+           </ul>
+        </div>
+      {% endif %}
+
+
+
+    </div> {# Fim da div d-flex align-items-center gap-3 #}
+  </div>
+</header>
+
+{# JavaScript consolidado da navbar #}
+<script src="{{ url_for('static', filename='js/components/navbar.js') }}" nonce="{{ nonce }}"></script>

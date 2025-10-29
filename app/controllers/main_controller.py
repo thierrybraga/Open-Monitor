@@ -18,7 +18,8 @@ from flask import (
     current_app,
     flash,
     redirect,
-    url_for
+    url_for,
+    jsonify
 )
 
 # Import necessary services or models for data fetching
@@ -28,11 +29,16 @@ from app.models.vulnerability import Vulnerability
 from app.models.user import User
 from app.models.asset import Asset
 from app.models.asset_vulnerability import AssetVulnerability
+from app.models.enums import severity_levels
 from app.forms.search_forms import SearchForm
 from app.forms.newsletter_forms import NewsletterSubscriptionForm, NewsletterUnsubscribeForm
 from app.forms.profile_form import ProfileForm, ChangePasswordForm
 from app.extensions import db
 from flask_login import login_required, current_user
+# Local helper to avoid circular import with app.app
+
+def wants_json() -> bool:
+    return request.is_json or 'application/json' in request.accept_mimetypes.values()
 
 
 # Configuração do logger para este módulo
@@ -239,6 +245,22 @@ def search() -> str:
         total_results=total_results,
         # TODO: Passar variáveis de paginação, se aplicável
     )
+
+@main_bp.route('/vulnerability_details.html', methods=['GET'])
+def vulnerability_details_root_alias():
+    """Alias para acessos a /vulnerability_details.html na raiz.
+    Aceita 'cve'/'cve_id' ou 'severity' e redireciona para as rotas corretas.
+    """
+    cve_id = request.args.get('cve_id') or request.args.get('cve')
+    if cve_id:
+        return redirect(url_for('vulnerability_ui.vulnerability_details', cve_id=cve_id))
+    severity = request.args.get('severity')
+    if severity:
+        severity_upper = severity.upper()
+        if severity_upper in severity_levels.enums:
+            return redirect(url_for('vulnerability_ui.vulnerability_details_by_severity', severity=severity_upper))
+        flash(f'Severidade inválida: {severity}', 'warning')
+    return redirect(url_for('vulnerability_ui.list_vulnerabilities_ui'))
 
 
 @main_bp.route(ROUTES['newsletter']['path'], methods=ROUTES['newsletter']['methods'])
@@ -645,23 +667,31 @@ def account() -> str:
 
                     # Atualizar dados do usuário no banco
                     user_service.update_user_data(current_user.id, update_data)
-                    flash('Perfil atualizado com sucesso!', 'success')
                     logger.info("Profile updated successfully")
+                    if wants_json():
+                        return jsonify({'success': True}), 200
+                    flash('Perfil atualizado com sucesso!', 'success')
                     return redirect(url_for('main.account'))
                         
                 except Exception as e:
                     logger.error(f"Error updating profile: {str(e)}")
+                    if wants_json():
+                        return jsonify({'success': False, 'message': 'Erro interno ao atualizar perfil.'}), 500
                     flash('Erro interno ao atualizar perfil.', 'error')
             
             elif form_type == 'password' and password_form.validate_on_submit():
                 try:
                     # Simular alteração de senha
-                    flash('Senha alterada com sucesso!', 'success')
                     logger.info("Password changed successfully")
+                    if wants_json():
+                        return jsonify({'success': True}), 200
+                    flash('Senha alterada com sucesso!', 'success')
                     return redirect(url_for('main.account'))
                         
                 except Exception as e:
                     logger.error(f"Error changing password: {str(e)}")
+                    if wants_json():
+                        return jsonify({'success': False, 'message': 'Erro interno ao alterar senha.'}), 500
                     flash('Erro interno ao alterar senha.', 'error')
         
         # Dados para exibição

@@ -1,0 +1,767 @@
+{% extends "reports/report_view.html" %}
+
+{% block title %}Relatório Técnico - {{ report.title }} - {{ super() }}{% endblock %}
+
+{% block extra_css %}
+{{ super() }}
+<style>
+.technical-header {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    margin-bottom: 2rem;
+}
+
+.code-block {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+}
+
+.vulnerability-detail {
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+
+.vulnerability-header {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.vulnerability-header:hover {
+    background-color: #e9ecef;
+}
+
+.vulnerability-content {
+    padding: 1.5rem;
+    display: none;
+}
+
+.vulnerability-content.show {
+    display: block;
+}
+
+.cvss-vector {
+    background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+    border: 1px solid #bbdefb;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    font-family: monospace;
+    font-size: 0.875rem;
+    margin: 1rem 0;
+}
+
+.exploit-info {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border: 1px solid #ffeaa7;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+.mitigation-step {
+    background-color: #d4edda;
+    border-left: 4px solid #28a745;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 0 0.375rem 0.375rem 0;
+}
+
+.technical-metric {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    text-align: center;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.technical-metric .metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.technical-metric .metric-label {
+    color: #6c757d;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.asset-detail {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.network-diagram {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    text-align: center;
+    margin: 2rem 0;
+}
+
+.attack-vector {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0.375rem;
+    border-left: 4px solid #dc3545;
+    background-color: #f8d7da;
+}
+
+.remediation-timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.remediation-timeline::before {
+    content: '';
+    position: absolute;
+    left: 0.5rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background-color: #007bff;
+}
+
+.remediation-item {
+    position: relative;
+    margin-bottom: 2rem;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-left: 1rem;
+}
+
+.remediation-item::before {
+    content: '';
+    position: absolute;
+    left: -1.75rem;
+    top: 1.5rem;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #007bff;
+    border: 3px solid white;
+    box-shadow: 0 0 0 1px #dee2e6;
+}
+
+.technical-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.875rem;
+}
+
+.technical-table th,
+.technical-table td {
+    border: 1px solid #dee2e6;
+    padding: 0.75rem;
+    text-align: left;
+}
+
+.technical-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.technical-table tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.severity-critical { color: #dc3545; font-weight: 600; }
+.severity-high { color: #fd7e14; font-weight: 600; }
+.severity-medium { color: #ffc107; font-weight: 600; }
+.severity-low { color: #28a745; font-weight: 600; }
+
+.collapsible-section {
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.collapsible-header {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    transition: background-color 0.2s ease;
+}
+
+.collapsible-header:hover {
+    background-color: #e9ecef;
+}
+
+.collapsible-content {
+    padding: 1.5rem;
+    display: none;
+}
+
+.collapsible-content.show {
+    display: block;
+}
+
+.toggle-icon {
+    transition: transform 0.3s ease;
+}
+
+.toggle-icon.rotated {
+    transform: rotate(180deg);
+}
+
+@media print {
+    .collapsible-content {
+        display: block !important;
+    }
+    
+    .vulnerability-content {
+        display: block !important;
+    }
+    
+    .technical-header {
+        background: #2c3e50 !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header Técnico -->
+    <div class="technical-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="h2 mb-2">{{ report.title }}</h1>
+                <p class="mb-3 opacity-75">{{ report.description or 'Análise técnica detalhada de cybersegurança' }}</p>
+                
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="h4 mb-1">{{ report.content.technical_summary.total_vulnerabilities or 0 }}</div>
+                            <small>Vulnerabilidades</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="h4 mb-1">{{ report.content.technical_summary.affected_assets or 0 }}</div>
+                            <small>Ativos Afetados</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="h4 mb-1">{{ report.content.technical_summary.avg_cvss or 0 }}</div>
+                            <small>CVSS Médio</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="h4 mb-1">{{ report.content.technical_summary.exploitable or 0 }}</div>
+                            <small>Exploráveis</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 text-end">
+                <div class="mb-2">
+                    <span class="badge bg-light text-dark fs-6">
+                        <i class="bi bi-calendar me-1"></i>
+                        {{ report.created_at.strftime('%d/%m/%Y') }}
+                    </span>
+                </div>
+                <div class="text-white-50 small">
+                    <div><strong>Analista:</strong> {{ report.user.username if report.user else 'Sistema' }}</div>
+                    <div><strong>Escopo:</strong> {{ report.scope.value.replace('_', ' ').title() }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Métricas Técnicas -->
+    <div class="section-card">
+        <div class="section-header">
+            <h3 class="mb-0">
+                <i class="bi bi-speedometer2 me-2"></i>
+                Métricas Técnicas
+            </h3>
+        </div>
+        <div class="section-content">
+            <div class="row">
+                <div class="col-md-2">
+                    <div class="technical-metric">
+                        <div class="metric-value text-danger">{{ report.content.metrics.critical_vulns or 0 }}</div>
+                        <div class="metric-label">Críticas</div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="technical-metric">
+                        <div class="metric-value text-warning">{{ report.content.metrics.high_vulns or 0 }}</div>
+                        <div class="metric-label">Altas</div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="technical-metric">
+                        <div class="metric-value text-info">{{ report.content.metrics.medium_vulns or 0 }}</div>
+                        <div class="metric-label">Médias</div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="technical-metric">
+                        <div class="metric-value text-success">{{ report.content.metrics.low_vulns or 0 }}</div>
+                        <div class="metric-label">Baixas</div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="technical-metric">
+                        <div class="metric-value text-primary">{{ report.content.metrics.patched or 0 }}</div>
+                        <div class="metric-label">Corrigidas</div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="technical-metric">
+                        <div class="metric-value text-secondary">{{ report.content.metrics.false_positives or 0 }}</div>
+                        <div class="metric-label">Falsos Positivos</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Análise de Vulnerabilidades Detalhada -->
+    <div class="section-card">
+        <div class="section-header">
+            <h3 class="mb-0">
+                <i class="bi bi-bug me-2"></i>
+                Análise Detalhada de Vulnerabilidades
+            </h3>
+        </div>
+        <div class="section-content">
+            {% if report.content.vulnerabilities and report.content.vulnerabilities.details %}
+                {% for vuln in report.content.vulnerabilities.details %}
+                    <div class="vulnerability-detail">
+                        <div class="vulnerability-header" onclick="toggleVulnerability('vuln-{{ loop.index }}')">
+                            <div class="row align-items-center">
+                                <div class="col-md-8">
+                                    <h5 class="mb-1">
+                                        {{ vuln.cve_id or vuln.title }}
+                                        <span class="badge bg-{{ 'danger' if vuln.severity == 'critical' else 'warning' if vuln.severity == 'high' else 'info' if vuln.severity == 'medium' else 'success' }} ms-2">
+                                            {{ vuln.severity.title() }}
+                                        </span>
+                                    </h5>
+                                    <p class="mb-0 text-muted">{{ vuln.description[:100] }}...</p>
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    {% if vuln.cvss_score %}
+                                        <div class="h5 mb-1 severity-{{ vuln.severity }}">CVSS: {{ vuln.cvss_score }}</div>
+                                    {% endif %}
+                                    <i class="bi bi-chevron-down toggle-icon" id="icon-vuln-{{ loop.index }}"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="vulnerability-content" id="vuln-{{ loop.index }}">
+                            <!-- Informações Básicas -->
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <h6>Informações Básicas</h6>
+                                    <table class="technical-table">
+                                        <tr>
+                                            <th>CVE ID</th>
+                                            <td>{{ vuln.cve_id or 'N/A' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>CWE</th>
+                                            <td>{{ vuln.cwe_id or 'N/A' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Publicação</th>
+                                            <td>{{ vuln.published_date.strftime('%d/%m/%Y') if vuln.published_date else 'N/A' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Última Modificação</th>
+                                            <td>{{ vuln.last_modified.strftime('%d/%m/%Y') if vuln.last_modified else 'N/A' }}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <h6>Métricas CVSS</h6>
+                                    {% if vuln.cvss_vector %}
+                                        <div class="cvss-vector">
+                                            <strong>Vetor CVSS:</strong><br>
+                                            {{ vuln.cvss_vector }}
+                                        </div>
+                                    {% endif %}
+                                    
+                                    <table class="technical-table">
+                                        <tr>
+                                            <th>Score Base</th>
+                                            <td class="severity-{{ vuln.severity }}">{{ vuln.cvss_score or 'N/A' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Vetor de Ataque</th>
+                                            <td>{{ vuln.attack_vector or 'N/A' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Complexidade</th>
+                                            <td>{{ vuln.attack_complexity or 'N/A' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Privilégios</th>
+                                            <td>{{ vuln.privileges_required or 'N/A' }}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <!-- Descrição Técnica -->
+                            <div class="mb-4">
+                                <h6>Descrição Técnica</h6>
+                                <p>{{ vuln.description }}</p>
+                                
+                                {% if vuln.technical_details %}
+                                    <div class="code-block">
+                                        {{ vuln.technical_details }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Ativos Afetados -->
+                            {% if vuln.affected_assets %}
+                                <div class="mb-4">
+                                    <h6>Ativos Afetados ({{ vuln.affected_assets | length }})</h6>
+                                    <div class="row">
+                                        {% for asset in vuln.affected_assets %}
+                                            <div class="col-md-6 mb-2">
+                                                <div class="asset-detail">
+                                                    <strong>{{ asset.name }}</strong><br>
+                                                    <small class="text-muted">
+                                                        IP: {{ asset.ip_address or 'N/A' }} | 
+                                                        Status: {{ asset.status.value if asset.status else 'N/A' }}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                            
+                            <!-- Informações de Exploit -->
+                            {% if vuln.exploit_available %}
+                                <div class="exploit-info">
+                                    <h6><i class="bi bi-exclamation-triangle me-2"></i>Exploit Disponível</h6>
+                                    <p><strong>Atenção:</strong> Existem exploits públicos disponíveis para esta vulnerabilidade.</p>
+                                    {% if vuln.exploit_details %}
+                                        <div class="code-block">
+                                            {{ vuln.exploit_details }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                            
+                            <!-- Vetores de Ataque -->
+                            {% if vuln.attack_vectors %}
+                                <div class="mb-4">
+                                    <h6>Vetores de Ataque</h6>
+                                    {% for vector in vuln.attack_vectors %}
+                                        <div class="attack-vector">
+                                            <i class="bi bi-arrow-right me-2"></i>
+                                            <strong>{{ vector.type }}:</strong> {{ vector.description }}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            
+                            <!-- Plano de Mitigação -->
+                            {% if vuln.mitigation_steps %}
+                                <div class="mb-4">
+                                    <h6>Plano de Mitigação</h6>
+                                    {% for step in vuln.mitigation_steps %}
+                                        <div class="mitigation-step">
+                                            <strong>{{ loop.index }}. {{ step.title }}</strong>
+                                            <p class="mb-1">{{ step.description }}</p>
+                                            <small class="text-muted">
+                                                Prioridade: {{ step.priority }} | 
+                                                Tempo estimado: {{ step.estimated_time }}
+                                            </small>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            
+                            <!-- Referências -->
+                            {% if vuln.references %}
+                                <div class="mb-4">
+                                    <h6>Referências</h6>
+                                    <ul>
+                                        {% for ref in vuln.references %}
+                                            <li>
+                                                <a href="{{ ref.url }}" target="_blank" rel="noopener">
+                                                    {{ ref.source }}: {{ ref.description or ref.url }}
+                                                    <i class="bi bi-box-arrow-up-right ms-1"></i>
+                                                </a>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-info-circle display-4 text-muted"></i>
+                    <h5 class="mt-3">Nenhuma vulnerabilidade encontrada</h5>
+                    <p class="text-muted">Não foram identificadas vulnerabilidades no escopo analisado.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Análise de Rede e Infraestrutura -->
+    <div class="section-card">
+        <div class="section-header">
+            <h3 class="mb-0">
+                <i class="bi bi-diagram-3 me-2"></i>
+                Análise de Rede e Infraestrutura
+            </h3>
+        </div>
+        <div class="section-content">
+            {% if report.content.network_analysis %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Topologia de Rede</h5>
+                        <div class="network-diagram">
+                            <i class="bi bi-diagram-3 display-1 text-muted"></i>
+                            <p class="mt-3">Diagrama de rede será renderizado aqui</p>
+                            <!-- Aqui seria integrado com uma biblioteca de diagramas como D3.js ou vis.js -->
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5>Estatísticas de Rede</h5>
+                        <table class="technical-table">
+                            <tr>
+                                <th>Total de Subredes</th>
+                                <td>{{ report.content.network_analysis.subnets_count or 0 }}</td>
+                            </tr>
+                            <tr>
+                                <th>Hosts Ativos</th>
+                                <td>{{ report.content.network_analysis.active_hosts or 0 }}</td>
+                            </tr>
+                            <tr>
+                                <th>Serviços Expostos</th>
+                                <td>{{ report.content.network_analysis.exposed_services or 0 }}</td>
+                            </tr>
+                            <tr>
+                                <th>Portas Abertas</th>
+                                <td>{{ report.content.network_analysis.open_ports or 0 }}</td>
+                            </tr>
+                        </table>
+                        
+                        {% if report.content.network_analysis.critical_services %}
+                            <h6 class="mt-3">Serviços Críticos</h6>
+                            <ul class="list-unstyled">
+                                {% for service in report.content.network_analysis.critical_services %}
+                                    <li class="mb-2">
+                                        <span class="badge bg-warning me-2">{{ service.port }}</span>
+                                        <strong>{{ service.name }}</strong> - {{ service.description }}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Timeline de Remediação -->
+    <div class="section-card">
+        <div class="section-header">
+            <h3 class="mb-0">
+                <i class="bi bi-clock-history me-2"></i>
+                Timeline de Remediação
+            </h3>
+        </div>
+        <div class="section-content">
+            {% if report.content.remediation_timeline %}
+                <div class="remediation-timeline">
+                    {% for item in report.content.remediation_timeline %}
+                        <div class="remediation-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6>{{ item.title }}</h6>
+                                    <p>{{ item.description }}</p>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <small class="text-muted">
+                                                <strong>Responsável:</strong> {{ item.responsible }}
+                                            </small>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <small class="text-muted">
+                                                <strong>Prazo:</strong> {{ item.deadline }}
+                                            </small>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <small class="text-muted">
+                                                <strong>Esforço:</strong> {{ item.effort }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <span class="badge bg-{{ 'danger' if item.priority == 'high' else 'warning' if item.priority == 'medium' else 'success' }}">
+                                    {{ item.priority.title() }}
+                                </span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-calendar-check display-4 text-muted"></i>
+                    <h5 class="mt-3">Timeline será gerada automaticamente</h5>
+                    <p class="text-muted">Com base nas vulnerabilidades identificadas e suas prioridades.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Seções Colapsáveis Adicionais -->
+    <div class="collapsible-section">
+        <div class="collapsible-header" onclick="toggleSection('logs-section')">
+            <h5 class="mb-0">
+                <i class="bi bi-file-text me-2"></i>
+                Logs de Análise
+            </h5>
+            <i class="bi bi-chevron-down toggle-icon" id="icon-logs-section"></i>
+        </div>
+        <div class="collapsible-content" id="logs-section">
+            {% if report.content.analysis_logs %}
+                <div class="code-block">
+                    {% for log in report.content.analysis_logs %}
+                        [{{ log.timestamp }}] {{ log.level }}: {{ log.message }}<br>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-muted">Nenhum log de análise disponível.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="collapsible-section">
+        <div class="collapsible-header" onclick="toggleSection('raw-data-section')">
+            <h5 class="mb-0">
+                <i class="bi bi-code-square me-2"></i>
+                Dados Brutos (JSON)
+            </h5>
+            <i class="bi bi-chevron-down toggle-icon" id="icon-raw-data-section"></i>
+        </div>
+        <div class="collapsible-content" id="raw-data-section">
+            <div class="code-block">
+                <pre>{{ report.content | tojson(indent=2) if report.content else '{}' }}</pre>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+function toggleVulnerability(id) {
+    const content = document.getElementById(id);
+    const icon = document.getElementById('icon-' + id);
+    
+    if (content.classList.contains('show')) {
+        content.classList.remove('show');
+        icon.classList.remove('rotated');
+    } else {
+        content.classList.add('show');
+        icon.classList.add('rotated');
+    }
+}
+
+function toggleSection(id) {
+    const content = document.getElementById(id);
+    const icon = document.getElementById('icon-' + id);
+    
+    if (content.classList.contains('show')) {
+        content.classList.remove('show');
+        icon.classList.remove('rotated');
+    } else {
+        content.classList.add('show');
+        icon.classList.add('rotated');
+    }
+}
+
+// Expandir todas as vulnerabilidades críticas por padrão
+document.addEventListener('DOMContentLoaded', function() {
+    const criticalVulns = document.querySelectorAll('.vulnerability-detail .badge.bg-danger');
+    criticalVulns.forEach(badge => {
+        const vulnDetail = badge.closest('.vulnerability-detail');
+        const header = vulnDetail.querySelector('.vulnerability-header');
+        if (header) {
+            header.click();
+        }
+    });
+});
+
+// Função para exportar dados técnicos
+function exportTechnicalData() {
+    const data = {
+        report_id: '{{ report.id }}',
+        title: '{{ report.title }}',
+        generated_at: '{{ report.generated_at.isoformat() if report.generated_at else "" }}',
+        vulnerabilities: {{ report.content.vulnerabilities | tojson if report.content and report.content.vulnerabilities else '[]' }},
+        metrics: {{ report.content.metrics | tojson if report.content and report.content.metrics else '{}' }}
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'technical_report_{{ report.id }}.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// Adicionar botão de exportação técnica
+document.addEventListener('DOMContentLoaded', function() {
+    const toolbar = document.querySelector('.export-toolbar .btn-group');
+    if (toolbar) {
+        const exportBtn = document.createElement('button');
+        exportBtn.className = 'btn btn-outline-info';
+        exportBtn.innerHTML = '<i class="bi bi-download me-1"></i>Dados Técnicos';
+        exportBtn.onclick = exportTechnicalData;
+        toolbar.appendChild(exportBtn);
+    }
+});
+</script>
+{% endblock %}

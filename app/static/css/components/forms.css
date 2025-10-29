@@ -1,0 +1,636 @@
+/* ==========================================================================
+   FORMS.CSS - Componentes de Formulários Modernos
+   Version: 1.0
+   Description: Estilos modernos e consistentes para todos os formulários do sistema
+   Dependencies: variables.css
+   ========================================================================== */
+
+/* ========================================
+   Variáveis de Formulários
+   ======================================== */
+
+:root {
+  /* Form spacing */
+  --form-group-spacing: var(--space-6);
+  --form-input-padding-y: var(--space-3);
+  --form-input-padding-x: var(--space-4);
+  
+  /* Form borders */
+  --form-border-width: 2px;
+  --form-border-radius: var(--radius-lg);
+  --form-border-radius-sm: var(--radius-md);
+  --form-border-radius-lg: var(--radius-xl);
+  
+  /* Form shadows (usar variáveis globais de foco e RGB) */
+  --form-shadow-focus: 0 0 0 var(--focus-ring-width) rgba(var(--primary-500-rgb), var(--focus-ring-opacity));
+  --form-shadow-error: 0 0 0 var(--focus-ring-width) rgba(var(--error-500-rgb), 0.15);
+  --form-shadow-success: 0 0 0 var(--focus-ring-width) rgba(var(--success-500-rgb), 0.15);
+}
+
+/* ========================================
+   Base Form Styles
+   ======================================== */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--form-group-spacing);
+}
+
+.form-row {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.form-row .form-group {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.form-group {
+  position: relative;
+  margin-bottom: var(--form-group-spacing);
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
+}
+
+/* ========================================
+   Form Labels
+   ======================================== */
+
+.form-label {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--content-strong);
+  margin-bottom: var(--space-2);
+  transition: color var(--animation-duration-fast) var(--ease-standard);
+  line-height: 1.4;
+}
+
+.form-label.required::after {
+  content: ' *';
+  color: var(--color-error);
+  font-weight: var(--font-weight-bold);
+}
+
+.form-label-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-regular);
+  color: var(--content-medium);
+  cursor: pointer;
+  transition: color var(--animation-duration-fast) var(--ease-standard);
+}
+
+.form-label-inline:hover {
+  color: var(--content-strong);
+}
+
+/* ========================================
+   Form Controls
+   ======================================== */
+
+.form-control {
+  width: 100%;
+  padding: var(--form-input-padding-y) var(--form-input-padding-x);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-regular);
+  line-height: 1.5;
+  color: var(--content-strong);
+  background-color: var(--surface-0);
+  background-clip: padding-box;
+  border: var(--form-border-width) solid var(--border-medium);
+  border-radius: var(--form-border-radius);
+  transition: all var(--animation-duration-normal) var(--ease-standard);
+  outline: none;
+  box-sizing: border-box;
+  appearance: none;
+}
+
+.form-control::placeholder {
+  color: var(--content-weak);
+  opacity: 1;
+}
+
+.form-control:hover {
+  border-color: var(--border-strong);
+}
+
+.form-control:focus {
+  border-color: var(--color-primary);
+  box-shadow: var(--form-shadow-focus);
+  transform: translateY(-1px);
+}
+
+.form-control:disabled {
+  background-color: var(--surface-1);
+  border-color: var(--border-weak);
+  color: var(--content-weak);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ========================================
+   Form Control Sizes
+   ======================================== */
+
+.form-control-sm {
+  padding: calc(var(--form-input-padding-y) * 0.75) calc(var(--form-input-padding-x) * 0.75);
+  font-size: var(--font-size-sm);
+  border-radius: var(--form-border-radius-sm);
+}
+
+.form-control-lg {
+  padding: calc(var(--form-input-padding-y) * 1.25) calc(var(--form-input-padding-x) * 1.25);
+  font-size: var(--font-size-lg);
+  border-radius: var(--form-border-radius-lg);
+}
+
+/* ========================================
+   Textarea
+   ======================================== */
+
+textarea.form-control {
+  min-height: 120px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+textarea.form-control-sm {
+  min-height: 80px;
+}
+
+textarea.form-control-lg {
+  min-height: 160px;
+}
+
+/* ========================================
+   Select
+   ======================================== */
+
+select.form-control {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23666' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m1 6 7 7 7-7'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+select.form-control:focus {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23007bff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m1 6 7 7 7-7'/%3e%3c/svg%3e");
+}
+
+/* ========================================
+   Form Floating Labels
+   ======================================== */
+
+.form-floating {
+  position: relative;
+}
+
+.form-floating > .form-control {
+  padding: calc(var(--form-input-padding-y) + 8px) var(--form-input-padding-x) var(--form-input-padding-y);
+}
+
+.form-floating > .form-control::placeholder {
+  color: transparent;
+}
+
+.form-floating > .form-control:focus,
+.form-floating > .form-control:not(:placeholder-shown) {
+  padding-top: calc(var(--form-input-padding-y) + 8px);
+  padding-bottom: var(--form-input-padding-y);
+}
+
+.form-floating > label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: var(--form-input-padding-y) var(--form-input-padding-x);
+  overflow: hidden;
+  text-align: start;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+  border: var(--form-border-width) solid transparent;
+  transform-origin: 0 0;
+  transition: all var(--animation-duration-normal) var(--ease-standard);
+  font-size: var(--font-size-base);
+  color: var(--content-weak);
+  line-height: 1.5;
+}
+
+.form-floating > .form-control:focus ~ label,
+.form-floating > .form-control:not(:placeholder-shown) ~ label {
+  color: var(--color-primary);
+  transform: scale(0.85) translateY(-0.5rem) translateX(0.15rem);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ========================================
+   Input Groups
+   ======================================== */
+
+.input-group {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  width: 100%;
+}
+
+.input-group > .form-control {
+  position: relative;
+  flex: 1 1 auto;
+  width: 1%;
+  min-width: 0;
+}
+
+.input-group-text {
+  display: flex;
+  align-items: center;
+  padding: var(--form-input-padding-y) var(--form-input-padding-x);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-regular);
+  line-height: 1.5;
+  color: var(--content-medium);
+  text-align: center;
+  white-space: nowrap;
+  background-color: var(--surface-1);
+  border: var(--form-border-width) solid var(--border-medium);
+  border-radius: 16px; /* harmoniza com .auth-form .form-control */
+  height: 56px; /* iguala altura ao input */
+  box-sizing: border-box;
+}
+
+.input-group > .input-group-text:not(:last-child) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: 0;
+}
+
+.input-group > .form-control:not(:first-child) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.input-group > .form-control:not(:last-child) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: 0;
+}
+
+.input-group > .input-group-text:not(:first-child) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+/* ========================================
+   Checkboxes e Radio Buttons
+   ======================================== */
+
+.form-check {
+  display: block;
+  min-height: 24px;
+  padding-left: 32px;
+  margin-bottom: var(--space-3);
+  position: relative;
+}
+
+.form-check-input {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  margin-left: -32px;
+  vertical-align: top;
+  background-color: var(--surface-0);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  border: var(--form-border-width) solid var(--border-medium);
+  appearance: none;
+  color-adjust: exact;
+  transition: all var(--animation-duration-normal) var(--ease-standard);
+  cursor: pointer;
+}
+
+.form-check-input[type="checkbox"] {
+  border-radius: 6px;
+}
+
+.form-check-input[type="radio"] {
+  border-radius: 50%;
+}
+
+.form-check-input:active {
+  filter: brightness(90%);
+}
+
+.form-check-input:focus {
+  border-color: var(--color-primary);
+  outline: 0;
+  box-shadow: var(--form-shadow-focus);
+}
+
+.form-check-input:checked {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.form-check-input:checked[type="checkbox"] {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+}
+
+.form-check-input:checked[type="radio"] {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='2' fill='%23fff'/%3e%3c/svg%3e");
+}
+
+.form-check-input:disabled {
+  pointer-events: none;
+  filter: none;
+  opacity: 0.5;
+}
+
+.form-check-label {
+  color: var(--content-medium);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+  transition: color var(--animation-duration-fast) var(--ease-standard);
+}
+
+.form-check-input:checked ~ .form-check-label {
+  color: var(--content-strong);
+}
+
+.form-check-input:disabled ~ .form-check-label {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ========================================
+   Switch
+   ======================================== */
+
+.form-switch {
+  padding-left: 48px;
+}
+
+.form-switch .form-check-input {
+  width: 40px;
+  height: 20px;
+  margin-left: -48px;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='rgba%280,0,0,.25%29'/%3e%3c/svg%3e");
+  background-position: left center;
+  border-radius: 20px;
+  transition: background-position var(--animation-duration-normal) var(--ease-standard);
+}
+
+.form-switch .form-check-input:focus {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23007bff'/%3e%3c/svg%3e");
+}
+
+.form-switch .form-check-input:checked {
+  background-position: right center;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
+}
+
+/* ========================================
+   Form Validation States
+   ======================================== */
+
+.form-control.is-valid {
+  border-color: var(--color-success);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%2328a745' d='m2.3 6.73.94-.94 2.94 2.94L8.5 6.4l.94.94L6.5 10.27z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+.form-control.is-valid:focus {
+  border-color: var(--color-success);
+  box-shadow: var(--form-shadow-success);
+}
+
+.form-control.is-invalid {
+  border-color: var(--color-error);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='m5.5 5.5 1 1m0-1-1 1'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+.form-control.is-invalid:focus {
+  border-color: var(--color-error);
+  box-shadow: var(--form-shadow-error);
+}
+
+/* ========================================
+   Form Feedback
+   ======================================== */
+
+.valid-feedback {
+  display: none;
+  width: 100%;
+  margin-top: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-success);
+  animation: slideInFeedback var(--animation-duration-normal) var(--ease-out);
+}
+
+.invalid-feedback {
+  display: none;
+  width: 100%;
+  margin-top: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-error);
+  animation: slideInFeedback var(--animation-duration-normal) var(--ease-out);
+}
+
+.invalid-feedback::before {
+  content: '⚠ ';
+  font-weight: var(--font-weight-bold);
+}
+
+.was-validated .form-control:valid ~ .valid-feedback,
+.form-control.is-valid ~ .valid-feedback {
+  display: block;
+}
+
+.was-validated .form-control:invalid ~ .invalid-feedback,
+.form-control.is-invalid ~ .invalid-feedback {
+  display: block;
+}
+
+/* ========================================
+   Form Actions
+   ======================================== */
+
+.form-actions {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border-weak);
+}
+
+.form-actions.justify-start {
+  justify-content: flex-start;
+}
+
+.form-actions.justify-center {
+  justify-content: center;
+}
+
+.form-actions.justify-between {
+  justify-content: space-between;
+}
+
+/* ========================================
+   Form Cards
+   ======================================== */
+
+.form-card {
+  background: var(--surface-0);
+  border: 1px solid var(--border-weak);
+  border-radius: 16px;
+  padding: var(--space-6);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all var(--animation-duration-normal) var(--ease-standard);
+}
+
+.form-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.form-card-header {
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-weak);
+}
+
+.form-card-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--content-strongest);
+  margin: 0 0 var(--space-2) 0;
+}
+
+.form-card-subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--content-medium);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ========================================
+   Responsive Design
+   ======================================== */
+
+@media (max-width: 768px) {
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+  
+  .form-row .form-group {
+    margin-bottom: var(--form-group-spacing);
+  }
+  
+  .form-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  
+  .form-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ========================================
+   Animations
+   ======================================== */
+
+@keyframes slideInFeedback {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+  20%, 40%, 60%, 80% { transform: translateX(2px); }
+}
+
+.form-control.shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+
+
+
+
+/* ========================================
+   Accessibility
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .form-control,
+  .form-check-input,
+  .form-label,
+  .form-floating > label {
+    transition: none;
+  }
+  
+  .valid-feedback,
+  .invalid-feedback {
+    animation: none;
+  }
+}
+
+/* Focus visible for keyboard navigation */
+.form-control:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.form-check-input:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .form-control {
+    border-width: 3px;
+  }
+  
+  .form-control:focus {
+    border-width: 3px;
+    box-shadow: none;
+  }
+  
+  .form-check-input {
+    border-width: 3px;
+  }
+}

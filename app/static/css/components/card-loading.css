@@ -1,0 +1,348 @@
+/* Card Loading and Navigation Enhancements */
+
+/* Transições de página */
+.page-transitions-enabled {
+    transition: opacity 0.3s ease-in-out;
+}
+
+.page-leaving {
+    opacity: 0.8;
+}
+
+/* Estados dos cards */
+.metric-card {
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+.metric-card.card-loading {
+    transform: scale(1.02);
+    box-shadow: 0 8px 32px rgba(0, 123, 255, 0.2);
+    border: 2px solid rgba(0, 123, 255, 0.3);
+}
+
+.metric-card.card-disabled {
+    opacity: 0.6;
+    pointer-events: none;
+    filter: grayscale(0.3);
+}
+
+.metric-card.card-hover-enhanced {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* Overlay de carregamento do card */
+.card-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    animation: fadeInOverlay 0.3s ease-out;
+}
+
+.loading-content {
+    text-align: center;
+    color: #495057;
+}
+
+.loading-spinner-large {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    color: var(--primary-color, #007bff);
+}
+
+.loading-content p {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Spinner animations */
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes fadeInOverlay {
+    from {
+        opacity: 0;
+        backdrop-filter: blur(0px);
+    }
+    to {
+        opacity: 1;
+        backdrop-filter: blur(4px);
+    }
+}
+
+/* Loading spinner no link */
+.loading-spinner {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--primary-color, #007bff);
+}
+
+.loading-spinner i {
+    font-size: 1rem;
+}
+
+/* Barra de progresso global */
+.global-progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: rgba(0, 123, 255, 0.1);
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.global-progress-bar.active {
+    opacity: 1;
+}
+
+.global-progress-bar.complete {
+    opacity: 0;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #007bff, #0056b3);
+    width: 0;
+    transition: width 0.3s ease;
+    animation: progressAnimation 2s ease-in-out;
+}
+
+@keyframes progressAnimation {
+    0% { width: 0%; }
+    50% { width: 70%; }
+    100% { width: 100%; }
+}
+
+/* Toast de carregamento */
+.loading-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    padding: 1rem 1.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 9998;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.loading-toast.show {
+    transform: translateX(0);
+}
+
+.toast-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #495057;
+    font-weight: 500;
+}
+
+.toast-content i {
+    color: var(--primary-color, #007bff);
+    font-size: 1.1rem;
+}
+
+/* Skeleton loading */
+.skeleton-loading {
+    padding: 1.5rem;
+    animation: skeletonPulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.skeleton-title {
+    height: 1.2rem;
+    width: 60%;
+    background: #e9ecef;
+    border-radius: 0.25rem;
+}
+
+.skeleton-icon {
+    height: 2rem;
+    width: 2rem;
+    background: #e9ecef;
+    border-radius: 50%;
+}
+
+.skeleton-value {
+    height: 3rem;
+    width: 40%;
+    background: #e9ecef;
+    border-radius: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.skeleton-description {
+    height: 1rem;
+    width: 80%;
+    background: #e9ecef;
+    border-radius: 0.25rem;
+    margin-bottom: 1rem;
+}
+
+.skeleton-footer {
+    height: 1rem;
+    width: 50%;
+    background: #e9ecef;
+    border-radius: 0.25rem;
+}
+
+@keyframes skeletonPulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Melhorias específicas por severidade */
+.metric-card.critical.card-loading {
+    border-color: rgba(220, 53, 69, 0.3);
+    box-shadow: 0 8px 32px rgba(220, 53, 69, 0.2);
+}
+
+.metric-card.high.card-loading {
+    border-color: rgba(253, 126, 20, 0.3);
+    box-shadow: 0 8px 32px rgba(253, 126, 20, 0.2);
+}
+
+.metric-card.medium.card-loading {
+    border-color: rgba(255, 193, 7, 0.3);
+    box-shadow: 0 8px 32px rgba(255, 193, 7, 0.2);
+}
+
+.metric-card.total.card-loading {
+    border-color: rgba(108, 117, 125, 0.3);
+    box-shadow: 0 8px 32px rgba(108, 117, 125, 0.2);
+}
+
+/* Efeitos de hover melhorados */
+.metric-card-link {
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-card-link::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.metric-card:hover .metric-card-link::before {
+    left: 100%;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .loading-toast {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        transform: translateY(-100%);
+    }
+    
+    .loading-toast.show {
+        transform: translateY(0);
+    }
+    
+    .card-loading-overlay {
+        backdrop-filter: blur(2px);
+    }
+    
+    .loading-spinner-large {
+        font-size: 1.5rem;
+    }
+}
+
+/* Estados de foco para acessibilidade */
+.metric-card-link:focus {
+    outline: 2px solid var(--primary-color, #007bff);
+    outline-offset: 2px;
+}
+
+.metric-card.card-loading .metric-card-link:focus {
+    outline: none;
+}
+
+/* Animações de entrada para os cards */
+.metric-card {
+    animation: cardFadeIn 0.6s ease-out;
+}
+
+.metric-card:nth-child(1) { animation-delay: 0.1s; }
+.metric-card:nth-child(2) { animation-delay: 0.2s; }
+.metric-card:nth-child(3) { animation-delay: 0.3s; }
+.metric-card:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes cardFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Prevenção de layout shift */
+.metric-cards {
+    min-height: 200px;
+}
+
+/* Estados de erro */
+.metric-card.card-error {
+    border-color: rgba(220, 53, 69, 0.5);
+    background: rgba(220, 53, 69, 0.05);
+}
+
+.metric-card.card-error .card-loading-overlay {
+    background: rgba(248, 215, 218, 0.95);
+}
+
+.metric-card.card-error .loading-content {
+    color: #721c24;
+}
+
+.metric-card.card-error .loading-spinner-large {
+    color: #dc3545;
+}

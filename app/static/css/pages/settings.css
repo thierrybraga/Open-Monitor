@@ -1,0 +1,295 @@
+/* Settings Page Styles */
+
+.settings-container {
+    padding: 2rem;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.settings-header {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.settings-title {
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 0.5rem 0;
+}
+
+.settings-subtitle {
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.settings-nav {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.settings-tab {
+    padding: 1rem 1.5rem;
+    border: none;
+    background: none;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all var(--transition-duration-fast);
+}
+
+.settings-tab:hover {
+    color: var(--text-primary);
+    background-color: var(--surface-secondary);
+}
+
+.settings-tab.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
+.settings-content {
+    background: var(--surface-primary);
+    border-radius: var(--border-radius-lg);
+    padding: 2rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.settings-section {
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.settings-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 0.5rem 0;
+}
+
+.section-description {
+    color: var(--text-secondary);
+    margin: 0 0 1.5rem 0;
+    line-height: 1.5;
+}
+
+.settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group.horizontal {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.form-label {
+    font-weight: 500;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    font-size: 1rem;
+    background: var(--surface-primary);
+    color: var(--text-primary);
+    transition: border-color var(--transition-duration-fast);
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.form-help {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--border-color);
+    transition: var(--transition-duration-fast);
+    border-radius: 24px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: var(--transition-duration-fast);
+    border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+    background-color: var(--primary-color);
+}
+
+input:checked + .toggle-slider:before {
+    transform: translateX(26px);
+}
+
+.settings-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--border-radius-sm);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-duration-fast);
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--border-radius-sm);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-duration-fast);
+}
+
+.btn-secondary:hover {
+    background-color: var(--surface-secondary);
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
+}
+
+.danger-zone {
+    background-color: var(--error-light);
+    border: 1px solid var(--error-color);
+    border-radius: var(--border-radius-md);
+    padding: 1.5rem;
+    margin-top: 2rem;
+}
+
+.danger-zone .section-title {
+    color: var(--error-color);
+}
+
+.danger-zone .section-description {
+    color: var(--error-dark);
+}
+
+.btn-danger {
+    background-color: var(--error-color);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--border-radius-sm);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-duration-fast);
+}
+
+.btn-danger:hover {
+    background-color: var(--error-dark);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 768px) {
+    .settings-container {
+        padding: 1rem;
+    }
+    
+    .settings-nav {
+        flex-direction: column;
+        gap: 0;
+    }
+    
+    .settings-tab {
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+        border-radius: 0;
+    }
+    
+    .settings-tab.active {
+        border-bottom-color: var(--primary-color);
+    }
+    
+    .form-group.horizontal {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .settings-actions {
+        flex-direction: column;
+    }
+}

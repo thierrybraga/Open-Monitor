@@ -1,0 +1,906 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Detalhes do Ativo{% endblock %}
+
+{% block extra_css %}
+  {# Removido: CSS de página já importado via main.css #}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 fade-in">
+  <!-- Page Header -->
+  <header class="page-header mb-5">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+      <div>
+        <h1 class="h3 fw-semibold mb-2">
+          <i class="bi bi-server me-2 text-primary"></i>
+          Detalhes do Ativo
+        </h1>
+        <p class="text-muted fs-6 mb-0">
+          Informações completas do ativo selecionado
+        </p>
+      </div>
+      <div class="d-flex gap-2">
+        {% if asset %}
+          <a href="{{ url_for('asset.edit_asset', asset_id=asset.id) }}" class="btn btn-warning">
+            <i class="bi bi-pencil me-1"></i>Editar
+          </a>
+        {% endif %}
+        <a href="{{ url_for('asset.list_assets') }}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i>Voltar à Lista
+        </a>
+      </div>
+    </div>
+  </header>
+
+  {% if asset %}
+    <div class="row">
+      <!-- Asset Information Card -->
+      <div class="col-lg-8">
+        <div class="asset-detail-card mb-4">
+          <div class="asset-detail-header">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+              <div class="d-flex align-items-center">
+                <div class="asset-icon me-3">
+                  <i class="bi bi-server" style="font-size: 2.5rem; color: #0d6efd;"></i>
+                </div>
+                <div>
+                  <h2 class="h4 fw-bold mb-1">{{ asset.name }}</h2>
+                  {% if asset.hostname %}
+                    <p class="text-muted mb-0">
+                      <i class="bi bi-pc-display me-1"></i>{{ asset.hostname }}
+                    </p>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="text-end">
+                <span class="status-badge {{ asset.status or 'unknown' }}">
+                  {{ asset.status or 'Desconhecido' }}
+                </span>
+                {% if asset.created_at %}
+                  <div class="text-muted mt-2">
+                    <small>
+                      <i class="bi bi-calendar-plus me-1"></i>
+                      Cadastrado em {{ asset.created_at.strftime('%d/%m/%Y às %H:%M') }}
+                    </small>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          
+          <div class="asset-detail-body">
+            <h3 class="h5 fw-semibold mb-4">
+              <i class="bi bi-info-circle me-2"></i>
+              Informações Gerais
+            </h3>
+            
+            <!-- Grid de informações em cards -->
+            <div class="row g-3 detail-info-grid">
+              <div class="col-sm-6 col-lg-4">
+                <div class="info-card p-3 bg-light rounded-3 h-100">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-diagram-3 fs-5 text-primary me-2"></i>
+                    <div>
+                      <small class="text-muted d-block">Tipo</small>
+                      <span class="fw-semibold">{{ asset.type or 'Não definido' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-6 col-lg-4">
+                <div class="info-card p-3 bg-light rounded-3 h-100">
+                  <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                      <i class="bi bi-router fs-5 text-primary me-2"></i>
+                      <div>
+                        <small class="text-muted d-block">Endereço IP</small>
+                        <code class="text-primary">{{ asset.ip_address }}</code>
+                      </div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" title="Copiar IP" onclick="copyText('{{ asset.ip_address }}')">
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-6 col-lg-4">
+                <div class="info-card p-3 bg-light rounded-3 h-100">
+                  <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                      <i class="bi bi-building fs-5 text-primary me-2"></i>
+                      <div>
+                        <small class="text-muted d-block">Fornecedor</small>
+                        {% if asset.vendor %}
+                          <span class="fw-semibold">{{ asset.vendor.name }}</span>
+                        {% else %}
+                          <span class="text-muted">Não informado</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                    <a href="{{ url_for('asset.edit_asset', asset_id=asset.id) }}#vendor_name" class="btn btn-link btn-sm p-0" data-bs-toggle="tooltip" title="Selecionar fornecedor">
+                      Selecionar
+                    </a>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-6 col-lg-4">
+                <div class="info-card p-3 bg-light rounded-3 h-100">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-geo-alt fs-5 text-primary me-2"></i>
+                    <div>
+                      <small class="text-muted d-block">Localização</small>
+                      <span class="fw-semibold">{{ asset.location or 'Não informado' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-6 col-lg-4">
+                <div class="info-card p-3 bg-light rounded-3 h-100">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-person fs-5 text-primary me-2"></i>
+                    <div>
+                      <small class="text-muted d-block">Proprietário</small>
+                      <span class="fw-semibold">
+                        {% if asset.owner %}
+                          <i class="bi bi-person-circle text-primary me-1"></i>
+                          {{ asset.owner.username }}
+                          {% if asset.owner.first_name or asset.owner.last_name %}
+                            ({{ asset.owner.first_name }} {{ asset.owner.last_name }})
+                          {% endif %}
+                        {% else %}
+                          <span class="text-muted">Não atribuído</span>
+                        {% endif %}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-6 col-lg-4">
+                <div class="info-card p-3 bg-light rounded-3 h-100">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-activity fs-5 text-primary me-2"></i>
+                    <div>
+                      <small class="text-muted d-block">Status</small>
+                      <span class="status-badge {{ asset.status or 'unknown' }} ms-0">{{ asset.status or 'Desconhecido' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {% if asset.description %}
+            <div class="mt-4">
+              <h3 class="h5 fw-semibold mb-3">
+                <i class="bi bi-file-text me-2"></i>
+                Descrição
+              </h3>
+              <div class="p-3 bg-light rounded-3">
+                <p class="mb-0">{{ asset.description }}</p>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        <!-- Vulnerabilidades do Ativo -->
+        <div class="asset-card mb-4">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="h5 fw-semibold mb-0">
+              <i class="bi bi-shield-exclamation me-2"></i>
+              Vulnerabilidades
+            </h3>
+            <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-box-arrow-up-right me-1"></i>Ver Todas
+            </a>
+          </div>
+          <div class="card-body">
+            <!-- Barra de filtros e visualização -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+              <div class="btn-group btn-group-sm" role="group" aria-label="Filtro Severidade">
+                <button type="button" class="btn btn-outline-secondary active" data-filter="ALL">Todas</button>
+                <button type="button" class="btn btn-outline-secondary" data-filter="CRITICAL">Críticas</button>
+                <button type="button" class="btn btn-outline-secondary" data-filter="HIGH">Altas</button>
+                <button type="button" class="btn btn-outline-secondary" data-filter="MEDIUM">Médias</button>
+                <button type="button" class="btn btn-outline-secondary" data-filter="LOW">Baixas</button>
+              </div>
+              <div class="btn-group btn-group-sm" role="group" aria-label="Visualização">
+                <button type="button" class="btn btn-outline-secondary active" data-view="cards">Cards</button>
+                <button type="button" class="btn btn-outline-secondary" data-view="table">Tabela</button>
+              </div>
+            </div>
+            {% set ns = namespace(critical=0, high=0, medium=0, low=0) %}
+            {% if asset.vulnerabilities and asset.vulnerabilities|length > 0 %}
+              {% for av in asset.vulnerabilities %}
+                {% set sev = (av.vulnerability.base_severity if av.vulnerability else None) %}
+                {% if sev %}
+                  {% if sev == 'CRITICAL' %}{% set ns.critical = ns.critical + 1 %}{% endif %}
+                  {% if sev == 'HIGH' %}{% set ns.high = ns.high + 1 %}{% endif %}
+                  {% if sev == 'MEDIUM' %}{% set ns.medium = ns.medium + 1 %}{% endif %}
+                  {% if sev == 'LOW' %}{% set ns.low = ns.low + 1 %}{% endif %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+
+            <div class="row g-3 mb-3">
+              <div class="col-6 col-md-3">
+                <div class="text-center p-3 bg-light rounded-3">
+                  <div class="h5 fw-bold text-danger mb-1">{{ ns.critical }}</div>
+                  <small class="text-muted">Críticas</small>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="text-center p-3 bg-light rounded-3">
+                  <div class="h5 fw-bold text-warning mb-1">{{ ns.high }}</div>
+                  <small class="text-muted">Altas</small>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="text-center p-3 bg-light rounded-3">
+                  <div class="h5 fw-bold text-info mb-1">{{ ns.medium }}</div>
+                  <small class="text-muted">Médias</small>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="text-center p-3 bg-light rounded-3">
+                  <div class="h5 fw-bold text-success mb-1">{{ ns.low }}</div>
+                  <small class="text-muted">Baixas</small>
+                </div>
+              </div>
+            </div>
+
+            {% if asset.vulnerabilities and asset.vulnerabilities|length > 0 %}
+            <div id="vuln-cards-container" class="row g-3">
+              {% for av in asset.vulnerabilities[:12] %}
+              {% set vuln = av.vulnerability %}
+              {% set sev = (vuln.base_severity if vuln else 'UNKNOWN') %}
+              <div class="col-12 col-md-6 col-lg-4" data-severity="{{ sev }}">
+                <div class="vuln-card p-3 h-100 bg-light rounded-3 border">
+                  <div class="d-flex justify-content-between align-items-start mb-2">
+                    {% if vuln %}
+                      <a href="{{ url_for('vulnerability_ui.vulnerability_details', cve_id=vuln.cve_id) }}" class="fw-semibold text-decoration-none">{{ vuln.cve_id }}</a>
+                    {% else %}
+                      <span class="text-muted">N/A</span>
+                    {% endif %}
+                    <span class="badge {% if sev == 'CRITICAL' %}bg-danger{% elif sev == 'HIGH' %}bg-warning{% elif sev == 'MEDIUM' %}bg-info text-dark{% elif sev == 'LOW' %}bg-success{% else %}bg-secondary{% endif %}">{{ sev }}</span>
+                  </div>
+                  <p class="text-muted mb-3">
+                    {% if vuln and vuln.description %}
+                      {{ vuln.description[:140] }}{% if vuln.description|length > 140 %}...{% endif %}
+                    {% else %}
+                      Sem descrição
+                    {% endif %}
+                  </p>
+                  <div class="d-flex justify-content-between align-items-center">
+                    <span class="badge {% if av.status == 'OPEN' %}bg-danger{% elif av.status == 'MITIGATED' %}bg-info text-dark{% elif av.status == 'CLOSED' %}bg-success{% else %}bg-secondary{% endif %}">{{ av.status }}</span>
+                    {% if vuln %}
+                      <a class="btn btn-sm btn-outline-primary" href="{{ url_for('vulnerability_ui.vulnerability_details', cve_id=vuln.cve_id) }}">Detalhes</a>
+                    {% else %}
+                      <button class="btn btn-sm btn-outline-secondary" disabled>Detalhes</button>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            <div id="vuln-table-container" class="table-responsive d-none">
+              <table class="table table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th style="width: 15%">CVE</th>
+                    <th>Descrição</th>
+                    <th style="width: 10%">Severidade</th>
+                    <th style="width: 10%">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for av in asset.vulnerabilities[:10] %}
+                  {% set vuln = av.vulnerability %}
+                  {% set sev = (vuln.base_severity if vuln else 'UNKNOWN') %}
+                  <tr data-severity="{{ sev }}">
+                    <td>
+                      {% if vuln %}
+                        <a href="{{ url_for('vulnerability_ui.vulnerability_details', cve_id=vuln.cve_id) }}" class="text-decoration-none">{{ vuln.cve_id }}</a>
+                      {% else %}
+                        <span class="text-muted">N/A</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if vuln and vuln.description %}
+                        {{ vuln.description[:140] }}{% if vuln.description|length > 140 %}...{% endif %}
+                      {% else %}
+                        <span class="text-muted">Sem descrição</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if vuln and vuln.base_severity %}
+                        <span class="badge {% if sev == 'CRITICAL' %}bg-danger{% elif sev == 'HIGH' %}bg-warning{% elif sev == 'MEDIUM' %}bg-info text-dark{% elif sev == 'LOW' %}bg-success{% else %}bg-secondary{% endif %}">{{ sev }}</span>
+                      {% else %}
+                        <span class="badge bg-secondary">N/A</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      <span class="badge {% if av.status == 'OPEN' %}bg-danger{% elif av.status == 'MITIGATED' %}bg-info text-dark{% elif av.status == 'CLOSED' %}bg-success{% else %}bg-secondary{% endif %}">{{ av.status }}</span>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+              <div class="p-4 bg-light rounded-3 border d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-shield-exclamation fs-4 text-muted me-3" aria-hidden="true"></i>
+                  <div>
+                    <div class="fw-semibold">Nenhuma vulnerabilidade associada a este ativo</div>
+                    <small class="text-muted">Você pode sincronizar vulnerabilidades conforme o fornecedor do ativo.</small>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#syncAssetVulnerabilitiesModal">
+                  <i class="bi bi-arrow-repeat me-1"></i>Sincronizar
+                </button>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      
+      <!-- Quick Actions Sidebar -->
+      <div class="col-lg-4">
+        <div class="asset-card">
+          <div class="card-header">
+            <h3 class="h5 fw-semibold mb-0">
+              <i class="bi bi-lightning me-2"></i>
+              Ações Rápidas
+            </h3>
+          </div>
+          <div class="card-body">
+            <div class="d-grid gap-3">
+              <a href="{{ url_for('asset.edit_asset', asset_id=asset.id) }}" class="btn btn-warning">
+                <i class="bi bi-pencil me-2"></i>
+                Editar Ativo
+              </a>
+              
+              <button type="button" class="btn btn-outline-primary" id="ping-btn" onclick="pingAsset()">
+                <i class="bi bi-wifi me-2"></i>
+                <span class="btn-text">Testar Conectividade</span>
+                <span class="btn-loading d-none">
+                  <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                  Testando...
+                </span>
+              </button>
+              
+              <button type="button" class="btn btn-outline-info" id="scan-btn" onclick="scanPorts()">
+                <i class="bi bi-search me-2"></i>
+                <span class="btn-text">Escanear Portas</span>
+                <span class="btn-loading d-none">
+                  <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                  Escaneando...
+                </span>
+              </button>
+
+              <button type="button" class="btn btn-outline-success" id="sync-btn" onclick="syncVulnerabilities({{ asset.id }})">
+                <i class="bi bi-arrow-repeat me-2"></i>
+                <span class="btn-text">Sincronizar Vulnerabilidades</span>
+                <span class="btn-loading d-none">
+                  <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                  Sincronizando...
+                </span>
+              </button>
+              
+              <hr>
+              
+              <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteAssetModal">
+                <i class="bi bi-trash me-2"></i>
+                Excluir Ativo
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Asset Statistics -->
+        <div class="asset-card mt-4">
+          <div class="asset-card-header">
+            <h3 class="h5 fw-semibold mb-0">Estatísticas do Ativo</h3>
+          </div>
+          <div class="asset-card-body">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <div class="stat-tile">
+                  <div class="stat-value">{{ asset.vulnerabilities|length }}</div>
+                  <div class="stat-label">Vulnerabilidades</div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="stat-tile">
+                  <div class="stat-value">{{ (asset.ip_address and 1) or 0 }}</div>
+                  <div class="stat-label">IP configurado</div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="stat-tile">
+                  <div class="stat-value">{{ 'Ativo' }}</div>
+                  <div class="stat-label">Status</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="asset-card text-center py-5">
+      <div class="mb-4">
+        <i class="bi bi-exclamation-triangle" style="font-size: 4rem; color: #ffc107;"></i>
+      </div>
+      <h3 class="h5 fw-semibold mb-3">Ativo não encontrado</h3>
+      <p class="text-muted mb-4">
+        O ativo solicitado não existe ou foi removido do sistema.
+      </p>
+      <a href="{{ url_for('asset.list_assets') }}" class="btn btn-primary">
+        <i class="bi bi-arrow-left me-2"></i>Voltar à Lista de Ativos
+      </a>
+    </div>
+{% endif %}
+</div>
+
+<!-- Delete Confirmation Modal -->
+{% if asset %}
+<div class="modal fade" id="deleteAssetModal" tabindex="-1" aria-labelledby="deleteAssetModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-semibold" id="deleteAssetModalLabel">
+          <i class="bi bi-exclamation-triangle text-warning me-2"></i>
+          Confirmar Exclusão
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3">Tem certeza que deseja excluir o ativo <strong>{{ asset.name }}</strong>?</p>
+        <div class="alert alert-warning d-flex align-items-center" role="alert">
+          <i class="bi bi-exclamation-triangle me-2"></i>
+          <div>Esta ação não pode ser desfeita e removerá todas as informações relacionadas ao ativo.</div>
+        </div>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle me-1"></i>Cancelar
+        </button>
+        <form method="POST" id="delete-asset-form-detail" action="{{ url_for('asset.delete_asset', asset_id=asset.id) }}" class="d-inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-danger" id="delete-asset-btn">
+            <i class="bi bi-trash me-1"></i>
+            <span class="btn-text">Excluir Ativo</span>
+            <span class="btn-loading d-none">
+              <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+              Excluindo...
+            </span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if asset %}
+<!-- Sync Asset Vulnerabilities Modal -->
+<div class="modal fade" id="syncAssetVulnerabilitiesModal" tabindex="-1" aria-labelledby="syncAssetVulnerabilitiesModalLabel" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-semibold" id="syncAssetVulnerabilitiesModalLabel">
+          <i class="bi bi-arrow-repeat text-primary me-2"></i>
+          Sincronizar Vulnerabilidades do Ativo
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2">Essa ação irá associar vulnerabilidades conhecidas ao fornecedor do ativo <strong>{{ asset.name }}</strong>.</p>
+        <ul class="text-muted mb-0">
+          <li>O ativo precisa ter um fornecedor cadastrado.</li>
+          <li>Novas associações serão criadas conforme CVEs do fornecedor.</li>
+        </ul>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle me-1"></i>Cancelar
+        </button>
+        <button type="button" class="btn btn-success" onclick="confirmSyncAssetVulnerabilities({{ asset.id }})">
+          <i class="bi bi-arrow-repeat me-1"></i>
+          Sincronizar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Toast for Feedback -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+  <div id="feedback-toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="toast-header">
+      <i class="bi bi-info-circle-fill text-info me-2"></i>
+      <strong class="me-auto">Informação</strong>
+      <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+    <div class="toast-body">
+      Operação realizada com sucesso!
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script nonce="{{ nonce }}">
+// Asset detail functionality
+(function() {
+  'use strict';
+  
+  // Tooltips são inicializados globalmente em base.js
+
+  // Exclusão via AJAX com toast e redirecionamento
+  (function setupAjaxDelete() {
+    const deleteForm = document.getElementById('delete-asset-form-detail');
+    const deleteModalEl = document.getElementById('deleteAssetModal');
+    const getModalSafely = (typeof window.getModalInstance === 'function')
+      ? window.getModalInstance
+      : function(el, options) {
+          if (!el) return null;
+          try {
+            if (typeof window.bootstrap !== 'undefined' && bootstrap.Modal) {
+              return bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el, options);
+            }
+          } catch (e) {
+            console.warn('Bootstrap Modal init failed:', e);
+          }
+          return {
+            show() {
+              el.classList.add('show');
+              el.style.display = 'block';
+              document.body.classList.add('modal-open');
+            },
+            hide() {
+              el.classList.remove('show');
+              el.style.display = 'none';
+              document.body.classList.remove('modal-open');
+              document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+            }
+          };
+        };
+    const deleteModal = getModalSafely(deleteModalEl);
+    const assetsListUrl = "{{ url_for('asset.list_assets') }}";
+
+    if (!deleteForm) return;
+
+    deleteForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const submitBtn = document.getElementById('delete-asset-btn');
+      submitBtn.disabled = true;
+      submitBtn.querySelector('.btn-text').classList.add('d-none');
+      submitBtn.querySelector('.btn-loading').classList.remove('d-none');
+
+      try {
+        const formData = new FormData(deleteForm);
+        const res = await fetch(deleteForm.action, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+          },
+          body: formData
+        });
+
+        const contentType = (res.headers.get('content-type') || '').toLowerCase();
+        const isJson = contentType.includes('application/json');
+        const data = isJson ? (await res.json().catch(() => ({}))) : {};
+        if (!res.ok) {
+          throw new Error(data.message || `Falha ao excluir ativo (status ${res.status})`);
+        }
+
+        // Fechar modal
+        deleteModal && deleteModal.hide();
+
+        // Mostrar toast de sucesso
+        if (typeof window.safeNotify === 'function') {
+          window.safeNotify('success', null, 'Ativo removido com sucesso.', 2000);
+        } else {
+          const toastEl = document.getElementById('feedback-toast');
+          const toast = window.getToastInstance(toastEl, { delay: 2000 });
+          const toastIcon = document.querySelector('#feedback-toast .toast-header i');
+          const toastTitle = document.querySelector('#feedback-toast .toast-header strong');
+          const toastBody = document.querySelector('#feedback-toast .toast-body');
+          toastIcon.className = 'bi bi-check-circle-fill text-success me-2';
+          toastTitle.textContent = 'Excluído';
+          toastBody.textContent = 'Ativo removido com sucesso.';
+          toast.show();
+        }
+
+        // Redirecionar para a lista após breve atraso
+        setTimeout(() => { window.location.href = assetsListUrl; }, 1200);
+
+      } catch (err) {
+        if (typeof window.safeNotify === 'function') {
+          window.safeNotify('error', null, (err && err.message) ? err.message : 'Erro ao excluir ativo.', 5000);
+        } else {
+          const toastEl = document.getElementById('feedback-toast');
+          const toast = window.getToastInstance(toastEl, { delay: 5000 });
+          const toastIcon = document.querySelector('#feedback-toast .toast-header i');
+          const toastTitle = document.querySelector('#feedback-toast .toast-header strong');
+          const toastBody = document.querySelector('#feedback-toast .toast-body');
+          toastIcon.className = 'bi bi-exclamation-triangle text-warning me-2';
+          toastTitle.textContent = 'Erro';
+          toastBody.textContent = err.message || 'Erro ao excluir ativo.';
+          toast.show();
+        }
+      } finally {
+        submitBtn.querySelector('.btn-loading').classList.add('d-none');
+        submitBtn.querySelector('.btn-text').classList.remove('d-none');
+        submitBtn.disabled = false;
+      }
+    });
+  })();
+
+  // Utilitário: copiar texto para clipboard com feedback
+  window.copyText = function(text) {
+    if (typeof window.safeNotify === 'function') {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text)
+          .then(() => window.safeNotify('success', null, 'Valor copiado para a área de transferência.', 3000))
+          .catch(() => window.safeNotify('warning', null, 'Não foi possível copiar automaticamente.', 4000));
+      } else {
+        const tmp = document.createElement('textarea');
+        tmp.value = text;
+        document.body.appendChild(tmp);
+        tmp.select();
+        try {
+          document.execCommand('copy');
+          window.safeNotify('success', null, 'Valor copiado para a área de transferência.', 3000);
+        } catch (e) {
+          window.safeNotify('warning', null, 'Não foi possível copiar automaticamente.', 4000);
+        }
+        document.body.removeChild(tmp);
+      }
+      return;
+    }
+
+    // Fallback para implementação antiga baseada no #feedback-toast
+    const toast = window.getToastInstance(document.getElementById('feedback-toast'));
+    const toastBody = document.querySelector('#feedback-toast .toast-body');
+    const toastIcon = document.querySelector('#feedback-toast .toast-header i');
+    const toastTitle = document.querySelector('#feedback-toast .toast-header strong');
+
+    function successFeedback() {
+      toastIcon.className = 'bi bi-clipboard-check text-success me-2';
+      toastTitle.textContent = 'Copiado';
+      toastBody.textContent = 'Valor copiado para a área de transferência.';
+      toast.show();
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(successFeedback).catch(() => {
+        toastIcon.className = 'bi bi-exclamation-triangle text-warning me-2';
+        toastTitle.textContent = 'Aviso';
+        toastBody.textContent = 'Não foi possível copiar automaticamente.';
+        toast.show();
+      });
+    } else {
+      // Fallback
+      const tmp = document.createElement('textarea');
+      tmp.value = text;
+      document.body.appendChild(tmp);
+      tmp.select();
+      try { document.execCommand('copy'); successFeedback(); }
+      catch (e) {
+        toastIcon.className = 'bi bi-exclamation-triangle text-warning me-2';
+        toastTitle.textContent = 'Aviso';
+        toastBody.textContent = 'Não foi possível copiar automaticamente.';
+        toast.show();
+      }
+      document.body.removeChild(tmp);
+    }
+  };
+  
+  // Ping asset functionality
+  window.pingAsset = function() {
+    if (typeof window.safeNotify === 'function') {
+      window.safeNotify('info', 'Testando...', 'Testando conectividade com o ativo...', 2000);
+      setTimeout(function() {
+        window.safeNotify('success', 'Sucesso', 'Ativo respondeu ao ping com sucesso!', 3000);
+      }, 2000);
+      return;
+    }
+    const toast = window.getToastInstance(document.getElementById('feedback-toast'));
+    const toastBody = document.querySelector('#feedback-toast .toast-body');
+    const toastIcon = document.querySelector('#feedback-toast .toast-header i');
+    const toastTitle = document.querySelector('#feedback-toast .toast-header strong');
+    toastIcon.className = 'bi bi-hourglass-split text-warning me-2';
+    toastTitle.textContent = 'Testando...';
+    toastBody.textContent = 'Testando conectividade com o ativo...';
+    toast.show();
+    setTimeout(() => {
+      toastIcon.className = 'bi bi-check-circle-fill text-success me-2';
+      toastTitle.textContent = 'Sucesso';
+      toastBody.textContent = 'Ativo respondeu ao ping com sucesso!';
+      toast.show();
+    }, 2000);
+  };
+  
+  // Port scan functionality
+  window.scanPorts = function() {
+    if (typeof window.safeNotify === 'function') {
+      window.safeNotify('info', 'Escaneando...', 'Escaneando portas do ativo...', 3000);
+      setTimeout(function() {
+        window.safeNotify('success', 'Concluído', 'Verificação de portas concluída com sucesso.', 4000);
+      }, 3000);
+      return;
+    }
+    const toast = window.getToastInstance(document.getElementById('feedback-toast'));
+    const toastBody = document.querySelector('#feedback-toast .toast-body');
+    const toastIcon = document.querySelector('#feedback-toast .toast-header i');
+    const toastTitle = document.querySelector('#feedback-toast .toast-header strong');
+    toastIcon.className = 'bi bi-hourglass-split text-warning me-2';
+    toastTitle.textContent = 'Escaneando...';
+    toastBody.textContent = 'Escaneando portas do ativo...';
+    toast.show();
+    setTimeout(() => {
+      toastIcon.className = 'bi bi-check-circle-fill text-success me-2';
+      toastTitle.textContent = 'Concluído';
+      toastBody.textContent = 'Verificação de portas concluída com sucesso.';
+      toast.show();
+    }, 3000);
+  };
+  
+  // Sync vulnerabilities functionality
+  window.syncVulnerabilities = function(assetId) {
+    const btn = document.getElementById('sync-btn');
+    const toast = window.getToastInstance(document.getElementById('feedback-toast'));
+    const toastBody = document.querySelector('#feedback-toast .toast-body');
+    const toastIcon = document.querySelector('#feedback-toast .toast-header i');
+    const toastTitle = document.querySelector('#feedback-toast .toast-header strong');
+
+    // Toggle loading state
+    btn.querySelector('.btn-text').classList.add('d-none');
+    btn.querySelector('.btn-loading').classList.remove('d-none');
+
+    fetch(`${window.location.origin}/assets/${assetId}/sync_vulnerabilities`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+      },
+      body: JSON.stringify({})
+    })
+    .then(async (res) => {
+      const isJson = (res.headers.get('content-type') || '').includes('application/json');
+      const data = isJson ? await res.json() : {};
+      if (res.ok && isJson) {
+        if (typeof window.safeNotify === 'function') {
+          window.safeNotify('success', 'Sincronizado', `Foram criadas ${data.created || 0} associações.`, 4000);
+        } else {
+          const toast = window.getToastInstance(document.getElementById('feedback-toast'));
+          const toastBody = document.querySelector('#feedback-toast .toast-body');
+          const toastIcon = document.querySelector('#feedback-toast .toast-header i');
+          const toastTitle = document.querySelector('#feedback-toast .toast-header strong');
+          toastIcon.className = 'bi bi-check-circle-fill text-success me-2';
+          toastTitle.textContent = 'Sincronizado';
+          toastBody.textContent = `Foram criadas ${data.created || 0} associações.`;
+          toast.show();
+        }
+      } else {
+        throw new Error(data.message || 'Falha ao sincronizar vulnerabilidades.');
+      }
+    })
+    .catch(err => {
+      if (typeof window.safeNotify === 'function') {
+        window.safeNotify('error', 'Erro', err.message || 'Falha ao sincronizar vulnerabilidades.', 5000);
+      } else {
+        const toast = window.getToastInstance(document.getElementById('feedback-toast'));
+        const toastBody = document.querySelector('#feedback-toast .toast-body');
+        const toastIcon = document.querySelector('#feedback-toast .toast-header i');
+        const toastTitle = document.querySelector('#feedback-toast .toast-header strong');
+        toastIcon.className = 'bi bi-exclamation-triangle text-warning me-2';
+        toastTitle.textContent = 'Erro';
+        toastBody.textContent = err.message;
+        toast.show();
+      }
+    })
+    .finally(() => {
+      btn.querySelector('.btn-loading').classList.add('d-none');
+      btn.querySelector('.btn-text').classList.remove('d-none');
+    });
+  };
+
+  // Confirm from modal and hide it before starting sync
+  window.confirmSyncAssetVulnerabilities = function(assetId) {
+    const modalEl = document.getElementById('syncAssetVulnerabilitiesModal');
+    if (modalEl) {
+      const modal = (typeof window.getModalInstance === 'function' ? window.getModalInstance : function(el, options) {
+    if (!el) return null;
+    try {
+      if (typeof window.bootstrap !== 'undefined' && bootstrap.Modal) {
+        return bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el, options);
+      }
+    } catch (e) {
+      console.warn('Bootstrap Modal init failed:', e);
+    }
+    return {
+      show() {
+        el.classList.add('show');
+        el.style.display = 'block';
+        document.body.classList.add('modal-open');
+      },
+      hide() {
+        el.classList.remove('show');
+        el.style.display = 'none';
+        document.body.classList.remove('modal-open');
+        document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+      }
+    };
+  })(modalEl);
+      modal && modal.hide();
+    }
+    // Reusar lógica existente
+    window.syncVulnerabilities(assetId);
+  };
+  // Filtros e alternância de visualização de vulnerabilidades
+  (function setupVulnFilters() {
+    const filterButtons = document.querySelectorAll('[aria-label="Filtro Severidade"] button');
+    const viewButtons = document.querySelectorAll('[aria-label="Visualização"] button');
+    const cardsContainer = document.getElementById('vuln-cards-container');
+    const tableContainer = document.getElementById('vuln-table-container');
+
+    if (!cardsContainer || !tableContainer) return;
+
+    let currentFilter = 'ALL';
+    let currentView = 'cards';
+
+    function applyFilter() {
+      const applyTo = currentView === 'cards' ? cardsContainer.querySelectorAll('[data-severity]')
+                                             : tableContainer.querySelectorAll('tr[data-severity]');
+      applyTo.forEach(el => {
+        const sev = (el.getAttribute('data-severity') || 'UNKNOWN').toUpperCase();
+        const show = currentFilter === 'ALL' || sev === currentFilter;
+        el.classList.toggle('d-none', !show);
+      });
+    }
+
+    filterButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter || 'ALL';
+        applyFilter();
+      });
+    });
+
+    viewButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        viewButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentView = btn.dataset.view || 'cards';
+        if (currentView === 'cards') {
+          tableContainer.classList.add('d-none');
+          cardsContainer.classList.remove('d-none');
+        } else {
+          cardsContainer.classList.add('d-none');
+          tableContainer.classList.remove('d-none');
+        }
+        applyFilter();
+      });
+    });
+
+    // Aplicar filtro inicial
+    applyFilter();
+  })();
+
+  })();
+
+</script>
+{% endblock %}

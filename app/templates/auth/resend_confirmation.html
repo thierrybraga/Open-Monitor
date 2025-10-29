@@ -1,0 +1,58 @@
+{% extends "core/base.html" %}
+
+{% block title %}Reenviar Confirmação de Email{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-envelope-check"></i> Reenviar Confirmação de Email</h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        Digite seu email para receber um novo link de confirmação.
+                    </p>
+                    
+                    <form method="POST">
+                        {{ csrf_token() }}
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" 
+                                   class="form-control" 
+                                   id="email" 
+                                   name="email" 
+                                   required 
+                                   placeholder="seu@email.com">
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-send"></i> Reenviar Email de Confirmação
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="text-center">
+                        <p class="mb-2">
+                            <a href="{{ url_for('main.index') }}" class="text-decoration-none">
+                                <i class="bi bi-arrow-left"></i> Voltar ao Início
+                            </a>
+                        </p>
+                        <p class="mb-0">
+                            <small class="text-muted">
+                                Não tem uma conta? 
+                                <a href="{{ url_for('auth.register') }}" class="text-decoration-none">Registre-se aqui</a>
+                            </small>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

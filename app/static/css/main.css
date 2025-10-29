@@ -1,0 +1,126 @@
+/* main.css - Sistema de design Open CVE Report
+ * Arquivo principal de estilo com arquitetura CSS escalável
+ * Gerencia a importação de todos os outros arquivos CSS.
+ * Versão: 2.2 - Ordem de importação ajustada e redundâncias removidas
+ * Última atualização: Abril 2025
+ */
+
+/* ==========================================================================\
+   1. Importações Externas - Fontes e Ícones
+   ========================================================================== */
+
+/*
+ * Inter Font Family - Família tipográfica principal do sistema
+ * Carregamento otimizado com font-display: swap para evitar FOIT
+ * Pesos carregados: Regular (400), Medium (500), Semibold (600), Bold (700)
+ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap&font-display=swap');
+
+/*
+ * Biblioteca de Ícones - Utilizamos uma combinação de:
+ * - Bootstrap Icons: Elementos de formulário e complementares
+ * - Remix Icons: Interface principal e ações comuns (Remover se não usado)
+ * Versões específicas para garantir consistência
+ */
+/* Remover se não usado */
+/* @import url('https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.min.css'); */
+/* Bootstrap Icons import removido; carregado via base.html com fallback local */
+/* Font Awesome import removido; carregado via base.html com fallback local */
+
+/* Vendor CSS (local) - Carregar cedo para base de estilos */
+@import 'vendor/bootstrap.min.css';
+@import 'vendor/bootstrap-icons.css?v=20251005';
+@import 'vendor/all.min.css?v=20251005';
+
+
+/* ==========================================================================\
+   2. Arquitetura CSS - Ordem de cascata e importação cuidadosamente planejada
+   ========================================================================== */
+
+/*
+ * A ordem de importação é crucial para a cascata e a dependência das variáveis:
+ * Resets/Base -> Variáveis -> Tipografia -> Utilitários -> Layout -> Componentes -> Temas/Acessibilidade
+ */
+
+/* a. Resets e Estilos Base para neutralizar estilos padrão do navegador e definir estilos base globais */
+/* Estes geralmente não dependem de variáveis e devem vir cedo na cascata */
+@import 'core/reset.css';
+
+/* b. Variáveis Globais - O coração do Design System */
+/* DEVE vir antes de qualquer arquivo que use as variáveis */
+@import 'core/variables.css';
+
+/* c. Sistema Tipográfico - Estilos para texto e classes tipográficas, usando variáveis */
+@import 'core/typography.css';
+
+/* d. Classes Utilitárias - Utilitários atômicos e de baixo nível, usando variáveis */
+@import 'utilities/utilities.css';
+@import 'utilities/layout.css';
+@import 'utilities/accessibility.css';
+@import 'utilities/scrollbars.css';
+@import 'utilities/loading.css';
+@import 'utilities/page-transitions.css';
+
+/* e. Componentes - Estilos para componentes específicos da UI (botões, cards, formulários, etc.) */
+/* Estes arquivos estilizam os elementos DENTRO da estrutura definida por layout.css, usando variáveis */
+@import 'components/components.css'; /* Componentes base do sistema */
+@import 'components/navbar.css'; /* Estilos consolidados da navbar */
+@import 'components/sidebar.css'; /* Estilos modernos da sidebar com glassmorphism */
+@import 'components/footer.css'; /* Estilos glassmorphism do footer */
+@import 'components/forms.css'; /* Estilos para formulários */
+@import 'components/nvd-cards.css'; /* Estilos modernos para cards NVD */
+@import 'components/card-loading.css'; /* Estilos para loading de cards */
+
+/* f. Páginas Específicas - Estilos para páginas individuais */
+@import 'pages/auth.css'; /* Estilos modernos para autenticação */
+@import 'pages/dashboard.css'; /* Estilos do dashboard */
+@import 'pages/vulnerabilities.css'; /* Estilos da página de vulnerabilidades */
+@import 'pages/vulnerability-details.css'; /* Estilos dos detalhes de vulnerabilidades */
+@import 'pages/assets.css'; /* Estilos da página de assets */
+@import 'pages/monitoring.css'; /* Estilos da página de monitoramento */
+@import 'pages/settings.css'; /* Estilos da página de configurações */
+@import 'pages/search.css'; /* Estilos da página de busca */
+@import 'pages/enhanced-analytics.css'; /* Estilos de analytics avançados */
+@import 'pages/chat.css'; /* Estilos da página de chat */
+@import 'pages/newsletter.css'; /* Estilos da newsletter */
+
+/* g. Bibliotecas Externas - Vendor CSS */
+/* Movido para o topo para garantir prioridade de base. Removido aqui para evitar duplicação. */
+
+
+/* h. Utilitários específicos ou overrides (se necessário) */
+/* Devem vir tarde na cascata para sobrescrever estilos anteriores */
+/* @import 'utilities-overrides.css'; */
+
+
+/* ==========================================================================\
+   3. Customizações de terceiros
+   ========================================================================== */
+
+/*
+ * Customizações para componentes de terceiros
+ * Sobrescreve estilos de bibliotecas externas para manter consistência visual
+ * Devem vir APÓS os estilos base e componentes, mas ANTES de utilitários de override se houverem.
+ */
+/* @import 'vendor/datepicker.css'; */
+/* @import 'vendor/charts.css'; */
+
+
+/* ==========================================================================\
+   4. Regras CSS críticas inline (Removido - Referência para inline no HTML)
+   ========================================================================== */
+
+/*
+ * Regras que idealmente estariam INLINE na tag <style> dentro do <head> do documento HTML
+ * para otimização da renderização inicial (como opacity: 1 no body para prevenir FOUC).
+ * Não devem duplicar estilos definidos em outros arquivos CSS importados.
+ */
+/* Conteúdo anterior removido para evitar duplicação */
+
+
+/* ==========================================================================\
+   5. Outras Regras Globais ou de Nível Superior
+   ========================================================================== */
+
+/* Quaisquer outras regras globais que não se encaixem nas categorias acima */
+/* (Geralmente poucas regras deveriam estar aqui se a arquitetura estiver bem definida) */

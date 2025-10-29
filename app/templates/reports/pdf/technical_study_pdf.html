@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ report.title }} - Estudo Técnico - Open Monitor</title>
+    
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+            @top-center {
+                content: "{{ export_metadata.generated_by }} - Estudo Técnico de Segurança";
+                font-size: 10pt;
+                color: #666;
+                border-bottom: 1pt solid #ddd;
+                padding-bottom: 5pt;
+            }
+            @bottom-center {
+                content: "Página " counter(page) " de " counter(pages);
+                font-size: 10pt;
+                color: #666;
+                border-top: 1pt solid #ddd;
+                padding-top: 5pt;
+            }
+        }
+        
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 11pt;
+            line-height: 1.5;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30pt;
+            padding-bottom: 20pt;
+            border-bottom: 2pt solid #17a2b8;
+        }
+        
+        .header h1 {
+            color: #17a2b8;
+            font-size: 28pt;
+            margin-bottom: 10pt;
+            font-weight: bold;
+        }
+        
+        .header .subtitle {
+            color: #6c757d;
+            font-size: 14pt;
+            margin-bottom: 15pt;
+            font-style: italic;
+        }
+        
+        .header .meta-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15pt;
+        }
+        
+        .header .meta-info .left,
+        .header .meta-info .right {
+            flex: 1;
+        }
+        
+        .header .meta-info .center {
+            flex: 2;
+            text-align: center;
+        }
+        
+        .company-logo {
+            max-height: 60pt;
+            max-width: 200pt;
+        }
+        
+        h1, h2, h3, h4, h5, h6 {
+            color: #17a2b8;
+            page-break-after: avoid;
+            margin-top: 20pt;
+            margin-bottom: 10pt;
+        }
+        
+        h1 { font-size: 24pt; }
+        h2 { font-size: 18pt; }
+        h3 { font-size: 16pt; }
+        h4 { font-size: 14pt; }
+        
+        .section {
+            margin-bottom: 25pt;
+            page-break-inside: avoid;
+        }
+        
+        .section-header {
+            background-color: #e7f3ff;
+            padding: 10pt;
+            border-left: 4pt solid #17a2b8;
+            margin-bottom: 15pt;
+        }
+        
+        .section-header h2 {
+            margin: 0;
+            color: #17a2b8;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15pt;
+            margin-bottom: 20pt;
+        }
+        
+        .info-card {
+            background-color: #f8f9fa;
+            padding: 15pt;
+            border-radius: 5pt;
+            border: 1pt solid #dee2e6;
+        }
+        
+        .info-card h4 {
+            margin-top: 0;
+            color: #495057;
+            border-bottom: 1pt solid #dee2e6;
+            padding-bottom: 5pt;
+        }
+        
+        .info-card table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .info-card table td {
+            padding: 3pt 0;
+            vertical-align: top;
+        }
+        
+        .info-card table td:first-child {
+            width: 40%;
+        }
+        
+        .technical-analysis {
+            background-color: #f8f9fa;
+            padding: 15pt;
+            border-radius: 5pt;
+            border-left: 4pt solid #17a2b8;
+            margin-bottom: 20pt;
+        }
+        
+        .config-section {
+            background-color: #fff3cd;
+            padding: 15pt;
+            border-radius: 5pt;
+            border-left: 4pt solid #ffc107;
+            margin-bottom: 20pt;
+        }
+        
+        .architecture-section {
+            background-color: #d1ecf1;
+            padding: 15pt;
+            border-radius: 5pt;
+            border-left: 4pt solid #17a2b8;
+            margin-bottom: 20pt;
+        }
+        
+        .recommendations-section {
+            background-color: #d4edda;
+            padding: 15pt;
+            border-radius: 5pt;
+            border-left: 4pt solid #28a745;
+            margin-bottom: 20pt;
+        }
+        
+        .implementation-section {
+            background-color: #f8d7da;
+            padding: 15pt;
+            border-radius: 5pt;
+            border-left: 4pt solid #dc3545;
+            margin-bottom: 20pt;
+        }
+        
+        .code-block {
+            background-color: #f8f9fa;
+            border: 1pt solid #e9ecef;
+            border-radius: 3pt;
+            padding: 10pt;
+            font-family: 'Courier New', monospace;
+            font-size: 9pt;
+            overflow-x: auto;
+            margin: 10pt 0;
+        }
+        
+        .command-line {
+            background-color: #2d3748;
+            color: #e2e8f0;
+            border-radius: 3pt;
+            padding: 10pt;
+            font-family: 'Courier New', monospace;
+            font-size: 9pt;
+            margin: 10pt 0;
+        }
+        
+        .vulnerability-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15pt 0;
+        }
+        
+        .vulnerability-table th,
+        .vulnerability-table td {
+            border: 1pt solid #dee2e6;
+            padding: 8pt;
+            text-align: left;
+        }
+        
+        .vulnerability-table th {
+            background-color: #17a2b8;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .vulnerability-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        .severity-critical { color: #dc3545; font-weight: bold; }
+        .severity-high { color: #fd7e14; font-weight: bold; }
+        .severity-medium { color: #ffc107; font-weight: bold; }
+        .severity-low { color: #28a745; font-weight: bold; }
+        
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-danger { color: #dc3545; }
+        .text-warning { color: #ffc107; }
+        .text-success { color: #28a745; }
+        .text-info { color: #17a2b8; }
+        
+        .font-weight-bold { font-weight: bold; }
+        
+        .mt-4 { margin-top: 20pt; }
+        .mb-4 { margin-bottom: 20pt; }
+        
+        .footer {
+            margin-top: 40pt;
+            padding-top: 20pt;
+            border-top: 1pt solid #dee2e6;
+            font-size: 9pt;
+            color: #6c757d;
+        }
+        
+        .footer .footer-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .page-break {
+            page-break-before: always;
+        }
+        
+        .no-break {
+            page-break-inside: avoid;
+        }
+        
+        ul, ol {
+            margin: 10pt 0;
+            padding-left: 20pt;
+        }
+        
+        li {
+            margin-bottom: 5pt;
+        }
+        
+        .checklist {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .checklist li:before {
+            content: "✓ ";
+            color: #28a745;
+            font-weight: bold;
+            margin-right: 5pt;
+        }
+        
+        .warning-box {
+            background-color: #fff3cd;
+            border: 1pt solid #ffeaa7;
+            border-radius: 5pt;
+            padding: 15pt;
+            margin: 15pt 0;
+        }
+        
+        .warning-box:before {
+            content: "⚠️ ";
+            font-size: 14pt;
+            margin-right: 5pt;
+        }
+        
+        .critical-box {
+            background-color: #f8d7da;
+            border: 1pt solid #f5c6cb;
+            border-radius: 5pt;
+            padding: 15pt;
+            margin: 15pt 0;
+        }
+        
+        .critical-box:before {
+            content: "🚨 ";
+            font-size: 14pt;
+            margin-right: 5pt;
+        }
+        
+        .info-box {
+            background-color: #d1ecf1;
+            border: 1pt solid #bee5eb;
+            border-radius: 5pt;
+            padding: 15pt;
+            margin: 15pt 0;
+        }
+        
+        .info-box:before {
+            content: "ℹ️ ";
+            font-size: 14pt;
+            margin-right: 5pt;
+        }
+    </style>
+</head>
+<body>
+    <!-- Cabeçalho do Relatório -->
+    <div class="header">
+        <div class="meta-info">
+            <div class="left">
+                {% if company_info.logo_url %}
+                    <img src="{{ company_info.logo_url }}" alt="{{ company_info.name }}" class="company-logo">
+                {% endif %}
+            </div>
+            <div class="center">
+                <h1>{{ report.title }}</h1>
+                <div class="subtitle">Estudo Técnico - Análise Aprofundada de Segurança</div>
+            </div>
+            <div class="right text-right">
+                <div><strong>Data:</strong> {{ export_date.strftime('%d/%m/%Y') }}</div>
+                <div><strong>Hora:</strong> {{ export_date.strftime('%H:%M') }}</div>
+                <div><strong>Versão:</strong> {{ export_metadata.version }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Informações Básicas -->
+    <div class="section">
+        <div class="section-header">
+            <h2>Informações do Estudo Técnico</h2>
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-card">
+                <h4>Detalhes Gerais</h4>
+                <table>
+                    <tr>
+                        <td><strong>Tipo:</strong></td>
+                        <td>Estudo Técnico</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Escopo:</strong></td>
+                        <td>{{ report.scope.value.replace('_', ' ').title() if report.scope else 'N/A' }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Nível de Detalhe:</strong></td>
+                        <td>{{ report.detail_level.value.replace('_', ' ').title() if report.detail_level else 'N/A' }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Status:</strong></td>
+                        <td>{{ report.status.value.replace('_', ' ').title() if report.status else 'N/A' }}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="info-card">
+                <h4>Período Analisado</h4>
+                <table>
+                    <tr>
+                        <td><strong>Data Início:</strong></td>
+                        <td>{{ report.period_start.strftime('%d/%m/%Y') if report.period_start else 'N/A' }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Data Fim:</strong></td>
+                        <td>{{ report.period_end.strftime('%d/%m/%Y') if report.period_end else 'N/A' }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Duração:</strong></td>
+                        <td>
+                            {% if report.period_start and report.period_end %}
+                                {{ (report.period_end - report.period_start).days }} dias
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Gerado em:</strong></td>
+                        <td>{{ report.generated_at.strftime('%d/%m/%Y %H:%M') if report.generated_at else 'N/A' }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumo Executivo -->
+    {% if summary_stats.total_vulnerabilities > 0 %}
+    <div class="section">
+        <div class="section-header">
+            <h2>Resumo Executivo</h2>
+        </div>
+        
+        <div class="technical-analysis">
+            <h3>Visão Geral Técnica</h3>
+            <p>
+                Este estudo técnico apresenta uma análise aprofundada da infraestrutura de segurança, 
+                identificando <strong>{{ summary_stats.total_vulnerabilities }}</strong> vulnerabilidades 
+                com um score médio CVSS de <strong>{{ summary_stats.avg_cvss }}</strong>.
+            </p>
+            
+            {% if summary_stats.critical_count > 0 %}
+            <div class="critical-box">
+                <strong>CRÍTICO:</strong> Foram identificadas {{ summary_stats.critical_count }} vulnerabilidades críticas 
+                que requerem implementação técnica imediata.
+            </div>
+            {% endif %}
+            
+            <p>
+                O score de risco técnico é de <strong>{{ summary_stats.risk_score }}%</strong>, 
+                indicando um nível de exposição 
+                {% if summary_stats.risk_score >= 80 %}
+                    <span class="text-danger">CRÍTICO</span>
+                {% elif summary_stats.risk_score >= 60 %}
+                    <span class="text-warning">ALTO</span>
+                {% elif summary_stats.risk_score >= 40 %}
+                    <span class="text-info">MÉDIO</span>
+                {% else %}
+                    <span class="text-success">BAIXO</span>
+                {% endif %}
+                que demanda ações técnicas específicas.
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Análise Técnica Aprofundada -->
+    <div class="section page-break">
+        <div class="section-header">
+            <h2>1. Análise Técnica Aprofundada</h2>
+        </div>
+        
+        <div class="technical-analysis">
+            <h3>Configurações Atuais Avaliadas</h3>
+            {% if report.ai_analysis and report.ai_analysis.technical_study %}
+                {{ report.ai_analysis.technical_study | safe }}
+            {% else %}
+                <p>A análise técnica detalhada será gerada automaticamente com base nos dados coletados.</p>
+                
+                <h4>Sistemas Operacionais</h4>
+                <ul>
+                    <li>Windows Server (múltiplas versões)</li>
+                    <li>Linux (Ubuntu/CentOS/RHEL)</li>
+                    <li>Sistemas embarcados e IoT</li>
+                </ul>
+                
+                <h4>Serviços de Rede</h4>
+                <ul>
+                    <li>HTTP/HTTPS (Web servers)</li>
+                    <li>SSH (Secure Shell)</li>
+                    <li>RDP (Remote Desktop Protocol)</li>
+                    <li>DNS (Domain Name System)</li>
+                    <li>SMTP/POP3/IMAP (Email services)</li>
+                </ul>
+                
+                <h4>Aplicações e Infraestrutura</h4>
+                <ul>
+                    <li>Servidores web (Apache, Nginx, IIS)</li>
+                    <li>Bancos de dados (MySQL, PostgreSQL, SQL Server)</li>
+                    <li>APIs e microserviços</li>
+                    <li>Firewalls e load balancers</li>
+                </ul>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Configurações de Segurança -->
+    <div class="section">
+        <div class="section-header">
+            <h2>2. Configurações de Segurança</h2>
+        </div>
+        
+        <div class="config-section">
+            <h3>Hardening Aplicado (Status Atual)</h3>
+            <div class="code-block">
+# Exemplo de configurações encontradas
+- Password policies: Parcialmente implementadas
+- Account lockout: Configurado (5 tentativas)
+- Audit logging: Habilitado em 70% dos sistemas
+- Service accounts: Privilégios excessivos identificados
+- Firewall rules: Configuração básica aplicada
+- SSL/TLS: Versões mistas (alguns sistemas desatualizados)
+            </div>
+            
+            <h3>Configurações Recomendadas</h3>
+            
+            <h4>Sistemas Windows</h4>
+            <div class="command-line">
+# Políticas de senha recomendadas
+net accounts /minpwlen:12 /maxpwage:90 /minpwage:1
+
+# Desabilitar protocolos inseguros
+Disable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol
+
+# Configurar auditoria avançada
+auditpol /set /category:"Logon/Logoff" /success:enable /failure:enable
+            </div>
+            
+            <h4>Sistemas Linux</h4>
+            <div class="command-line">
+# Configurações SSH seguras
+echo "Protocol 2" >> /etc/ssh/sshd_config
+echo "PermitRootLogin no" >> /etc/ssh/sshd_config
+echo "MaxAuthTries 3" >> /etc/ssh/sshd_config
+
+# Configurar firewall
+ufw enable
+ufw default deny incoming
+ufw default allow outgoing
+            </div>
+        </div>
+    </div>
+
+    <!-- Avaliação de Arquitetura -->
+    <div class="section page-break">
+        <div class="section-header">
+            <h2>3. Avaliação de Arquitetura</h2>
+        </div>
+        
+        <div class="architecture-section">
+            <h3>Arquitetura de Segurança Atual</h3>
+            <div class="code-block">
+[Internet] → [Firewall] → [DMZ] → [Internal Network]
+                ↓
+        [Web Servers] → [App Servers] → [Database]
+            </div>
+            
+            <h3>Pontos de Falha Identificados</h3>
+            <ul>
+                <li><strong>Single point of failure:</strong> Firewall único sem redundância</li>
+                <li><strong>Segmentação insuficiente:</strong> Rede plana com acesso lateral</li>
+                <li><strong>Monitoramento limitado:</strong> Visibilidade reduzida do tráfego interno</li>
+                <li><strong>Backup centralizado:</strong> Risco de comprometimento simultâneo</li>
+            </ul>
+            
+            <h3>Arquitetura Proposta</h3>
+            <div class="code-block">
+[Internet] → [WAF] → [Load Balancer] → [Firewall Cluster]
+                                           ↓
+[DMZ Segmentada] → [App Network] → [Database Network]
+        ↓                ↓              ↓
+   [Web Tier]    [Application Tier] [Data Tier]
+            </div>
+        </div>
+    </div>
+
+    <!-- Recomendações Técnicas Específicas -->
+    <div class="section">
+        <div class="section-header">
+            <h2>4. Recomendações Técnicas Específicas</h2>
+        </div>
+        
+        <div class="recommendations-section">
+            <h3>Implementações por Tecnologia</h3>
+            
+            <h4>Web Applications</h4>
+            <div class="code-block">
+# Configuração Nginx segura
+server {
+    listen 443 ssl http2;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains";
+    add_header X-Frame-Options DENY;
+    add_header X-Content-Type-Options nosniff;
+}
+            </div>
+            
+            <h4>Database Security</h4>
+            <div class="code-block">
+-- Configurações MySQL/PostgreSQL
+-- Criar usuários com privilégios mínimos
+CREATE USER 'app_user'@'localhost' IDENTIFIED BY 'complex_password';
+GRANT SELECT, INSERT, UPDATE ON app_db.* TO 'app_user'@'localhost';
+
+-- Habilitar SSL
+SET GLOBAL ssl_ca = '/path/to/ca-cert.pem';
+SET GLOBAL ssl_cert = '/path/to/server-cert.pem';
+SET GLOBAL ssl_key = '/path/to/server-key.pem';
+            </div>
+            
+            <h3>Ferramentas e Soluções Recomendadas</h3>
+            
+            <h4>Monitoramento e SIEM</h4>
+            <ul class="checklist">
+                <li><strong>Splunk/ELK Stack:</strong> Centralização de logs</li>
+                <li><strong>Wazuh:</strong> HIDS/SIEM open source</li>
+                <li><strong>OSSEC:</strong> Monitoramento de integridade</li>
+            </ul>
+            
+            <h4>Vulnerability Management</h4>
+            <ul class="checklist">
+                <li><strong>OpenVAS:</strong> Scanner de vulnerabilidades</li>
+                <li><strong>Nessus:</strong> Avaliação comercial</li>
+                <li><strong>Qualys VMDR:</strong> Solução cloud</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Procedimentos de Implementação -->
+    <div class="section page-break">
+        <div class="section-header">
+            <h2>5. Procedimentos de Implementação</h2>
+        </div>
+        
+        <div class="implementation-section">
+            <h3>Cronograma Técnico de Implementação</h3>
+            
+            <table class="vulnerability-table">
+                <thead>
+                    <tr>
+                        <th>Semana</th>
+                        <th>Atividade</th>
+                        <th>Responsável</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1-2</td>
+                        <td>Preparação e backup</td>
+                        <td>Equipe Infra</td>
+                        <td>Planejado</td>
+                    </tr>
+                    <tr>
+                        <td>3-4</td>
+                        <td>Hardening básico</td>
+                        <td>Equipe Segurança</td>
+                        <td>Planejado</td>
+                    </tr>
+                    <tr>
+                        <td>5-6</td>
+                        <td>Implementação SIEM</td>
+                        <td>Equipe SOC</td>
+                        <td>Planejado</td>
+                    </tr>
+                    <tr>
+                        <td>7-8</td>
+                        <td>Testes e validação</td>
+                        <td>Equipe QA</td>
+                        <td>Planejado</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3>Scripts de Automação</h3>
+            <div class="command-line">
+#!/bin/bash
+# security-hardening.sh
+# Script de hardening automatizado
+
+echo "Iniciando processo de hardening..."
+
+# Atualizar sistema
+apt update && apt upgrade -y
+
+# Configurar SSH
+sed -i 's/#PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
+sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+systemctl restart ssh
+
+# Configurar firewall
+ufw --force reset
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow ssh
+ufw enable
+
+echo "Hardening básico concluído!"
+            </div>
+        </div>
+    </div>
+
+    <!-- Vulnerabilidades Detalhadas -->
+    {% if summary_stats.total_vulnerabilities > 0 %}
+    <div class="section page-break">
+        <div class="section-header">
+            <h2>Vulnerabilidades Identificadas</h2>
+        </div>
+        
+        <div class="vulnerability-summary">
+            <div class="info-grid">
+                <div class="info-card">
+                    <h4>Distribuição por Severidade</h4>
+                    <table>
+                        <tr>
+                            <td><span class="severity-critical">Críticas:</span></td>
+                            <td>{{ summary_stats.critical_count }}</td>
+                        </tr>
+                        <tr>
+                            <td><span class="severity-high">Altas:</span></td>
+                            <td>{{ summary_stats.high_count }}</td>
+                        </tr>
+                        <tr>
+                            <td><span class="severity-medium">Médias:</span></td>
+                            <td>{{ summary_stats.medium_count }}</td>
+                        </tr>
+                        <tr>
+                            <td><span class="severity-low">Baixas:</span></td>
+                            <td>{{ summary_stats.low_count }}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div class="info-card">
+                    <h4>Métricas CVSS</h4>
+                    <table>
+                        <tr>
+                            <td><strong>Score Médio:</strong></td>
+                            <td>{{ summary_stats.avg_cvss }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Score Máximo:</strong></td>
+                            <td>{{ summary_stats.max_cvss }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Score Mínimo:</strong></td>
+                            <td>{{ summary_stats.min_cvss }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Total Analisado:</strong></td>
+                            <td>{{ summary_stats.total_vulnerabilities }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Conclusões e Próximos Passos -->
+    <div class="section">
+        <div class="section-header">
+            <h2>Conclusões e Próximos Passos</h2>
+        </div>
+        
+        <div class="technical-analysis">
+            <h3>Prioridades Imediatas</h3>
+            <ol>
+                <li><strong>Aplicação de patches críticos</strong> (24-48 horas)</li>
+                <li><strong>Implementação de hardening básico</strong> (1 semana)</li>
+                <li><strong>Deploy de monitoramento</strong> (2 semanas)</li>
+            </ol>
+            
+            <h3>Investimentos Recomendados</h3>
+            <ul>
+                <li><strong>SIEM/SOC:</strong> $50,000 - $100,000 anuais</li>
+                <li><strong>Ferramentas de segurança:</strong> $25,000 - $50,000</li>
+                <li><strong>Treinamento da equipe:</strong> $15,000 - $30,000</li>
+            </ul>
+            
+            <h3>Métricas de Sucesso</h3>
+            <ul class="checklist">
+                <li><strong>Redução de 80%</strong> em vulnerabilidades críticas</li>
+                <li><strong>Tempo de detecção</strong> < 15 minutos</li>
+                <li><strong>Tempo de resposta</strong> < 1 hora</li>
+                <li><strong>Conformidade</strong> > 95% com frameworks</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Rodapé -->
+    <div class="footer">
+        <div class="footer-info">
+            <div>
+                <strong>{{ company_info.name or 'Organização' }}</strong><br>
+                {% if company_info.address %}{{ company_info.address }}<br>{% endif %}
+                {% if company_info.website %}{{ company_info.website }}<br>{% endif %}
+                {% if company_info.contact %}{{ company_info.contact }}{% endif %}
+            </div>
+            <div class="text-right">
+                <strong>Gerado por:</strong> {{ export_metadata.generated_by }}<br>
+                <strong>Engine:</strong> {{ export_metadata.export_engine }}<br>
+                <strong>Data de Exportação:</strong> {{ export_date.strftime('%d/%m/%Y %H:%M') }}
+            </div>
+        </div>
+        
+        <div class="text-center mt-4">
+            <small>
+                Este estudo técnico é confidencial e destinado exclusivamente ao uso interno da organização.
+                A distribuição não autorizada é estritamente proibida.
+            </small>
+        </div>
+    </div>
+</body>
+</html>

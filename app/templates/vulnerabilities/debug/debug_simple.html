@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Simples</title>
+</head>
+<body>
+    <h1>Debug de Vulnerabilidades</h1>
+
+    <h2>Debug - Variável vulnerabilities</h2>
+    <p>Tipo de vulnerabilities: {{ vulnerabilities.__class__.__name__ }}</p>
+    <p>Comprimento de vulnerabilities: {{ vulnerabilities|length }}</p>
+    <p>Vulnerabilities existe: {% if vulnerabilities %}SIM{% else %}NÃO{% endif %}</p>
+    
+    <h2>Debug - Variável vulns</h2>
+    <p>Tipo de vulns: {{ vulns.__class__.__name__ }}</p>
+    <p>Comprimento de vulns: {{ vulns|length }}</p>
+    <p>Vulns existe: {% if vulns %}SIM{% else %}NÃO{% endif %}</p>
+
+    {% if vulnerabilities %}
+    <h2>Vulnerabilidades encontradas via 'vulnerabilities' ({{ vulnerabilities|length }}):</h2>
+    <ul>
+    {% for vuln in vulnerabilities %}
+        <li>{{ vuln.cve_id }} - {{ vuln.description[:100] }}...</li>
+    {% endfor %}
+    </ul>
+    {% else %}
+    <p>Nenhuma vulnerabilidade encontrada via 'vulnerabilities'.</p>
+    {% endif %}
+
+    {% if vulns %}
+    <h2>Vulnerabilidades encontradas via 'vulns' ({{ vulns|length }}):</h2>
+    <ul>
+    {% for vuln in vulns %}
+        <li>{{ vuln.cve_id }} - {{ vuln.description[:100] }}...</li>
+    {% endfor %}
+    </ul>
+    {% else %}
+    <p>Nenhuma vulnerabilidade encontrada via 'vulns'.</p>
+    {% endif %}
+</body>
+</html>

@@ -1,0 +1,47 @@
+/* CVE History Chart specific styles for vulnerabilities list page */
+
+.cve-history-section .chart-container {
+  position: relative;
+  height: 250px;
+  width: 100%;
+}
+
+.cve-history-section .chart-container canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.cve-history-section .chart-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--content-medium, #6c757d);
+  font-size: 0.9rem;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 2;
+}
+
+.cve-history-section .chart-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 250px;
+  color: var(--color-error, #dc3545);
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.cve-history-section .chart-empty-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 250px;
+  color: var(--content-medium, #6c757d);
+  font-size: 0.9rem;
+  text-align: center;
+}

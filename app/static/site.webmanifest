@@ -1,0 +1,16 @@
+{
+  "name": "Open Monitor",
+  "short_name": "OpenMonitor",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0ea5b7",
+  "icons": [
+    {
+      "src": "/static/images/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

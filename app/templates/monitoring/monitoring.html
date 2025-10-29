@@ -1,0 +1,271 @@
+{% extends 'core/base.html' %}
+{% set footer_has_utility = true %}
+
+{% block title %}Device Monitoring - Open CVE Report{% endblock %}
+
+{% block header_brand %}
+  <span>Open CVE Report - Device Monitoring</span>
+{% endblock %}
+
+{% block extra_css %}
+  {# Removido: CSS de página já importado via main.css #}
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" nonce="{{ csp_nonce }}">
+{% endblock %}
+
+{% block content %}
+<section class="monitoring-area py-4 fade-in" aria-labelledby="monitoring-title">
+  <div class="container-fluid">
+    <!-- Page Header -->
+    <header class="page-header mb-5">
+      <h1 class="h3 fw-semibold" id="monitoring-title">Device Monitoring</h1>
+      <p class="text-muted fs-6">Manage and view real-time device status.</p>
+    </header>
+
+    <div class="row g-4">
+      <!-- Main Content -->
+      <div class="col-12 col-md-8 col-lg-9">
+        <!-- Metrics Cards -->
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-auto flex-lg-nowrap g-4 mb-4 metrics-grid metrics-scroll-row fade-in">
+          {% set metrics = {
+              'total': {'label': 'Total Devices', 'icon': 'bi bi-server', 'color': 'primary'},
+              'online': {'label': 'Online Devices', 'icon': 'bi bi-check-circle', 'color': 'success'},
+              'offline': {'label': 'Offline Devices', 'icon': 'bi bi-x-circle', 'color': 'danger'},
+              'warning': {'label': 'Warnings', 'icon': 'bi bi-exclamation-triangle', 'color': 'warning'}
+          } %}
+          {% for key, metric in metrics.items() %}
+          <div class="col">
+            <div class="card metric-card accent-{{ metric.color }} shadow-md p-4 h-100">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="label text-uppercase text-muted">{{ metric.label }}</div>
+                  <div class="value fs-4 fw-semibold" id="{{ key }}-devices">{{ metrics_counts.get(key, 0) if metrics_counts is defined else 0 }}</div>
+                </div>
+                <i class="{{ metric.icon }} fs-3 text-{{ metric.color }} opacity-50"></i>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Controls & Filters Combined Card -->
+        <article class="card shadow-md mb-4 fade-in">
+          <div class="card-header p-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h2 class="h5 fw-semibold mb-0">Controls & Filters</h2>
+            <button class="btn btn-link btn-sm text-secondary" id="toggle-filters" data-bs-toggle="collapse" data-bs-target="#filter-panel" aria-expanded="true" aria-controls="filter-panel">
+              <i class="bi bi-filter me-1"></i> Toggle Filters
+            </button>
+          </div>
+          <div class="collapse show" id="filter-panel">
+            <div class="card-body p-4 border-bottom">
+              <div class="row g-3 align-items-end">
+                <div class="col-lg-4 col-md-6">
+                  <label for="filter-devices" class="form-label">Search</label>
+                  <div class="input-group">
+                    <span class="input-group-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <input type="text" id="filter-devices" class="form-control" placeholder="IP, name, vendor..." />
+                    <button type="button" class="btn btn-outline-secondary" id="clear-search" aria-label="Clear search"><i class="bi bi-x-lg"></i></button>
+                  </div>
+                </div>
+                <div class="col-lg-2 col-md-3 col-6">
+                  <label for="status-filter" class="form-label">Status</label>
+                  <select id="status-filter" class="form-select">
+                    <option value="all" selected>All</option>
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
+                    <option value="warning">Warning</option>
+                  </select>
+                </div>
+                <!-- Removido: dropdown de ordenação redundante; ordenação agora pelos cabeçalhos da tabela -->
+              </div>
+            </div>
+
+            <!-- View Mode Tabs -->
+            <div class="card-body p-4">
+              <ul class="nav nav-pills mb-3" id="view-tab" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active" id="table-tab" data-bs-toggle="pill" data-bs-target="#table-view" type="button" role="tab" aria-controls="table-view" aria-selected="true">Table View</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="grid-tab" data-bs-toggle="pill" data-bs-target="#grid-view" type="button" role="tab" aria-controls="grid-view" aria-selected="false">Grid View</button>
+                </li>
+              </ul>
+              <div class="tab-content" id="view-tabContent">
+                <div class="tab-pane fade show active" id="table-view" role="tabpanel" aria-labelledby="table-tab">
+                  <div class="table-responsive">
+                    <table class="table table-hover align-middle" id="device-table">
+                      <thead>
+                        <tr>
+                          <th scope="col"><input type="checkbox" id="select-all" aria-label="Select all devices" /></th>
+                          <th scope="col" class="sortable" data-sort="ip">IP Address <i class="bi bi-arrow-down-up"></i></th>
+                          <th scope="col" class="sortable" data-sort="name">Name <i class="bi bi-arrow-down-up"></i></th>
+                          <th scope="col" class="sortable" data-sort="vendor">Vendor <i class="bi bi-arrow-down-up"></i></th>
+                          <th scope="col" class="sortable" data-sort="status">Status <i class="bi bi-arrow-down-up"></i></th>
+                          <th scope="col">Last Seen</th>
+                          <th scope="col">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody id="device-table-body">
+                        {% if assets is defined and assets|length > 0 %}
+                          {% for asset in assets %}
+                          <tr>
+                            <td><input type="checkbox" class="select-device" data-id="{{ asset.id }}" aria-label="Select device {{ asset.name }}" /></td>
+                            <td><span class="font-monospace">{{ asset.ip_address }}</span></td>
+                            <td>{{ asset.name }}</td>
+                            <td>{{ asset.vendor.name if asset.vendor else '-' }}</td>
+                            <td>
+                              {% set status = (asset.status or '').strip().lower() %}
+                              {% set badge_class = 'bg-secondary' %}
+                              {% if status in ['active','online','up'] %}
+                                {% set badge_class = 'bg-success' %}
+                              {% elif status in ['inactive','offline','down'] %}
+                                {% set badge_class = 'bg-danger' %}
+                              {% elif status in ['warning','degraded','maintenance'] %}
+                                {% set badge_class = 'bg-warning text-dark' %}
+                              {% endif %}
+                              <span class="badge {{ badge_class }} text-capitalize">{{ status or 'unknown' }}</span>
+                            </td>
+                            <td>{{ (asset.updated_at or asset.created_at) | default('-', true) }}</td>
+                            <td>
+                              <a href="/assets/{{ asset.id }}" class="btn btn-sm btn-outline-primary" title="View details" aria-label="View details for {{ asset.name }}">
+                                <i class="bi bi-eye"></i>
+                              </a>
+                            </td>
+                          </tr>
+                          {% endfor %}
+                        {% else %}
+                          <tr><td colspan="7" class="text-center text-muted p-4">No Devices Found</td></tr>
+                        {% endif %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div class="tab-pane fade" id="grid-view" role="tabpanel" aria-labelledby="grid-tab">
+                  <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="device-grid">
+                    {% if assets is defined and assets|length > 0 %}
+                      {% for asset in assets %}
+                      <div class="col">
+                        <div class="card h-100 shadow-sm">
+                          <div class="card-body">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                              <h5 class="card-title mb-0">{{ asset.name }}</h5>
+                              <span class="badge bg-secondary">{{ (asset.status or 'unknown') | lower }}</span>
+                            </div>
+                            <p class="card-text mb-1"><span class="text-muted">IP:</span> <span class="font-monospace">{{ asset.ip_address }}</span></p>
+                            <p class="card-text"><span class="text-muted">Vendor:</span> {{ asset.vendor.name if asset.vendor else '-' }}</p>
+                            <a href="/assets/{{ asset.id }}" class="btn btn-sm btn-outline-primary">View Details</a>
+                          </div>
+                        </div>
+                      </div>
+                      {% endfor %}
+                    {% else %}
+                      <div class="col-12"><div class="text-center text-muted p-4">No Devices Found</div></div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Pagination -->
+        <nav aria-label="Device list pagination" class="fade-in">
+          <ul class="pagination">
+            <li class="page-item"><a class="page-link" href="#">Previous</a></li>
+            <li class="page-item"><a class="page-link" href="#">1</a></li>
+            <li class="page-item"><a class="page-link" href="#">2</a></li>
+            <li class="page-item"><a class="page-link" href="#">3</a></li>
+            <li class="page-item"><a class="page-link" href="#">Next</a></li>
+          </ul>
+        </nav>
+      </div>
+
+      <!-- Sidebar -->
+      <aside class="col-12 col-md-4 col-lg-3 monitoring-sidebar">
+        <div class="sticky-top">
+          <!-- Actions Card -->
+          <div class="card shadow-md mb-4">
+            <div class="card-header p-4 d-flex justify-content-between align-items-center">
+              <h2 class="h6 fw-semibold mb-0">Actions</h2>
+              <button class="btn btn-sm btn-outline-secondary" id="settings-toggle" data-no-transition="true">
+                <i class="bi bi-gear me-1"></i>Settings
+              </button>
+            </div>
+            <div class="card-body p-4">
+              <div class="d-flex flex-wrap gap-2">
+                <a href="{{ url_for('asset.create_asset') }}" class="btn btn-sm btn-success" id="addDeviceLink" data-no-transition="true" title="Adicionar um novo dispositivo">
+                  <i class="bi bi-plus-lg me-1"></i>Adicionar Dispositivo
+                </a>
+                <button class="btn btn-sm btn-outline-danger" id="bulkDeleteBtn" disabled data-no-transition="true" title="Selecione dispositivos para apagar">
+                  <i class="bi bi-trash me-1"></i>
+                  <span class="btn-text">Apagar Selecionados</span>
+                  <span class="btn-loading d-none"><span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Apagando...</span>
+                </button>
+                <a href="{{ url_for('monitoring.monitoring_home') }}" class="btn btn-sm btn-outline-primary" id="manageRules" data-no-transition="true" title="Gerenciar regras de monitoramento">
+                  <i class="bi bi-sliders me-1"></i>Gerenciar Regras
+                </a>
+                <button class="btn btn-sm btn-outline-secondary" id="refreshBtn" data-no-transition="true" title="Atualizar lista de dispositivos">
+                  <i class="bi bi-arrow-clockwise me-1"></i>Atualizar
+                </button>
+                <button class="btn btn-sm btn-outline-info" id="showMap" data-bs-toggle="modal" data-bs-target="#map-modal" data-no-transition="true" title="Mostrar mapa">
+                  <i class="bi bi-geo-alt me-1"></i>Mapa
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Help / Docs Card -->
+          <div class="card shadow-md mb-4">
+            <div class="card-header p-4 d-flex justify-content-between align-items-center">
+              <h2 class="h6 fw-semibold mb-0">Help & Docs</h2>
+              <a href="#" class="btn btn-sm btn-outline-secondary" id="help-toggle" data-no-transition="true">
+                <i class="bi bi-question-circle me-1"></i>Help
+              </a>
+            </div>
+            <div class="card-body p-4">
+              <p class="text-muted">Find documentation and setup guides:</p>
+              <ul class="list-unstyled mb-0">
+                <li><a href="#" class="text-decoration-none">Monitoring Setup Guide</a></li>
+                <li><a href="#" class="text-decoration-none">API Documentation</a></li>
+                <li><a href="#" class="text-decoration-none">Troubleshooting</a></li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Map Modal -->
+          <div class="modal fade" id="map-modal" tabindex="-1" aria-labelledby="mapModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="mapModalLabel">Device Map</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <div id="map" style="height: 400px;" data-lat="0" data-lng="0">
+                    <div class="d-flex justify-content-center align-items-center h-100 text-muted">Loading map...</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Spinner Overlay -->
+    <div class="spinner d-none" id="spinner">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+  <script nonce="{{ csp_nonce }}">
+    window.MAPBOX_ACCESS_TOKEN = {{ config.get('MAPBOX_ACCESS_TOKEN') | tojson | safe }};
+    window.__CSP_NONCE__ = "{{ csp_nonce }}";
+    // No automatic Mapbox init; the map loads when the modal opens.
+  </script>
+  <!-- Removed direct Mapbox script include to avoid ES6 parse issues in preview -->
+  <!-- Load only ES5 fallback to keep preview stable -->
+  <script nomodule src="{{ url_for('static', filename='js/features/monitoring.es5.js') }}" nonce="{{ csp_nonce }}"></script>
+{% endblock %}

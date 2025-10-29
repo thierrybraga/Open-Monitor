@@ -1,0 +1,540 @@
+{% extends "core/base.html" %}
+
+{% block title %}Criar Relatório - {{ super() }}{% endblock %}
+
+{% block meta_description %}Crie relatórios personalizados de cybersegurança com análise de vulnerabilidades, avaliação de riscos e insights de IA.{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-section {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    background-color: #f8f9fa;
+}
+
+.form-section h5 {
+    color: #495057;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.preview-card {
+    border: 2px dashed #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1.5rem;
+    text-align: center;
+    background-color: #f8f9fa;
+}
+
+.chart-preview {
+    height: 200px;
+    background: linear-gradient(45deg, #f8f9fa 25%, transparent 25%), 
+                linear-gradient(-45deg, #f8f9fa 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #f8f9fa 75%), 
+                linear-gradient(-45deg, transparent 75%, #f8f9fa 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    border-radius: 0.375rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+}
+
+.tag-input {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 0.5rem;
+    min-height: 38px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.tag-item {
+    background-color: #007bff;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.tag-remove {
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.progress-indicator {
+    display: none;
+}
+
+.step-indicator {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+}
+
+.step {
+    flex: 1;
+    text-align: center;
+    position: relative;
+}
+
+.step::before {
+    content: '';
+    position: absolute;
+    top: 15px;
+    left: 50%;
+    right: -50%;
+    height: 2px;
+    background-color: #dee2e6;
+    z-index: 1;
+}
+
+.step:last-child::before {
+    display: none;
+}
+
+.step-number {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: #dee2e6;
+    color: #6c757d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 0.5rem;
+    position: relative;
+    z-index: 2;
+    font-weight: bold;
+}
+
+.step.active .step-number {
+    background-color: #007bff;
+    color: white;
+}
+
+.step.completed .step-number {
+    background-color: #28a745;
+    color: white;
+}
+
+.step.completed::before {
+    background-color: #28a745;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-plus-circle me-2"></i>
+                        Criar Novo Relatório
+                    </h1>
+                    <p class="text-muted mb-0">Configure um relatório personalizado de cybersegurança</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('report.list_reports') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>
+                        Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Indicador de progresso -->
+    <div class="step-indicator">
+        <div class="step active" id="step-1">
+            <div class="step-number">1</div>
+            <div class="step-label">Configuração Básica</div>
+        </div>
+        <div class="step" id="step-2">
+            <div class="step-number">2</div>
+            <div class="step-label">Escopo e Período</div>
+        </div>
+        <div class="step" id="step-3">
+            <div class="step-number">3</div>
+            <div class="step-label">Opções Avançadas</div>
+        </div>
+        <div class="step" id="step-4">
+            <div class="step-number">4</div>
+            <div class="step-label">Revisão</div>
+        </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('report.create_report') }}" id="reportForm">
+        {{ form.hidden_tag() }}
+        
+        <!-- Etapa 1: Configuração Básica -->
+        <div class="form-step" id="form-step-1">
+            <div class="form-section">
+                <h5><i class="bi bi-gear me-2"></i>Configuração Básica</h5>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        {{ form.title.label(class="form-label") }}
+                        {{ form.title(class="form-control", placeholder="Ex: Relatório de Vulnerabilidades Q1 2024", required=true) }}
+                        {% if form.title.errors %}
+                            <div class="text-danger small">{{ form.title.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {{ form.report_type.label(class="form-label") }}
+                        {{ form.report_type(class="form-select", required=true) }}
+                        {% if form.report_type.errors %}
+                            <div class="text-danger small">{{ form.report_type.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-12">
+                        {{ form.description.label(class="form-label") }}
+                        {{ form.description(class="form-control", rows="3", placeholder="Descreva o objetivo e contexto do relatório...") }}
+                        {% if form.description.errors %}
+                            <div class="text-danger small">{{ form.description.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {{ form.detail_level.label(class="form-label") }}
+                        {{ form.detail_level(class="form-select", required=true) }}
+                        {% if form.detail_level.errors %}
+                            <div class="text-danger small">{{ form.detail_level.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+
+        <!-- Etapa 2: Escopo e Período -->
+        <div class="form-step" id="form-step-2">
+            <div class="form-section">
+                <h5><i class="bi bi-calendar-range me-2"></i>Período de Análise</h5>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        {{ form.period_start.label(class="form-label") }}
+                        {{ form.period_start(class="form-control", id="period_start", required=true) }}
+                        {% if form.period_start.errors %}
+                            <div class="text-danger small">{{ form.period_start.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-6">
+                        {{ form.period_end.label(class="form-label") }}
+                        {{ form.period_end(class="form-control", id="period_end", required=true) }}
+                        {% if form.period_end.errors %}
+                            <div class="text-danger small">{{ form.period_end.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h5><i class="bi bi-bullseye me-2"></i>Escopo do Relatório</h5>
+                
+                <div class="row g-3">
+                    <div class="col-12">
+                        {{ form.scope.label(class="form-label") }}
+                        <div class="d-flex flex-column">
+                            {% for subfield in form.scope %}
+                                <div class="form-check">
+                                    {{ subfield(class="form-check-input") }}
+                                    {{ subfield.label(class="form-check-label") }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% if form.scope.errors %}
+                            <div class="text-danger small">{{ form.scope.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-12" id="selected-tags-container" style="display: none;">
+                        {{ form.selected_tags.label(class="form-label") }}
+                        <div class="row g-2">
+                            {% for subfield in form.selected_tags %}
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        {{ subfield(class="form-check-input") }}
+                                        {{ subfield.label(class="form-check-label") }}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% if form.selected_tags.errors %}
+                            <div class="text-danger small">{{ form.selected_tags.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-12" id="selected-groups-container" style="display: none;">
+                        {{ form.selected_groups.label(class="form-label") }}
+                        <div class="row g-2">
+                            {% for subfield in form.selected_groups %}
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        {{ subfield(class="form-check-input") }}
+                                        {{ subfield.label(class="form-check-label") }}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% if form.selected_groups.errors %}
+                            <div class="text-danger small">{{ form.selected_groups.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="col-12" id="custom-assets-container" style="display: none;">
+                        {{ form.custom_assets.label(class="form-label") }}
+                        <div class="row g-2">
+                            {% for subfield in form.custom_assets %}
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        {{ subfield(class="form-check-input") }}
+                                        {{ subfield.label(class="form-check-label") }}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% if form.custom_assets.errors %}
+                            <div class="text-danger small">{{ form.custom_assets.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Etapa 3: Opções Avançadas -->
+        <div class="form-step" id="form-step-3">
+            <div class="form-section">
+                <h5><i class="bi bi-robot me-2"></i>Análise com IA</h5>
+                
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            {{ form.include_ai_analysis(class="form-check-input", id="include_ai_analysis") }}
+                            {{ form.include_ai_analysis.label(class="form-check-label", for="include_ai_analysis") }}
+                        </div>
+                        <small class="text-muted">Selecione os tipos de análise quando habilitado</small>
+                    </div>
+                    
+                    <div class="col-12" id="ai-options" style="display: none;">
+                        {{ form.ai_analysis_types.label(class="form-label") }}
+                        <div class="row g-2">
+                            {% for subfield in form.ai_analysis_types %}
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        {{ subfield(class="form-check-input") }}
+                                        {{ subfield.label(class="form-check-label") }}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h5><i class="bi bi-bar-chart me-2"></i>Gráficos e Visualizações</h5>
+                
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            {{ form.include_charts(class="form-check-input") }}
+                            {{ form.include_charts.label(class="form-check-label") }}
+                        </div>
+                    </div>
+                    
+                    <div class="col-12" id="chart-options" style="display: none;">
+                        {{ form.chart_types.label(class="form-label") }}
+                        <div class="row g-2">
+                            {% for subfield in form.chart_types %}
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        {{ subfield(class="form-check-input") }}
+                                        {{ subfield.label(class="form-check-label") }}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h5><i class="bi bi-download me-2"></i>Formatos de Exportação</h5>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        {{ form.export_format.label(class="form-label") }}
+                        {{ form.export_format(class="form-select", id="export_format") }}
+                        {% if form.export_format.errors %}
+                            <div class="text-danger small">{{ form.export_format.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <div class="form-check form-switch">
+                            {{ form.auto_export(class="form-check-input", id="auto_export") }}
+                            {{ form.auto_export.label(class="form-check-label", for="auto_export") }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h5><i class="bi bi-card-text me-2"></i>Resumo e Recomendações</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="form-check form-switch">
+                            {{ form.include_executive_summary(class="form-check-input", id="include_executive_summary") }}
+                            {{ form.include_executive_summary.label(class="form-check-label", for="include_executive_summary") }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check form-switch">
+                            {{ form.include_recommendations(class="form-check-input", id="include_recommendations") }}
+                            {{ form.include_recommendations.label(class="form-check-label", for="include_recommendations") }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h5><i class="bi bi-envelope me-2"></i>Notificações</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="form-check form-switch">
+                            {{ form.notify_completion(class="form-check-input", id="notify_completion") }}
+                            {{ form.notify_completion.label(class="form-check-label", for="notify_completion") }}
+                        </div>
+                    </div>
+                    <div class="col-md-6" id="notification-email-container" style="display: none;">
+                        {{ form.notification_email.label(class="form-label") }}
+                        {{ form.notification_email(class="form-control", id="notification_email", placeholder="seu@email.com") }}
+                        {% if form.notification_email.errors %}
+                            <div class="text-danger small">{{ form.notification_email.errors[0] }}</div>
+                        {% endif %}
+                        <small class="text-muted">Envia e-mail ao concluir a geração do relatório.</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h5><i class="bi bi-tags me-2"></i>Tags Personalizadas</h5>
+                <div class="row g-3">
+                    <div class="col-12">
+                        {{ form.custom_tags.label(class="form-label") }}
+                        {{ form.custom_tags(class="form-control", id="custom_tags", placeholder="tag1, tag2, tag3") }}
+                        {% if form.custom_tags.errors %}
+                            <div class="text-danger small">{{ form.custom_tags.errors[0] }}</div>
+                        {% endif %}
+                        <small class="text-muted">Separe múltiplas tags com vírgulas.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Ação: Criar relatório -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-lg me-1"></i>
+                        Criar Relatório
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script nonce="{{ nonce }}">
+function onScopeChange() {
+    const selected = document.querySelector('input[name="scope"]:checked')?.value || '';
+    const tagsContainer = document.getElementById('selected-tags-container');
+    const groupsContainer = document.getElementById('selected-groups-container');
+    const customContainer = document.getElementById('custom-assets-container');
+    if (tagsContainer) tagsContainer.style.display = (selected === 'por_tags') ? 'block' : 'none';
+    if (groupsContainer) groupsContainer.style.display = (selected === 'por_grupos') ? 'block' : 'none';
+    if (customContainer) customContainer.style.display = (selected === 'customizado') ? 'block' : 'none';
+}
+
+function prefillDefaults() {
+    try {
+        const periodEnd = new Date();
+        const periodStart = new Date();
+        periodStart.setDate(periodEnd.getDate() - 30);
+        const fmt = (d) => d.toISOString().slice(0, 10); // YYYY-MM-DD
+        const startEl = document.getElementById('period_start');
+        const endEl = document.getElementById('period_end');
+        if (startEl && !startEl.value) startEl.value = fmt(periodStart);
+        if (endEl && !endEl.value) endEl.value = fmt(periodEnd);
+        const scopeRadio = document.querySelector('input[name="scope"][value="todos_ativos"]');
+        if (scopeRadio && !document.querySelector('input[name="scope"]:checked')) scopeRadio.checked = true;
+    } catch (e) {
+        console.warn('Falha ao preencher defaults para criação:', e);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('input[name="scope"]').forEach(el => { if (el) el.addEventListener('change', onScopeChange); });
+    const includeAIEl = document.getElementById('include_ai_analysis');
+    if (includeAIEl) {
+        const setAIOptionsState = (checked) => {
+            const aiOptions = document.getElementById('ai-options');
+            if (aiOptions) aiOptions.style.display = checked ? 'block' : 'none';
+            document.querySelectorAll('#ai-options input[type="checkbox"]').forEach(cb => {
+                cb.disabled = !checked;
+            });
+        };
+        includeAIEl.addEventListener('change', function() {
+            setAIOptionsState(this.checked);
+        });
+        setAIOptionsState(includeAIEl.checked);
+    }
+    const includeChartsEl = document.getElementById('include_charts');
+    if (includeChartsEl) {
+        includeChartsEl.addEventListener('change', function() {
+            const chartOptions = document.getElementById('chart-options');
+            if (chartOptions) chartOptions.style.display = this.checked ? 'block' : 'none';
+        });
+    }
+
+    // Notificações: mostrar/esconder campo de e-mail
+    const notifyEl = document.getElementById('notify_completion');
+    const emailContainer = document.getElementById('notification-email-container');
+    if (notifyEl) {
+        const toggleEmail = () => {
+            if (emailContainer) emailContainer.style.display = notifyEl.checked ? 'block' : 'none';
+        };
+        notifyEl.addEventListener('change', toggleEmail);
+        toggleEmail();
+    }
+
+    // Inicialização
+    prefillDefaults();
+    onScopeChange();
+    const aiOptionsInit = document.getElementById('ai-options');
+    if (aiOptionsInit && includeAIEl) aiOptionsInit.style.display = includeAIEl.checked ? 'block' : 'none';
+    const chartOptionsInit = document.getElementById('chart-options');
+    if (chartOptionsInit && includeChartsEl) chartOptionsInit.style.display = includeChartsEl.checked ? 'block' : 'none';
+});
+</script>
+{% endblock %}

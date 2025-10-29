@@ -1,0 +1,555 @@
+{% extends "reports/report_view.html" %}
+
+{% block title %}Relatório Executivo - {{ report.title }} - {{ super() }}{% endblock %}
+
+{% block extra_css %}
+{{ super() }}
+<style>
+.executive-summary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 3rem 2rem;
+    border-radius: 1rem;
+    margin-bottom: 2rem;
+}
+
+.executive-kpi {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.75rem;
+    padding: 2rem;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.executive-kpi .kpi-value {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.executive-kpi .kpi-label {
+    font-size: 1rem;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.risk-matrix {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.5rem;
+    margin: 2rem 0;
+}
+
+.risk-cell {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    font-weight: 600;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.risk-cell:hover {
+    transform: scale(1.05);
+}
+
+.risk-cell.low { background-color: #28a745; }
+.risk-cell.medium { background-color: #ffc107; color: #000; }
+.risk-cell.high { background-color: #fd7e14; }
+.risk-cell.critical { background-color: #dc3545; }
+
+.business-impact-card {
+    border-left: 4px solid #007bff;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    padding: 2rem;
+    border-radius: 0 0.75rem 0.75rem 0;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.recommendation-card {
+    background: linear-gradient(135deg, #e8f5e8 0%, #f0f8f0 100%);
+    border: 1px solid #28a745;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.recommendation-card .priority-high {
+    border-left: 4px solid #dc3545;
+}
+
+.recommendation-card .priority-medium {
+    border-left: 4px solid #ffc107;
+}
+
+.recommendation-card .priority-low {
+    border-left: 4px solid #28a745;
+}
+
+.maturity-gauge {
+    position: relative;
+    width: 200px;
+    height: 100px;
+    margin: 2rem auto;
+}
+
+.maturity-gauge svg {
+    width: 100%;
+    height: 100%;
+}
+
+.maturity-level {
+    text-align: center;
+    margin-top: 1rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.trend-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-left: 1rem;
+}
+
+.trend-indicator.up {
+    background-color: #dc3545;
+    color: white;
+}
+
+.trend-indicator.down {
+    background-color: #28a745;
+    color: white;
+}
+
+.trend-indicator.stable {
+    background-color: #6c757d;
+    color: white;
+}
+
+.executive-chart {
+    background: white;
+    border-radius: 0.75rem;
+    padding: 2rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+@media print {
+    .executive-summary {
+        background: #667eea !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    .risk-cell {
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header Executivo -->
+    <div class="executive-summary">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="display-4 mb-3">{{ report.title }}</h1>
+                <p class="lead mb-4">{{ report.description or 'Relatório executivo de cybersegurança' }}</p>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="executive-kpi">
+                            <div class="kpi-value">{{ report.content.executive_summary.risk_score or 'N/A' }}</div>
+                            <div class="kpi-label">Índice de Risco</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="executive-kpi">
+                            <div class="kpi-value">{{ report.content.executive_summary.security_posture or 'N/A' }}</div>
+                            <div class="kpi-label">Postura de Segurança</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <!-- Gauge de Maturidade -->
+                <div class="maturity-gauge">
+                    <svg viewBox="0 0 200 100">
+                        <defs>
+                            <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#dc3545"/>
+                                <stop offset="25%" style="stop-color:#fd7e14"/>
+                                <stop offset="50%" style="stop-color:#ffc107"/>
+                                <stop offset="75%" style="stop-color:#20c997"/>
+                                <stop offset="100%" style="stop-color:#28a745"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="M 20 80 A 80 80 0 0 1 180 80" 
+                              stroke="url(#gaugeGradient)" 
+                              stroke-width="8" 
+                              fill="none"/>
+                        <circle cx="{{ 20 + (160 * (report.content.executive_summary.maturity_level or 3) / 5) }}" 
+                                cy="80" 
+                                r="6" 
+                                fill="white" 
+                                stroke="#333" 
+                                stroke-width="2"/>
+                    </svg>
+                    <div class="maturity-level">
+                        Nível {{ report.content.executive_summary.maturity_level or 3 }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumo Executivo -->
+    <div class="section-card">
+        <div class="section-header">
+            <h2 class="mb-0">
+                <i class="bi bi-briefcase me-2"></i>
+                Resumo Executivo
+            </h2>
+        </div>
+        <div class="section-content">
+            {% if report.content.executive_summary.ai_generated %}
+                <div class="ai-analysis">
+                    <h5>
+                        <i class="bi bi-robot ai-icon"></i>
+                        Análise Inteligente
+                    </h5>
+                    <div class="executive-content">
+                        {{ report.content.executive_summary.content | safe }}
+                    </div>
+                </div>
+            {% else %}
+                <div class="executive-content">
+                    {{ report.content.executive_summary.content | safe }}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- KPIs Principais -->
+    <div class="section-card">
+        <div class="section-header">
+            <h3 class="mb-0">
+                <i class="bi bi-graph-up me-2"></i>
+                Indicadores Chave de Performance
+            </h3>
+        </div>
+        <div class="section-content">
+            <div class="row">
+                {% if report.content.kpis %}
+                    {% for kpi in report.content.kpis %}
+                        <div class="col-md-3 mb-3">
+                            <div class="metric-card">
+                                <div class="metric-value text-{{ kpi.color or 'primary' }}">
+                                    {{ kpi.value }}
+                                    {% if kpi.trend %}
+                                        <span class="trend-indicator {{ kpi.trend }}">
+                                            <i class="bi bi-arrow-{{ 'up' if kpi.trend == 'up' else 'down' if kpi.trend == 'down' else 'right' }}"></i>
+                                            {{ kpi.trend_value or '' }}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <div class="metric-label">{{ kpi.label }}</div>
+                                {% if kpi.description %}
+                                    <small class="text-muted">{{ kpi.description }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <!-- KPIs padrão se não houver dados específicos -->
+                    <div class="col-md-3 mb-3">
+                        <div class="metric-card">
+                            <div class="metric-value text-danger">
+                                {{ report.content.vulnerabilities.summary.critical or 0 }}
+                                <span class="trend-indicator up">
+                                    <i class="bi bi-arrow-up"></i>
+                                </span>
+                            </div>
+                            <div class="metric-label">Vulnerabilidades Críticas</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="metric-card">
+                            <div class="metric-value text-warning">
+                                {{ report.content.vulnerabilities.summary.high or 0 }}
+                            </div>
+                            <div class="metric-label">Vulnerabilidades Altas</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="metric-card">
+                            <div class="metric-value text-success">
+                                {{ report.content.assets.total_protected or 0 }}%
+                            </div>
+                            <div class="metric-label">Ativos Protegidos</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="metric-card">
+                            <div class="metric-value text-info">
+                                {{ report.content.compliance.score or 0 }}%
+                            </div>
+                            <div class="metric-label">Conformidade</div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Matriz de Risco -->
+    <div class="section-card">
+        <div class="section-header">
+            <h3 class="mb-0">
+                <i class="bi bi-grid me-2"></i>
+                Matriz de Risco
+            </h3>
+        </div>
+        <div class="section-content">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="risk-matrix">
+                        {% for i in range(25) %}
+                            {% set risk_level = 'low' if i < 5 else 'medium' if i < 15 else 'high' if i < 20 else 'critical' %}
+                            <div class="risk-cell {{ risk_level }}" 
+                                 data-bs-toggle="tooltip" 
+                                 title="Probabilidade: {{ (i // 5) + 1 }}, Impacto: {{ (i % 5) + 1 }}">
+                                {{ report.content.risk_matrix[i] if report.content.risk_matrix and report.content.risk_matrix[i] else 0 }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <h5>Legenda</h5>
+                    <div class="mb-2">
+                        <span class="risk-cell low d-inline-block me-2" style="width: 20px; height: 20px;"></span>
+                        Baixo Risco
+                    </div>
+                    <div class="mb-2">
+                        <span class="risk-cell medium d-inline-block me-2" style="width: 20px; height: 20px;"></span>
+                        Médio Risco
+                    </div>
+                    <div class="mb-2">
+                        <span class="risk-cell high d-inline-block me-2" style="width: 20px; height: 20px;"></span>
+                        Alto Risco
+                    </div>
+                    <div class="mb-2">
+                        <span class="risk-cell critical d-inline-block me-2" style="width: 20px; height: 20px;"></span>
+                        Risco Crítico
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Impacto nos Negócios -->
+    {% if report.content.bia_analysis %}
+    <div class="section-card">
+        <div class="section-header">
+            <h3 class="mb-0">
+                <i class="bi bi-building me-2"></i>
+                Impacto nos Negócios
+            </h3>
+        </div>
+        <div class="section-content">
+            {% for impact in report.content.bia_analysis.business_impacts %}
+                <div class="business-impact-card">
+                    <h5>{{ impact.area }}</h5>
+                    <p>{{ impact.description }}</p>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>Impacto Financeiro:</strong> {{ impact.financial_impact }}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Tempo de Recuperação:</strong> {{ impact.recovery_time }}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recomendações Estratégicas -->
+    <div class="section-card">
+        <div class="section-header">
+            <h3 class="mb-0">
+                <i class="bi bi-lightbulb me-2"></i>
+                Recomendações Estratégicas
+            </h3>
+        </div>
+        <div class="section-content">
+            {% if report.content.strategic_recommendations %}
+                {% for rec in report.content.strategic_recommendations %}
+                    <div class="recommendation-card priority-{{ rec.priority }}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h5>{{ rec.title }}</h5>
+                                <p>{{ rec.description }}</p>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <strong>Investimento:</strong> {{ rec.investment }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong>Prazo:</strong> {{ rec.timeline }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong>ROI Esperado:</strong> {{ rec.roi }}
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="badge bg-{{ 'danger' if rec.priority == 'high' else 'warning' if rec.priority == 'medium' else 'success' }}">
+                                {{ rec.priority.title() }}
+                            </span>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <!-- Recomendações padrão baseadas nos dados -->
+                <div class="recommendation-card priority-high">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5>Implementar Programa de Gestão de Vulnerabilidades</h5>
+                            <p>Estabelecer processo sistemático para identificação, avaliação e correção de vulnerabilidades.</p>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <strong>Investimento:</strong> R$ 50.000 - 100.000
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Prazo:</strong> 3-6 meses
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>ROI Esperado:</strong> 300%
+                                </div>
+                            </div>
+                        </div>
+                        <span class="badge bg-danger">Alta</span>
+                    </div>
+                </div>
+                
+                <div class="recommendation-card priority-medium">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5>Fortalecer Treinamento em Segurança</h5>
+                            <p>Implementar programa contínuo de conscientização e treinamento em cybersegurança.</p>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <strong>Investimento:</strong> R$ 20.000 - 40.000
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Prazo:</strong> 2-4 meses
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>ROI Esperado:</strong> 200%
+                                </div>
+                            </div>
+                        </div>
+                        <span class="badge bg-warning">Média</span>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Gráficos Executivos -->
+    <div class="section-card">
+        <div class="section-header">
+            <h3 class="mb-0">
+                <i class="bi bi-bar-chart me-2"></i>
+                Visualizações Executivas
+            </h3>
+        </div>
+        <div class="section-content">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="executive-chart">
+                        <h5>Distribuição de Riscos</h5>
+                        <canvas id="riskDistributionChart"></canvas>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="executive-chart">
+                        <h5>Tendência de Segurança</h5>
+                        <canvas id="securityTrendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="executive-chart">
+                        <h5>Maturidade por Domínio</h5>
+                        <canvas id="maturityRadarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/components/report_charts.js') }}" defer nonce="{{ nonce }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Distribuição de Riscos usando ReportCharts
+    const riskData = {
+        low: {{ report.content.risk_distribution.low or 0 }},
+        medium: {{ report.content.risk_distribution.medium or 0 }},
+        high: {{ report.content.risk_distribution.high or 0 }},
+        critical: {{ report.content.risk_distribution.critical or 0 }},
+        info: {{ report.content.risk_distribution.info or 0 }}
+    };
+    if (document.getElementById('riskDistributionChart')) {
+        window.ReportCharts.createCVSSDistribution('riskDistributionChart', riskData, 'doughnut');
+    }
+
+    // Tendência de Segurança (KPIs timeline)
+    const kpiData = {
+        labels: {{ report.content.security_trend.labels | tojson if report.content.security_trend else ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'] | tojson }},
+        kpis: [{
+            name: 'Índice de Segurança',
+            values: {{ report.content.security_trend.data | tojson if report.content.security_trend else [65, 70, 68, 75, 78, 82] | tojson }},
+            fill: true
+        }]
+    };
+    if (document.getElementById('securityTrendChart')) {
+        window.ReportCharts.createKPITimeline('securityTrendChart', kpiData);
+    }
+
+    // Radar de Maturidade
+    const maturityData = {
+        domains: [
+            'Governança', 'Gestão de Riscos', 'Gestão de Ativos', 'Controles de Acesso', 'Criptografia',
+            'Segurança Física', 'Segurança Operacional', 'Segurança de Comunicações', 'Aquisição e Desenvolvimento',
+            'Relacionamento com Fornecedores', 'Gestão de Incidentes', 'Continuidade de Negócios', 'Conformidade'
+        ],
+        current_levels: {{ report.content.maturity_scores | tojson if report.content.maturity_scores else [3, 2, 4, 3, 2, 3, 3, 2, 2, 2, 3, 2, 3] | tojson }},
+        target_levels: [4,4,4,4,4,4,4,4,4,4,4,4,4]
+    };
+    if (document.getElementById('maturityRadarChart')) {
+        window.ReportCharts.createSecurityMaturityRadar('maturityRadarChart', maturityData);
+    }
+});
+</script>
+{% endblock %}

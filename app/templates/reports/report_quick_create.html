@@ -1,0 +1,861 @@
+{% extends "core/base.html" %}
+
+{% block title %}Relatório Rápido - {{ super() }}{% endblock %}
+
+{% block meta_description %}Crie rapidamente relatórios de cybersegurança com configurações pré-definidas e análise automática.{% endblock %}
+
+{% block extra_css %}
+<style>
+.quick-card {
+    border: 2px solid #dee2e6;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+}
+
+.quick-card:hover {
+    border-color: #007bff;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+.quick-card.selected {
+    border-color: #007bff;
+    background: linear-gradient(135deg, #e3f2fd 0%, #f8f9fa 100%);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2);
+}
+
+.quick-card .card-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.quick-card .card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #495057;
+}
+
+.quick-card .card-description {
+    color: #6c757d;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.quick-card .card-features {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #dee2e6;
+}
+
+.quick-card .feature-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.quick-card .feature-item i {
+    margin-right: 0.5rem;
+    color: #28a745;
+}
+
+.form-floating-custom {
+    position: relative;
+}
+
+.form-floating-custom .form-control {
+    height: calc(3.5rem + 2px);
+    padding: 1rem 0.75rem;
+}
+
+.form-floating-custom .form-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    padding: 1rem 0.75rem;
+    pointer-events: none;
+    border: 1px solid transparent;
+    transform-origin: 0 0;
+    transition: opacity 0.1s ease-in-out, transform 0.1s ease-in-out;
+}
+
+.progress-container {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.progress-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+}
+
+.pulse-animation {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-lightning-fill me-2 text-warning"></i>
+                        Relatório Rápido
+                    </h1>
+                    <p class="text-muted mb-0">Crie relatórios de segurança em poucos cliques</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('report.create_report') }}" class="btn btn-outline-primary me-2">
+                        <i class="bi bi-gear me-1"></i>
+                        Configuração Avançada
+                    </a>
+                    <a href="{{ url_for('report.list_reports') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>
+                        Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('report.quick_create_report') }}" id="quickReportForm">
+        {{ form.hidden_tag() }}
+        
+        <!-- Seleção de Template -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h4 class="mb-3">
+                    <i class="bi bi-collection me-2"></i>
+                    Escolha um Template
+                </h4>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="quick-card" data-template="executive">
+                    <div class="card-icon bg-primary text-white">
+                        <i class="bi bi-briefcase"></i>
+                    </div>
+                    <div class="card-title">Relatório Executivo</div>
+                    <div class="card-description">
+                        Visão geral de alto nível para executivos e tomadores de decisão.
+                    </div>
+                    <div class="card-features">
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Resumo executivo com IA
+                        </div>
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Métricas de risco principais
+                        </div>
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Recomendações estratégicas
+                        </div>
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Gráficos de tendências
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="quick-card" data-template="technical">
+                    <div class="card-icon bg-success text-white">
+                        <i class="bi bi-code-slash"></i>
+                    </div>
+                    <div class="card-title">Relatório Técnico</div>
+                    <div class="card-description">
+                        Análise detalhada de vulnerabilidades e aspectos técnicos de segurança.
+                    </div>
+                    <div class="card-features">
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Detalhes de CVEs
+                        </div>
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Análise de CVSS
+                        </div>
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Planos de remediação
+                        </div>
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Heatmaps de vulnerabilidades
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="quick-card" data-template="pentest">
+                    <div class="card-icon bg-warning text-white">
+                        <i class="bi bi-shield-exclamation"></i>
+                    </div>
+                    <div class="card-title">Relatório de Pentest</div>
+                    <div class="card-description">
+                        Resultados de testes de penetração e avaliações de segurança.
+                    </div>
+                    <div class="card-features">
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Vulnerabilidades encontradas
+                        </div>
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Exploits e evidências
+                        </div>
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Matriz de risco
+                        </div>
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Cronograma de correções
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="quick-card" data-template="estudo_tecnico">
+                    <div class="card-icon bg-secondary text-white">
+                        <i class="bi bi-gear-fill"></i>
+                    </div>
+                    <div class="card-title">Estudo Técnico</div>
+                    <div class="card-description">
+                        Análise técnica aprofundada de vulnerabilidades e configurações de segurança.
+                    </div>
+                    <div class="card-features">
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Análise técnica detalhada
+                        </div>
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Configurações de segurança
+                        </div>
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Recomendações técnicas
+                        </div>
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Procedimentos de correção
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="quick-card" data-template="bia">
+                    <div class="card-icon bg-info text-white">
+                        <i class="bi bi-graph-up"></i>
+                    </div>
+                    <div class="card-title">Análise de Impacto (BIA)</div>
+                    <div class="card-description">
+                        Avaliação de impacto nos negócios e continuidade operacional.
+                    </div>
+                    <div class="card-features">
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Impacto nos negócios
+                        </div>
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Análise de custos
+                        </div>
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Priorização de ativos
+                        </div>
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Planos de contingência
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="quick-card" data-template="kpi_kri">
+                    <div class="card-icon bg-purple text-white" style="background-color: #6f42c1;">
+                        <i class="bi bi-speedometer2"></i>
+                    </div>
+                    <div class="card-title">KPIs e KRIs</div>
+                    <div class="card-description">
+                        Indicadores chave de performance e risco para monitoramento contínuo.
+                    </div>
+                    <div class="card-features">
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Métricas de segurança
+                        </div>
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Tendências históricas
+                        </div>
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Dashboards interativos
+                        </div>
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Alertas e thresholds
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="quick-card" data-template="compliance">
+                    <div class="card-icon bg-dark text-white">
+                        <i class="bi bi-clipboard-check"></i>
+                    </div>
+                    <div class="card-title">Compliance</div>
+                    <div class="card-description">
+                        Relatório de conformidade com frameworks e regulamentações.
+                    </div>
+                    <div class="card-features">
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Status de conformidade
+                        </div>
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Gaps identificados
+                        </div>
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Planos de adequação
+                        </div>
+                        <div class="feature-item">
+                            <i class="bi bi-check-circle"></i>
+                            Evidências de controles
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configurações Básicas -->
+        <div class="row mb-4" id="configSection" style="display: none;">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-sliders me-2"></i>
+                            Configurações Básicas
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-floating-custom">
+                                    {{ form.title.label(class="form-label") }}
+                                    {{ form.title(class="form-control", placeholder="Ex: Relatório de Segurança - Janeiro 2024") }}
+                                </div>
+                                {% if form.title.errors %}
+                                    <div class="text-danger small">{{ form.title.errors[0] }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-floating-custom">
+                                    {{ form.period_days.label(class="form-label") }}
+                                    {{ form.period_days(class="form-select") }}
+                                </div>
+                                {% if form.period_days.errors %}
+                                    <div class="text-danger small">{{ form.period_days.errors[0] }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-floating-custom">
+                                    {{ form.scope.label(class="form-label") }}
+                                    {{ form.scope(class="form-select") }}
+                                </div>
+                                {% if form.scope.errors %}
+                                    <div class="text-danger small">{{ form.scope.errors[0] }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-floating-custom">
+                                    {{ form.detail_level.label(class="form-label") }}
+                                    {{ form.detail_level(class="form-select") }}
+                                </div>
+                                {% if form.detail_level.errors %}
+                                    <div class="text-danger small">{{ form.detail_level.errors[0] }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-12">
+                                <div class="form-floating-custom">
+                                    {{ form.description.label(class="form-label") }}
+                                    {{ form.description(class="form-control", rows="3", placeholder="Descreva o contexto e objetivo do relatório...") }}
+                                </div>
+                                {% if form.description.errors %}
+                                    <div class="text-danger small">{{ form.description.errors[0] }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Opções Avançadas (Opcional) -->
+        <div class="row mb-4" id="advancedSection" style="display: none;">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-gear me-2"></i>
+                            Opções Avançadas
+                            <small class="text-muted">(Opcional)</small>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-check form-switch">
+                                    {{ form.include_ai_analysis(class="form-check-input") }}
+                                    {{ form.include_ai_analysis.label(class="form-check-label") }}
+                                </div>
+                                <small class="text-muted">Inclui análise inteligente e recomendações</small>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-check form-switch">
+                                    {{ form.include_charts(class="form-check-input") }}
+                                    {{ form.include_charts.label(class="form-check-label") }}
+                                </div>
+                                <small class="text-muted">Adiciona gráficos e visualizações</small>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-check form-switch">
+                                    {{ form.auto_export_pdf(class="form-check-input") }}
+                                    {{ form.auto_export_pdf.label(class="form-check-label") }}
+                                </div>
+                                <small class="text-muted">Gera automaticamente versão em PDF</small>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-check form-switch">
+                                    {{ form.send_notification(class="form-check-input") }}
+                                    {{ form.send_notification.label(class="form-check-label") }}
+                                </div>
+                                <small class="text-muted">Notifica quando o relatório estiver pronto</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botões de Ação -->
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <button type="button" class="btn btn-outline-secondary" id="showAdvancedBtn">
+                        <i class="bi bi-gear me-1"></i>
+                        Mostrar Opções Avançadas
+                    </button>
+                    
+                    <div>
+                        <button type="button" class="btn btn-outline-primary me-2" id="previewBtn" disabled>
+                            <i class="bi bi-eye me-1"></i>
+                            Visualizar
+                        </button>
+                        
+                        <button type="submit" class="btn btn-success" id="createBtn" disabled>
+                            <i class="bi bi-lightning-fill me-1"></i>
+                            Criar Relatório Rápido
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Campo oculto para o template selecionado -->
+<input type="hidden" name="template_type" id="templateType" value="">
+<input type="hidden" name="report_type" id="reportType" value="executivo">
+    </form>
+</div>
+
+<!-- Modal de Preview -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-eye me-2"></i>
+                    Preview do Relatório
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="previewContent">
+                    <!-- Conteúdo será preenchido via JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-success" onclick="document.getElementById('quickReportForm').submit();">
+                    <i class="bi bi-lightning-fill me-1"></i>
+                    Criar Relatório
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Progress Overlay -->
+<div class="progress-container" id="progressOverlay" style="display: none;">
+    <div class="progress-content pulse-animation">
+        <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Criando relatório...</span>
+        </div>
+        <h5>Criando seu relatório...</h5>
+        <p class="text-muted mb-3">Isso pode levar alguns minutos. Por favor, aguarde.</p>
+        <div class="progress">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                 role="progressbar" style="width: 0%" id="quickProgressBar">
+            </div>
+        </div>
+        <div class="mt-3">
+            <small class="text-muted" id="progressText">Iniciando...</small>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedTemplate = null;
+let advancedVisible = false;
+
+// Seleção de template
+document.querySelectorAll('.quick-card').forEach(card => {
+    card.addEventListener('click', function() {
+        // Remover seleção anterior
+        document.querySelectorAll('.quick-card').forEach(c => c.classList.remove('selected'));
+        
+        // Selecionar novo template
+        this.classList.add('selected');
+        selectedTemplate = this.dataset.template;
+        document.getElementById('templateType').value = selectedTemplate;
+
+        // Mapear para valores aceitos pelo backend
+        const reportTypeMap = {
+            'executive': 'executivo',
+            'technical': 'tecnico',
+            'estudo_tecnico': 'estudo_tecnico',
+            'kpi_kri': 'kpi_kri',
+            'pentest': 'tecnico',
+            'bia': 'executivo',
+            'compliance': 'executivo'
+        };
+        document.getElementById('reportType').value = reportTypeMap[selectedTemplate] || 'executivo';
+        
+        // Mostrar seção de configuração
+        document.getElementById('configSection').style.display = 'block';
+        
+        // Habilitar botões
+        document.getElementById('previewBtn').disabled = false;
+        document.getElementById('createBtn').disabled = false;
+        
+        // Preencher título automaticamente
+        const titleField = document.getElementById('title');
+        if (!titleField.value) {
+            const templateNames = {
+                'executive': 'Relatório Executivo',
+                'technical': 'Relatório Técnico',
+                'estudo_tecnico': 'Estudo Técnico',
+                'pentest': 'Relatório de Pentest',
+                'bia': 'Análise de Impacto nos Negócios',
+                'kpi_kri': 'Relatório de KPIs e KRIs',
+                'compliance': 'Relatório de Compliance'
+            };
+            
+            const today = new Date();
+            const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                              'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            
+            titleField.value = `${templateNames[selectedTemplate]} - ${monthNames[today.getMonth()]} ${today.getFullYear()}`;
+        }
+        
+        // Scroll suave para a seção de configuração
+        document.getElementById('configSection').scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+        });
+    });
+});
+
+// Mostrar/ocultar opções avançadas
+document.getElementById('showAdvancedBtn').addEventListener('click', function() {
+    const advancedSection = document.getElementById('advancedSection');
+    
+    if (!advancedVisible) {
+        advancedSection.style.display = 'block';
+        this.innerHTML = '<i class="bi bi-gear me-1"></i> Ocultar Opções Avançadas';
+        advancedVisible = true;
+    } else {
+        advancedSection.style.display = 'none';
+        this.innerHTML = '<i class="bi bi-gear me-1"></i> Mostrar Opções Avançadas';
+        advancedVisible = false;
+    }
+});
+
+// Preview do relatório
+document.getElementById('previewBtn').addEventListener('click', function() {
+    if (!selectedTemplate) {
+        alert('Selecione um template primeiro.');
+        return;
+    }
+    
+    const previewContent = document.getElementById('previewContent');
+    const title = document.getElementById('title').value || 'Título não definido';
+const period = document.getElementById('period_days').selectedOptions[0]?.text || 'Período não definido';
+    const scope = document.getElementById('scope').selectedOptions[0]?.text || 'Escopo não definido';
+    const detailLevel = document.getElementById('detail_level').selectedOptions[0]?.text || 'Nível não definido';
+    const description = document.getElementById('description').value || 'Sem descrição';
+    
+    const templateDescriptions = {
+        'executive': {
+            title: 'Relatório Executivo',
+            sections: [
+                'Resumo Executivo',
+                'Principais Métricas de Risco',
+                'Status de Segurança Geral',
+                'Recomendações Estratégicas',
+                'Investimentos Recomendados'
+            ]
+        },
+        'technical': {
+            title: 'Relatório Técnico',
+            sections: [
+                'Inventário de Ativos',
+                'Vulnerabilidades Identificadas',
+                'Análise de CVEs',
+                'Detalhes Técnicos',
+                'Planos de Remediação'
+            ]
+        },
+        'estudo_tecnico': {
+            title: 'Estudo Técnico',
+            sections: [
+                'Análise Técnica Aprofundada',
+                'Configurações de Segurança',
+                'Avaliação de Arquitetura',
+                'Recomendações Técnicas Específicas',
+                'Procedimentos de Implementação'
+            ]
+        },
+        'pentest': {
+            title: 'Relatório de Pentest',
+            sections: [
+                'Metodologia Utilizada',
+                'Vulnerabilidades Encontradas',
+                'Exploits e Evidências',
+                'Matriz de Risco',
+                'Cronograma de Correções'
+            ]
+        },
+        'bia': {
+            title: 'Análise de Impacto nos Negócios',
+            sections: [
+                'Avaliação de Ativos Críticos',
+                'Impacto Financeiro',
+                'Análise de Continuidade',
+                'Planos de Contingência',
+                'Recomendações de Investimento'
+            ]
+        },
+        'kpi_kri': {
+            title: 'Relatório de KPIs e KRIs',
+            sections: [
+                'Métricas de Performance',
+                'Indicadores de Risco',
+                'Tendências Históricas',
+                'Benchmarking',
+                'Alertas e Thresholds'
+            ]
+        },
+        'compliance': {
+            title: 'Relatório de Compliance',
+            sections: [
+                'Status de Conformidade',
+                'Gaps Identificados',
+                'Evidências de Controles',
+                'Planos de Adequação',
+                'Cronograma de Implementação'
+            ]
+        }
+    };
+    
+    const template = templateDescriptions[selectedTemplate];
+    
+    previewContent.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Informações Básicas</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Título:</strong></td><td>${title}</td></tr>
+                    <tr><td><strong>Tipo:</strong></td><td>${template.title}</td></tr>
+                    <tr><td><strong>Período:</strong></td><td>${period}</td></tr>
+                    <tr><td><strong>Escopo:</strong></td><td>${scope}</td></tr>
+                    <tr><td><strong>Nível:</strong></td><td>${detailLevel}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6>Seções Incluídas</h6>
+                <ul class="list-unstyled">
+                    ${template.sections.map(section => `
+                        <li><i class="bi bi-check-circle text-success me-2"></i>${section}</li>
+                    `).join('')}
+                </ul>
+            </div>
+            <div class="col-12 mt-3">
+                <h6>Descrição</h6>
+                <p class="text-muted">${description}</p>
+            </div>
+        </div>
+    `;
+    
+    const previewModal = window.getModalInstance(document.getElementById('previewModal'));
+    previewModal.show();
+});
+
+// Submissão do formulário
+document.getElementById('quickReportForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (!selectedTemplate) {
+        alert('Selecione um template primeiro.');
+        return;
+    }
+    
+    // Mostrar overlay de progresso
+    const progressOverlay = document.getElementById('progressOverlay');
+    progressOverlay.style.display = 'flex';
+    
+    // Simular progresso
+    let progress = 0;
+    const progressBar = document.getElementById('quickProgressBar');
+    const progressText = document.getElementById('progressText');
+    
+    const progressSteps = [
+        'Compilando dados de ativos...',
+        'Analisando vulnerabilidades...',
+        'Gerando análise com IA...',
+        'Criando gráficos...',
+        'Finalizando relatório...'
+    ];
+    
+    let stepIndex = 0;
+    const interval = setInterval(() => {
+        progress += Math.random() * 20;
+        if (progress > 90) progress = 90;
+        
+        progressBar.style.width = progress + '%';
+        
+        if (stepIndex < progressSteps.length) {
+            progressText.textContent = progressSteps[stepIndex];
+            stepIndex++;
+        }
+    }, 1000);
+    
+    // Submeter formulário
+    fetch(this.action, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: new FormData(this)
+    })
+    .then(response => response.json())
+    .then(data => {
+        clearInterval(interval);
+        progressBar.style.width = '100%';
+        progressText.textContent = 'Concluído!';
+        
+        setTimeout(() => {
+            if (data.success) {
+                window.location.href = data.redirect_url || "{{ url_for('report.list_reports') }}";
+            } else {
+                progressOverlay.style.display = 'none';
+                const details = data.error || (data.errors ? JSON.stringify(data.errors) : 'Erro desconhecido');
+                alert('Erro ao criar relatório: ' + (data.message ? (data.message + ' - ' + details) : details));
+            }
+        }, 1000);
+    })
+    .catch(error => {
+        clearInterval(interval);
+        progressOverlay.style.display = 'none';
+        alert('Erro ao criar relatório: ' + error.message);
+    });
+});
+
+// Validação em tempo real (habilita botões quando há template selecionado)
+function updateActionButtons() {
+    const createBtn = document.getElementById('createBtn');
+    const previewBtn = document.getElementById('previewBtn');
+    const enabled = !!selectedTemplate;
+    createBtn.disabled = !enabled;
+    previewBtn.disabled = !enabled;
+}
+
+// Atualiza botões quando o template é selecionado
+document.querySelectorAll('[data-template]').forEach(el => {
+    el.addEventListener('click', () => {
+        updateActionButtons();
+    });
+});
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', function() {
+    updateActionButtons();
+});
+</script>
+{% endblock %}

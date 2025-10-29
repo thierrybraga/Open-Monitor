@@ -1,0 +1,229 @@
+/* page-transitions.css - Transições suaves entre páginas */
+
+/* ===== TRANSIÇÕES GLOBAIS ===== */
+* {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* ===== FADE IN DA PÁGINA ===== */
+.page-fade-in {
+    animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ===== TRANSIÇÕES DE NAVEGAÇÃO ===== */
+.page-transition-enter {
+    opacity: 0;
+    transform: translateX(20px);
+    transition: all 0.3s ease-out;
+}
+
+.page-transition-enter-active {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.page-transition-exit {
+    opacity: 1;
+    transform: translateX(0);
+    transition: all 0.3s ease-in;
+}
+
+.page-transition-exit-active {
+    opacity: 0;
+    transform: translateX(-20px);
+}
+
+/* ===== LOADING OVERLAY GLOBAL ===== */
+.page-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(2px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.page-loading-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.page-loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #f3f4f6;
+    border-top: 3px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ===== PROGRESS BAR GLOBAL ===== */
+.page-progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 3px;
+    background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+    z-index: 10000;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+.page-progress-bar.loading {
+    animation: progressPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes progressPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* ===== SMOOTH SCROLLING ===== */
+html {
+    scroll-behavior: smooth;
+}
+
+/* ===== CONTENT TRANSITIONS ===== */
+.content-wrapper {
+    transition: all 0.3s ease;
+}
+
+.content-fade-out {
+    opacity: 0.5;
+    transform: scale(0.98);
+}
+
+/* ===== CARD HOVER ENHANCEMENTS ===== */
+.card, .metric-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card:hover, .metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* ===== BUTTON TRANSITIONS ===== */
+.btn {
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.btn:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
+/* ===== FORM TRANSITIONS ===== */
+.form-control, .form-select {
+    transition: all 0.2s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+/* ===== NAVIGATION TRANSITIONS ===== */
+.nav-link {
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 0;
+    height: 2px;
+    background: #3b82f6;
+    transition: all 0.3s ease;
+    transform: translateX(-50%);
+}
+
+.nav-link:hover::after,
+.nav-link.active::after {
+    width: 100%;
+}
+
+/* ===== MODAL TRANSITIONS ===== */
+.modal.fade .modal-dialog {
+    transition: transform 0.3s ease-out;
+    transform: translate(0, -50px);
+}
+
+.modal.show .modal-dialog {
+    transform: translate(0, 0);
+}
+
+/* ===== RESPONSIVE ADJUSTMENTS ===== */
+@media (max-width: 768px) {
+    .page-transition-enter,
+    .page-transition-exit {
+        transform: translateY(20px);
+    }
+    
+    .page-transition-enter-active {
+        transform: translateY(0);
+    }
+    
+    .page-transition-exit-active {
+        transform: translateY(-20px);
+    }
+}
+
+/* ===== ACCESSIBILITY ===== */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    
+    .page-loading-spinner {
+        animation: none;
+    }
+}

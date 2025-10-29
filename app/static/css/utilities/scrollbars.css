@@ -1,0 +1,36 @@
+/* scrollbars.css - Utilitários globais de scrollbar
+ * Define estilos consistentes de scrollbar para navegadores suportados.
+ * Uso: Importar em main.css após outros utilitários.
+ */
+
+:root {
+  --scrollbar-thumb: var(--neutral-400);
+  --scrollbar-track: var(--surface-0);
+  --scrollbar-thumb-hover: var(--neutral-500);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+/* WebKit (Chrome, Edge, Safari) */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}

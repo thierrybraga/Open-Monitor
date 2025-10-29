@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ report.title }} - Open Monitor</title>
+    
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+            @top-center {
+                content: "{{ export_metadata.generated_by }} - Relatório de Segurança";
+                font-size: 10pt;
+                color: #666;
+                border-bottom: 1pt solid #ddd;
+                padding-bottom: 5pt;
+            }
+            @bottom-center {
+                content: "Página " counter(page) " de " counter(pages);
+                font-size: 10pt;
+                color: #666;
+                border-top: 1pt solid #ddd;
+                padding-top: 5pt;
+            }
+        }
+        
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 11pt;
+            line-height: 1.5;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30pt;
+            padding-bottom: 20pt;
+            border-bottom: 2pt solid #2c3e50;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            font-size: 28pt;
+            margin-bottom: 10pt;
+            font-weight: bold;
+        }
+        
+        .header .subtitle {
+            color: #7f8c8d;
+            font-size: 14pt;
+            margin-bottom: 15pt;
+        }
+        
+        .header .meta-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15pt;
+        }
+        
+        .header .meta-info .left,
+        .header .meta-info .right {
+            flex: 1;
+        }
+        
+        .header .meta-info .center {
+            flex: 2;
+            text-align: center;
+        }
+        
+        .company-logo {
+            max-height: 60pt;
+            max-width: 200pt;
+        }
+        
+        h1, h2, h3, h4, h5, h6 {
+            color: #2c3e50;
+            page-break-after: avoid;
+            margin-top: 20pt;
+            margin-bottom: 10pt;
+        }
+        
+        h1 { font-size: 24pt; }
+        h2 { font-size: 18pt; }
+        h3 { font-size: 16pt; }
+        h4 { font-size: 14pt; }
+        
+        .section {
+            margin-bottom: 25pt;
+            page-break-inside: avoid;
+        }
+        
+        .section-header {
+            background-color: #f8f9fa;
+            padding: 10pt;
+            border-left: 4pt solid #007bff;
+            margin-bottom: 15pt;
+        }
+        
+        .section-header h2 {
+            margin: 0;
+            color: #2c3e50;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20pt;
+            margin-bottom: 20pt;
+        }
+        
+        .info-card {
+            background-color: #f8f9fa;
+            padding: 15pt;
+            border-radius: 5pt;
+            border: 1pt solid #dee2e6;
+        }
+        
+        .info-card h4 {
+            margin-top: 0;
+            margin-bottom: 10pt;
+            color: #495057;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15pt;
+            margin-bottom: 20pt;
+        }
+        
+        .stat-card {
+            text-align: center;
+            background-color: white;
+            border: 1pt solid #dee2e6;
+            border-radius: 5pt;
+            padding: 15pt;
+        }
+        
+        .stat-value {
+            font-size: 24pt;
+            font-weight: bold;
+            margin-bottom: 5pt;
+        }
+        
+        .stat-label {
+            color: #6c757d;
+            font-size: 10pt;
+            text-transform: uppercase;
+            letter-spacing: 0.5pt;
+        }
+        
+        .stat-critical { color: #dc3545; }
+        .stat-high { color: #fd7e14; }
+        .stat-medium { color: #ffc107; }
+        .stat-low { color: #28a745; }
+        .stat-info { color: #17a2b8; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20pt;
+            page-break-inside: avoid;
+        }
+        
+        th, td {
+            border: 1pt solid #dee2e6;
+            padding: 8pt;
+            text-align: left;
+            vertical-align: top;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        .vulnerability-item {
+            border: 1pt solid #dee2e6;
+            margin-bottom: 15pt;
+            padding: 15pt;
+            page-break-inside: avoid;
+            border-radius: 5pt;
+        }
+        
+        .vulnerability-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10pt;
+            padding-bottom: 10pt;
+            border-bottom: 1pt solid #dee2e6;
+        }
+        
+        .vulnerability-title {
+            font-weight: bold;
+            font-size: 12pt;
+            color: #2c3e50;
+        }
+        
+        /* Severity: usar paleta do projeto */
+        .severity-badge {
+            padding: 4pt 8pt;
+            border-radius: 3pt;
+            color: white;
+            font-size: 9pt;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .severity-critical { background-color: #f43f5e; }
+        .severity-high { background-color: #f59e0b; }
+        .severity-medium { background-color: #06b6d4; color: #0f172a; }
+        .severity-low { background-color: #10b981; }
+        
+        .cvss-score {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-left: 10pt;
+        }
+        
+        .vulnerability-details {
+            margin-top: 10pt;
+        }
+        
+        .vulnerability-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10pt;
+            margin-top: 10pt;
+            font-size: 10pt;
+            color: #6c757d;
+        }
+        
+        .chart-placeholder {
+            width: 100%;
+            height: 250pt;
+            border: 1pt solid #dee2e6;
+            background-color: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 15pt 0;
+            border-radius: 5pt;
+        }
+        
+        .chart-placeholder .icon {
+            font-size: 48pt;
+            color: #adb5bd;
+            margin-bottom: 10pt;
+        }
+        
+        .chart-placeholder .text {
+            color: #6c757d;
+            font-size: 12pt;
+            text-align: center;
+        }
+        
+        .executive-summary {
+            background-color: #e3f2fd;
+            padding: 20pt;
+            border-left: 4pt solid #2196f3;
+            margin-bottom: 25pt;
+            border-radius: 0 5pt 5pt 0;
+        }
+        
+        .executive-summary h3 {
+            margin-top: 0;
+            color: #1976d2;
+        }
+        
+        .recommendation-item {
+            background-color: #d4edda;
+            border-left: 4pt solid #28a745;
+            padding: 15pt;
+            margin-bottom: 15pt;
+            border-radius: 0 5pt 5pt 0;
+        }
+        
+        .recommendation-item h4 {
+            margin-top: 0;
+            color: #155724;
+        }
+        
+        .priority-high { border-left-color: #dc3545; background-color: #f8d7da; }
+        .priority-medium { border-left-color: #ffc107; background-color: #fff3cd; }
+        .priority-low { border-left-color: #28a745; background-color: #d4edda; }
+        
+        .footer-info {
+            margin-top: 30pt;
+            padding-top: 20pt;
+            border-top: 1pt solid #dee2e6;
+            font-size: 10pt;
+            color: #6c757d;
+            text-align: center;
+        }
+        
+        .page-break {
+            page-break-before: always;
+        }
+        
+        .no-break {
+            page-break-inside: avoid;
+        }
+        
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .text-muted { color: #6c757d; }
+        .font-weight-bold { font-weight: bold; }
+        
+        .mb-0 { margin-bottom: 0; }
+        .mb-1 { margin-bottom: 5pt; }
+        .mb-2 { margin-bottom: 10pt; }
+        .mb-3 { margin-bottom: 15pt; }
+        .mb-4 { margin-bottom: 20pt; }
+        
+        .mt-0 { margin-top: 0; }
+        .mt-1 { margin-top: 5pt; }
+        .mt-2 { margin-top: 10pt; }
+        .mt-3 { margin-top: 15pt; }
+        .mt-4 { margin-top: 20pt; }
+    </style>
+</head>
+<body>
+    <!-- Cabeçalho do Relatório -->
+    <div class="header">
+        <div class="meta-info">
+            <div class="left">
+                {% if company_info.logo_url %}
+                    <img src="{{ company_info.logo_url }}" alt="{{ company_info.name }}" class="company-logo">
+                {% endif %}
+            </div>
+            <div class="center">
+                <h1>{{ report.title }}</h1>
+                <div class="subtitle">{{ report.description or 'Relatório de Segurança Cibernética' }}</div>
+            </div>
+            <div class="right text-right">
+                <div><strong>Data:</strong> {{ export_date.strftime('%d/%m/%Y') }}</div>
+                <div><strong>Hora:</strong> {{ export_date.strftime('%H:%M') }}</div>
+                <div><strong>Versão:</strong> {{ export_metadata.version }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Informações Básicas -->
+    <div class="section">
+        <div class="section-header">
+            <h2>Informações do Relatório</h2>
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-card">
+                <h4>Detalhes Gerais</h4>
+                <table>
+                    <tr>
+                        <td><strong>Tipo:</strong></td>
+                        <td>{{ report.report_type.value.replace('_', ' ').title() if report.report_type else 'N/A' }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Escopo:</strong></td>
+                        <td>{{ report.scope.value.replace('_', ' ').title() if report.scope else 'N/A' }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Status:</strong></td>
+                        <td>{{ report.status.value.title() if report.status else 'N/A' }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Prioridade:</strong></td>
+                        <td>{{ report.priority.value.title() if report.priority else 'N/A' }}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div class="info-card">
+                <h4>Cronologia</h4>
+                <table>
+                    <tr>
+                        <td><strong>Criado em:</strong></td>
+                        <td>{{ report.created_at.strftime('%d/%m/%Y %H:%M') if report.created_at else 'N/A' }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Gerado em:</strong></td>
+                        <td>{{ report.generated_at.strftime('%d/%m/%Y %H:%M') if report.generated_at else 'N/A' }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Analista:</strong></td>
+                        <td>{{ report.user.username if report.user else 'Sistema' }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Período:</strong></td>
+                        <td>{{ report.period_start.strftime('%d/%m/%Y') if report.period_start else 'N/A' }} - {{ report.period_end.strftime('%d/%m/%Y') if report.period_end else 'N/A' }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumo Executivo -->
+    {% if summary_stats.total_vulnerabilities > 0 %}
+    <div class="section">
+        <div class="section-header">
+            <h2>Resumo Executivo</h2>
+        </div>
+        
+        <div class="executive-summary">
+            <h3>Visão Geral da Segurança</h3>
+            <p>
+                Este relatório apresenta uma análise abrangente da postura de segurança cibernética, 
+                identificando <strong>{{ summary_stats.total_vulnerabilities }}</strong> vulnerabilidades 
+                com um score médio CVSS de <strong>{{ summary_stats.avg_cvss }}</strong>.
+            </p>
+            
+            {% if summary_stats.critical_count > 0 %}
+            <p class="text-danger font-weight-bold">
+                ⚠️ <strong>ATENÇÃO:</strong> Foram identificadas {{ summary_stats.critical_count }} vulnerabilidades críticas 
+                que requerem ação imediata.
+            </p>
+            {% endif %}
+            
+            <p>
+                O score de risco geral é de <strong>{{ summary_stats.risk_score }}%</strong>, 
+                indicando um nível de risco 
+                {% if summary_stats.risk_score >= 80 %}
+                    <span class="text-danger">CRÍTICO</span>
+                {% elif summary_stats.risk_score >= 60 %}
+                    <span class="text-warning">ALTO</span>
+                {% elif summary_stats.risk_score >= 40 %}
+                    <span class="text-info">MÉDIO</span>
+                {% else %}
+                    <span class="text-success">BAIXO</span>
+                {% endif %}.
+            </p>
+        </div>
+        
+        <!-- Estatísticas de Vulnerabilidades -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value stat-critical">{{ summary_stats.critical_count }}</div>
+                <div class="stat-label">Críticas</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value stat-high">{{ summary_stats.high_count }}</div>
+                <div class="stat-label">Altas</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value stat-medium">{{ summary_stats.medium_count }}</div>
+                <div class="stat-label">Médias</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value stat-low">{{ summary_stats.low_count }}</div>
+                <div class="stat-label">Baixas</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Gráficos e Visualizações -->
+    {% if charts_data %}
+    <div class="section page-break">
+        <div class="section-header">
+            <h2>Análise Visual</h2>
+        </div>
+        
+        <div class="info-grid">
+            <div>
+                <h4>Distribuição por Severidade</h4>
+                <div class="chart-placeholder">
+                    <div>
+                        <div class="chart-placeholder .icon">📊</div>
+                        <div class="chart-placeholder .text">
+                            Gráfico de distribuição CVSS<br>
+                            <small>{{ summary_stats.total_vulnerabilities }} vulnerabilidades analisadas</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div>
+                <h4>Tendência de Vulnerabilidades</h4>
+                <div class="chart-placeholder">
+                    <div>
+                        <div class="chart-placeholder .icon">📈</div>
+                        <div class="chart-placeholder .text">
+                            Gráfico de tendências temporais<br>
+                            <small>Evolução ao longo do tempo</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Detalhes das Vulnerabilidades -->
+    {% if formatted_content.vulnerabilities %}
+    <div class="section page-break">
+        <div class="section-header">
+            <h2>Vulnerabilidades Identificadas</h2>
+        </div>
+        
+        {% for vuln in formatted_content.vulnerabilities %}
+        <div class="vulnerability-item no-break">
+            <div class="vulnerability-header">
+                <div>
+                    <div class="vulnerability-title">{{ vuln.title }}</div>
+                    {% if vuln.cve_id and vuln.cve_id != 'N/A' %}
+                        <div class="text-muted">{{ vuln.cve_id }}</div>
+                    {% endif %}
+                </div>
+                <div class="text-right">
+                    <span class="severity-badge severity-{{ vuln.severity }}">{{ vuln.severity.title() }}</span>
+                    {% if vuln.cvss_score > 0 %}
+                        <span class="cvss-score stat-{{ vuln.severity }}">{{ vuln.cvss_score }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="vulnerability-details">
+                <p>{{ vuln.description }}</p>
+                
+                <div class="vulnerability-meta">
+                    <div><strong>Ativos Afetados:</strong> {{ vuln.affected_assets_count }}</div>
+                    <div><strong>Exploit Disponível:</strong> {{ 'Sim' if vuln.exploit_available else 'Não' }}</div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Análise de Impacto nos Negócios -->
+    {% if formatted_content.business_impact %}
+    <div class="section page-break">
+        <div class="section-header">
+            <h2>Análise de Impacto nos Negócios</h2>
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-card">
+                <h4>Impacto Financeiro</h4>
+                <p>{{ formatted_content.business_impact.financial_impact }}</p>
+            </div>
+            <div class="info-card">
+                <h4>Impacto Operacional</h4>
+                <p>{{ formatted_content.business_impact.operational_impact }}</p>
+            </div>
+            <div class="info-card">
+                <h4>Impacto na Reputação</h4>
+                <p>{{ formatted_content.business_impact.reputation_impact }}</p>
+            </div>
+            <div class="info-card">
+                <h4>Impacto na Conformidade</h4>
+                <p>{{ formatted_content.business_impact.compliance_impact }}</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recomendações -->
+    {% if formatted_content.recommendations %}
+    <div class="section page-break">
+        <div class="section-header">
+            <h2>Recomendações de Segurança</h2>
+        </div>
+        
+        {% for rec in formatted_content.recommendations %}
+        <div class="recommendation-item priority-{{ rec.priority }} no-break">
+            <h4>{{ rec.title }}</h4>
+            <p>{{ rec.description }}</p>
+            
+            <div class="info-grid">
+                <div>
+                    <strong>Prioridade:</strong> {{ rec.priority.title() }}<br>
+                    <strong>Esforço:</strong> {{ rec.effort }}
+                </div>
+                <div>
+                    <strong>Timeline:</strong> {{ rec.timeline }}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Rodapé -->
+    <div class="footer-info">
+        <div class="info-grid">
+            <div>
+                <strong>{{ company_info.name }}</strong><br>
+                {% if company_info.address %}{{ company_info.address }}<br>{% endif %}
+                {% if company_info.website %}{{ company_info.website }}<br>{% endif %}
+                {% if company_info.contact %}{{ company_info.contact }}{% endif %}
+            </div>
+            <div class="text-right">
+                <strong>Gerado por:</strong> {{ export_metadata.generated_by }}<br>
+                <strong>Engine:</strong> {{ export_metadata.export_engine }}<br>
+                <strong>Data de Exportação:</strong> {{ export_date.strftime('%d/%m/%Y %H:%M') }}
+            </div>
+        </div>
+        
+        <div class="text-center mt-4">
+            <small>
+                Este relatório é confidencial e destinado exclusivamente ao uso interno da organização.
+                A distribuição não autorizada é estritamente proibida.
+            </small>
+        </div>
+    </div>
+</body>
+</html>

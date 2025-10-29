@@ -1,0 +1,199 @@
+{# templates/sidebar.html - VERSÃO REFATORADA E OTIMIZADA - COM NOVOS ITENS #}
+
+{# Importando o arquivo CSS principal. Garanta que este importe os arquivos de variáveis, typography, layout, components, utilities, etc. #}
+{# Removido: main.css já é carregado em core/base.html #}
+
+<nav id="sidebar" class="sidebar d-flex flex-column flex-shrink-0 py-3" 
+     aria-label="Navegação principal do sistema"
+     role="navigation"
+     tabindex="-1">
+
+  {# Background animado #}
+  <div class="sidebar-background"></div>
+  
+  {# Sidebar Header: Brand/Logo and Collapse Button #}
+  <div class="sidebar-header d-flex align-items-center justify-content-between px-3 mb-3">
+    {# Brand/Logo placeholder - adjust 'w-auto' and 'h-8' as needed for your logo size #}
+    <a href="{{ url_for('main.index') }}" class="d-flex align-items-center text-decoration-none text-white-50" aria-label="Voltar para a Home">
+      {# Replace with your actual logo, e.g., <img src="..." alt="Your Brand" class="h-8 w-auto"> #}
+      <i class="bi bi-shield-lock fs-4 me-2"></i>
+      <span class="fs-5 fw-bold sidebar-label">VulnTracker</span>
+    </a>
+
+    {# Collapse Button - visible only on smaller screens (md-down) #}
+    {# 'sidebar.js' should toggle 'collapsed' class on #sidebar or <body> #}
+    <button id="sidebarCollapseBtn" class="btn btn-sm d-md-none" aria-label="Recolher ou expandir menu lateral">
+      <i class="bi bi-list collapse-icon-open"></i>
+      <i class="bi bi-chevron-left collapse-icon-close"></i>
+    </button>
+  </div>
+
+  {# Main Navigation Section: Scrollable content area #}
+  <div class="sidebar-nav-container flex-grow-1 overflow-y-auto">
+    <ul class="sidebar-nav list-unstyled mb-0 px-1">
+
+      {# Category: Principal #}
+      <li class="sidebar-category text-xs text-uppercase px-3 mt-3 mb-2 text-muted">Principal</li>
+
+      {# Home Link #}
+      <li class="sidebar-item">
+        <a href="{{ url_for('main.index') }}"
+           class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2 {% if request.endpoint == 'main.index' %}active{% endif %}"
+           {% if request.endpoint == 'main.index' %}aria-current="page"{% endif %}
+           title="Página Inicial"
+           data-bs-toggle="tooltip" data-bs-placement="right">
+          <i class="bi bi-house fs-5"></i>
+          <span class="sidebar-label">Home</span>
+        </a>
+      </li>
+
+      {# Monitoring Link moved to Ferramentas above Newsletter #}
+
+      {# Analytics Link #}
+      <li class="sidebar-item">
+        <a href="{{ url_for('main.analytics') }}"
+           class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2 {% if request.endpoint == 'main.analytics' %}active{% endif %}"
+           {% if request.endpoint == 'main.analytics' %}aria-current="page"{% endif %}
+           title="Visualizar Análises e Relatórios"
+           data-bs-toggle="tooltip" data-bs-placement="right">
+          <i class="bi bi-bar-chart fs-5"></i>
+          <span class="sidebar-label">Analytics</span>
+        </a>
+      </li>
+
+      {# Reports Link #}
+      <li class="sidebar-item">
+        <a href="{{ url_for('report.list_reports') }}"
+           class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2 {% if request.endpoint and request.endpoint.startswith('report.') %}active{% endif %}"
+           {% if request.endpoint and request.endpoint.startswith('report.') %}aria-current="page"{% endif %}
+           title="Visualizar e Gerenciar Relatórios"
+           data-bs-toggle="tooltip" data-bs-placement="right">
+          <i class="bi bi-file-earmark-text fs-5"></i>
+          <span class="sidebar-label">Relatórios</span>
+        </a>
+      </li>
+
+      {# Chat Link #}
+      <li class="sidebar-item">
+        <a href="{{ url_for('main.chat') }}"
+           class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2 {% if request.endpoint == 'main.chat' %}active{% endif %}"
+           {% if request.endpoint == 'main.chat' %}aria-current="page"{% endif %}
+           title="Assistente de Chat IA"
+           data-bs-toggle="tooltip" data-bs-placement="right">
+          <i class="bi bi-chat-dots fs-5"></i>
+          <span class="sidebar-label">Chat</span>
+        </a>
+      </li>
+
+      {# Category: Ferramentas #}
+      <li class="sidebar-category text-xs text-uppercase px-3 mt-4 mb-2 text-muted">Ferramentas</li>
+
+      {# Monitoring Link (moved above Newsletter) #}
+      <li class="sidebar-item">
+        <a href="{{ url_for('main.monitoring') }}"
+           class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2 {% if request.endpoint == 'main.monitoring' %}active{% endif %}"
+           {% if request.endpoint == 'main.monitoring' %}aria-current="page"{% endif %}
+           title="Visualizar Monitoramento do Sistema"
+           data-bs-toggle="tooltip" data-bs-placement="right">
+          <i class="bi bi-activity fs-5"></i>
+          <span class="sidebar-label">Monitoramento</span>
+        </a>
+      </li>
+
+      {# Newsletter Link #}
+      <li class="sidebar-item">
+        <a href="{{ url_for('main.newsletter') }}"
+           class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2 {% if request.endpoint == 'main.newsletter' %}active{% endif %}"
+           {% if request.endpoint == 'main.newsletter' %}aria-current="page"{% endif %}
+           title="Gerenciar Assinaturas de Newsletter"
+           data-bs-toggle="tooltip" data-bs-placement="right">
+          <i class="bi bi-newspaper fs-5"></i>
+          <span class="sidebar-label">Newsletter</span>
+        </a>
+      </li>
+
+      {# Search Link #}
+      <li class="sidebar-item">
+        <a href="{{ url_for('main.search') }}"
+           class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2 {% if request.endpoint == 'main.search' %}active{% endif %}"
+           {% if request.endpoint == 'main.search' %}aria-current="page"{% endif %}
+           title="Buscar informações no sistema"
+           data-bs-toggle="tooltip" data-bs-placement="right">
+          <i class="bi bi-search fs-5"></i>
+          <span class="sidebar-label">Busca</span>
+        </a>
+      </li>
+
+
+
+      {# Dynamic 'Other' Section #}
+      {% set static_endpoints = ['index', 'monitoring', 'analytics', 'chat', 'newsletter', 'search', 'account', 'settings'] %}
+      {% set dynamic_items = nav_items|selectattr('endpoint', 'not in', static_endpoints)|list if nav_items else [] %}
+
+      {% if dynamic_items %}
+        <li class="sidebar-category text-xs text-uppercase px-3 mt-4 mb-2 text-muted">Outros</li>
+        {% for item in dynamic_items %}
+          <li class="sidebar-item">
+            <a href="{{ url_for('main.' ~ item.endpoint) }}"
+               class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2 {% if request.endpoint == 'main.' ~ item.endpoint %}active{% endif %}"
+               {% if request.endpoint == 'main.' ~ item.endpoint %}aria-current="page"{% endif %}
+               title="{{ item.label }}"
+               data-bs-toggle="tooltip" data-bs-placement="right">
+              <i class="bi bi-{{ item.icon | default('question-circle') }} fs-5"></i> {# Default icon if not provided #}
+              <span class="sidebar-label">{{ item.label }}</span>
+            </a>
+          </li>
+        {% endfor %}
+      {% endif %}
+    </ul>
+  </div> {# End .sidebar-nav-container #}
+
+  {# Sidebar Footer: User Profile and Settings #}
+  <div class="sidebar-footer px-3 py-3 border-top mt-auto"> {# mt-auto pushes to bottom #}
+
+    {# User Account Link - Sempre mostra usuário visitante #}
+    <a href="{% if current_user.is_authenticated %}{{ url_for('main.account') }}{% else %}{{ url_for('auth.login') }}{% endif %}"
+       class="sidebar-link d-flex align-items-center gap-2 py-2 text-decoration-none"
+       title="Acessar configurações da conta">
+      <div class="user-avatar rounded-circle bg-light d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+        <i class="bi bi-person fs-5 text-dark"></i>
+      </div>
+      <div class="user-info flex-grow-1 overflow-hidden">
+        <div class="text-sm fw-medium text-white text-truncate sidebar-label">
+          {% if current_user.is_authenticated %}
+            {{ current_user.first_name or current_user.username }}
+          {% else %}
+            Usuário Visitante
+          {% endif %}
+        </div>
+        <div class="text-muted text-xs text-truncate sidebar-label">
+          {% if current_user.is_authenticated %}
+            {% if current_user.is_admin %}Administrador{% else %}Usuário Autenticado{% endif %}
+          {% else %}
+            Acesso Público
+          {% endif %}
+        </div>
+      </div>
+    </a>
+
+    {# Optional: Dedicated Settings Link #}
+    {% if 'settings' in nav_items|map(attribute='endpoint')|list %}
+      <li class="sidebar-item list-unstyled mt-2"> {# Added list-unstyled to remove default list styling if this is an li #}
+        <a href="{{ url_for('main.settings') }}"
+           class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2"
+           title="Configurações do Sistema">
+          <i class="bi bi-gear fs-5"></i>
+          <span class="sidebar-label">Configurações</span>
+        </a>
+      </li>
+    {% endif %}
+
+  </div> {# End .sidebar-footer #}
+</nav>
+
+{# Importing Sidebar JavaScript #}
+{# This script should handle: #}
+{# - #sidebarCollapseBtn to add/remove 'collapsed' class on #sidebar or <body>. #}
+{# - Icon state toggle (bi-list <-> bi-chevron-left). #}
+{# - Display/hide of .sidebar-label and tooltips based on collapse state. #}
+<script src="{{ url_for('static', filename='js/components/sidebar.js') }}" defer nonce="{{ nonce }}"></script>

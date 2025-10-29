@@ -1,0 +1,493 @@
+{% extends "core/base.html" %}
+{% from 'core/macros.html' import render_pagination %}
+
+{% block title %}Vulnerabilidades - Open Monitor{% endblock %}
+
+{% block meta_description %}Gerencie e monitore vulnerabilidades de segurança em tempo real. Visualize, filtre e analise vulnerabilidades por severidade, status e impacto no sistema.{% endblock %}
+
+{% block meta_keywords %}vulnerabilidades, segurança, CVE, CVSS, monitoramento, gestão de riscos, segurança cibernética, análise de vulnerabilidades{% endblock %}
+
+{% block og_title %}Vulnerabilidades - Sistema de Monitoramento de Segurança{% endblock %}
+
+{% block og_description %}Plataforma completa para gerenciamento de vulnerabilidades de segurança. Monitore, analise e gerencie riscos de segurança em tempo real.{% endblock %}
+
+{% block og_type %}website{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/vulnerabilities.chart.css') }}">
+{% endblock %}
+
+{% block content %}
+<!-- Skip link para navegação rápida -->
+<a href="#vulnerabilities-table" class="skip-link">Pular para tabela de vulnerabilidades</a>
+
+<div class="vulnerability-container" role="main" aria-labelledby="page-title">
+    <!-- Header Section -->
+    <header class="vulnerability-header">
+        <div class="header-content">
+            <h1 id="page-title" class="page-title">
+                <i class="bi bi-shield-exclamation" aria-hidden="true"></i>
+                Vulnerabilidades
+            </h1>
+        </div>
+    </header>
+
+    <!-- CVE History Chart Section -->
+    <section class="cve-history-section" aria-labelledby="chart-title">
+        <div class="chart-card">
+            <div class="chart-header">
+                <h2 id="chart-title" class="chart-title">
+                    <i class="bi bi-graph-up" aria-hidden="true"></i>
+                    CVE History
+                </h2>
+                <div class="chart-controls">
+                    <div class="chart-period-selector">
+                        <button type="button" class="btn btn-outline-primary btn-sm period-btn active" data-period="30">30 dias</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm period-btn" data-period="90">90 dias</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm period-btn" data-period="365">1 ano</button>
+                    </div>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="cveHistoryChart" aria-label="Gráfico de histórico de CVEs por período"></canvas>
+                <div class="chart-loading" id="chartLoading" style="display: none;" aria-live="polite" aria-atomic="true">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando dados do gráfico...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Carregando dados...</p>
+                </div>
+            </div>
+            <div class="chart-stats">
+                <div class="stat-item">
+                    <span class="stat-label">Total de CVEs</span>
+                    <span class="stat-value" id="totalCves">-</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Críticas</span>
+                    <span class="stat-value critical" id="criticalCves">-</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Altas</span>
+                    <span class="stat-value high" id="highCves">-</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Médias</span>
+                    <span class="stat-value medium" id="mediumCves">-</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Baixas</span>
+                    <span class="stat-value low" id="lowCves">-</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Filters Section -->
+    <section class="filters-section" aria-labelledby="filters-title">
+        <div class="filters-card">
+            <h2 id="filters-title" class="visually-hidden">Filtros de Vulnerabilidades</h2>
+            <form method="GET" class="filters-form" role="search" aria-label="Filtrar vulnerabilidades">
+                <div class="row mb-4">
+                    <div class="col-lg-4 col-md-6 mb-3">
+                        <label for="search-input" class="form-label fw-semibold">Buscar Vulnerabilidades</label>
+                        <div class="input-group">
+                            <span class="input-group-text" aria-hidden="true">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="search-input" 
+                                   name="search"
+                                   placeholder="CVE ID, descrição, produto..."
+                                   aria-describedby="search-help"
+                                   autocomplete="off">
+                        </div>
+                        <div id="search-help" class="form-text visually-hidden">
+                            Digite para buscar por CVE ID, descrição ou produto afetado
+                        </div>
+                    </div>
+                    <div class="col-lg-2 col-md-6 mb-3">
+                        <label for="severity" class="form-label fw-semibold">Severidade</label>
+                        <select name="severity" id="severity" class="form-select" aria-describedby="severity-help">
+                            <option value="">Todas</option>
+                            <option value="CRITICAL" {{ 'selected' if filters.severity == 'CRITICAL' }}>Crítica</option>
+                            <option value="HIGH" {{ 'selected' if filters.severity == 'HIGH' }}>Alta</option>
+                            <option value="MEDIUM" {{ 'selected' if filters.severity == 'MEDIUM' }}>Média</option>
+                            <option value="LOW" {{ 'selected' if filters.severity == 'LOW' }}>Baixa</option>
+                        </select>
+                        <div id="severity-help" class="form-text visually-hidden">
+                            Filtrar por nível de severidade da vulnerabilidade
+                        </div>
+                    </div>
+                    <div class="col-lg-2 col-md-6 mb-3">
+                        <label for="cvss-filter" class="form-label fw-semibold">CVSS Score</label>
+                        <select class="form-select" id="cvss-filter" name="cvss_range" aria-describedby="cvss-help">
+                            <option value="">Todos</option>
+                            <option value="9.0-10.0">9.0 - 10.0 (Crítico)</option>
+                            <option value="7.0-8.9">7.0 - 8.9 (Alto)</option>
+                            <option value="4.0-6.9">4.0 - 6.9 (Médio)</option>
+                            <option value="0.1-3.9">0.1 - 3.9 (Baixo)</option>
+                        </select>
+                        <div id="cvss-help" class="form-text visually-hidden">
+                            Filtrar por faixa de pontuação CVSS
+                        </div>
+                    </div>
+                    <div class="col-lg-2 col-md-6 mb-3">
+                        <label for="date-filter" class="form-label fw-semibold">Data de Publicação</label>
+                        <select class="form-select" id="date-filter" name="date_range" aria-describedby="date-help">
+                            <option value="">Todas</option>
+                            <option value="7">Últimos 7 dias</option>
+                            <option value="30">Últimos 30 dias</option>
+                            <option value="90">Últimos 3 meses</option>
+                            <option value="365">Último ano</option>
+                        </select>
+                        <div id="date-help" class="form-text visually-hidden">
+                            Filtrar por período de publicação
+                        </div>
+                    </div>
+                    <div class="col-lg-2 col-md-12 mb-3">
+                        <label class="form-label fw-semibold d-none d-lg-block">&nbsp;</label>
+                        <div class="filter-actions-row">
+                            <button type="submit" 
+                                    class="btn btn-primary flex-fill" 
+                                    id="search-btn"
+                                    aria-describedby="search-btn-help">
+                                <i class="fas fa-search me-2" aria-hidden="true"></i>Filtrar
+                            </button>
+                            <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}" 
+                               class="btn btn-outline-secondary" 
+                               id="clear-filters-btn" 
+                               aria-label="Limpar todos os filtros"
+                               title="Limpar Filtros">
+                                <i class="fas fa-times" aria-hidden="true"></i>
+                            </a>
+                        </div>
+                        <div id="search-btn-help" class="form-text visually-hidden">
+                            Aplicar filtros selecionados à tabela de vulnerabilidades
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Filtros Avançados (Colapsável) -->
+                <div class="advanced-filters-section">
+                    <div class="row">
+                        <div class="col-12">
+                            <button class="btn btn-link p-0 text-decoration-none advanced-filters-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#advanced-filters" aria-expanded="false" aria-controls="advanced-filters">
+                                <i class="fas fa-chevron-down me-2"></i>Filtros Avançados
+                            </button>
+                        </div>
+                    </div>
+                        <div class="collapse" id="advanced-filters">
+                            <div class="card mt-3">
+                                <div class="card-body advanced-filters-content">
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label fw-semibold">Data Inicial</label>
+                                            <input type="date" class="form-control" id="start-date-filter" name="start_date">
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label fw-semibold">Data Final</label>
+                                            <input type="date" class="form-control" id="end-date-filter" name="end_date">
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label fw-semibold">Produto/Vendor</label>
+                                            <input type="text" class="form-control" id="product-filter" name="product" placeholder="Ex: Microsoft, Apache...">
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label fw-semibold">Status de Mitigação</label>
+                                            <select class="form-select" id="mitigation-status-filter" name="mitigation_status">
+                                                <option value="">Todos</option>
+                                                <option value="open">Aberto</option>
+                                                <option value="in_progress">Em Progresso</option>
+                                                <option value="mitigated">Mitigado</option>
+                                                <option value="false_positive">Falso Positivo</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label fw-semibold">Tipo de Vulnerabilidade</label>
+                                            <select class="form-select" id="vuln-type-filter" name="vuln_type">
+                                                <option value="">Todos</option>
+                                                <option value="rce">Execução Remota de Código</option>
+                                                <option value="sqli">SQL Injection</option>
+                                                <option value="xss">Cross-Site Scripting</option>
+                                                <option value="csrf">Cross-Site Request Forgery</option>
+                                                <option value="dos">Denial of Service</option>
+                                                <option value="privilege_escalation">Escalação de Privilégios</option>
+                                                <option value="information_disclosure">Divulgação de Informações</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label fw-semibold">Ordenar Por</label>
+                                            <select class="form-select" id="sort-filter" name="sort">
+                                                <option value="published_date_desc">Data de Publicação (Mais Recente)</option>
+                                                <option value="published_date_asc">Data de Publicação (Mais Antiga)</option>
+                                                <option value="cvss_score_desc">CVSS Score (Maior)</option>
+                                                <option value="cvss_score_asc">CVSS Score (Menor)</option>
+                                                <option value="severity_desc">Severidade (Crítica → Baixa)</option>
+                                                <option value="severity_asc">Severidade (Baixa → Crítica)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <section class="table-section" aria-labelledby="table-title">
+        {% if vulnerabilities %}
+            <h2 id="table-title" class="visually-hidden">Lista de vulnerabilidades</h2>
+            <div class="table-card">
+                <div class="table-responsive" role="region" aria-labelledby="table-title" tabindex="0">
+                <table class="table table-sm table-hover table-striped" id="vulnerabilities-table" data-current-page="{{ current_page }}" data-last_page="{{ last_page }}" aria-label="Tabela de Vulnerabilidades">
+                    <caption class="visually-hidden">Lista de vulnerabilidades com colunas: CVE ID, Severidade, Descrição, Fornecedor, Produto, Pontuação CVSS, Data de Publicação e Ações.</caption>
+                    <thead>
+                        <tr role="row">
+                            <th scope="col" 
+                                class="sortable col-cve" 
+                                data-sort="cve_id" 
+                                tabindex="0" 
+                                role="columnheader"
+                                aria-label="Ordenar por CVE ID">
+                            CVE ID <i class="fas fa-sort sort-icon" aria-hidden="true"></i>
+                        </th>
+                        <th scope="col"
+                            class="sortable col-severity"
+                            data-sort="severity"
+                            tabindex="0"
+                            role="columnheader"
+                            aria-label="Ordenar por Severidade">
+                            Severidade <i class="fas fa-sort sort-icon" aria-hidden="true"></i>
+                        </th>
+                        <th scope="col" role="columnheader" class="col-desc">Descrição</th>
+                        <th scope="col" class="d-none-mobile col-vendor" role="columnheader">Fornecedor</th>
+                        <th scope="col" class="d-none-mobile col-product" role="columnheader">Produto</th>
+                        <th scope="col" 
+                            class="sortable d-none-mobile col-cvss" 
+                            data-sort="cvss"
+                            role="columnheader">
+                            CVSS Score <i class="fas fa-sort sort-icon" aria-hidden="true"></i>
+                        </th>
+                        <th scope="col" 
+                            class="sortable d-none-mobile col-date"
+                            data-sort="published"
+                            role="columnheader">
+                            Data de Publicação <i class="fas fa-sort sort-icon" aria-hidden="true"></i>
+                        </th>
+                        <th scope="col" role="columnheader" class="text-center col-actions">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody role="rowgroup">
+                        {% for vuln in vulnerabilities %}
+                        <tr role="row" 
+                            data-cve-id="{{ vuln.cve_id }}" 
+                            aria-describedby="vuln-{{ vuln.cve_id }}-desc">
+                            <th scope="row" role="rowheader">
+                                <a href="{{ url_for('vulnerability_ui.vulnerability_details', cve_id=vuln.cve_id) }}"
+                                   aria-label="Ver detalhes da vulnerabilidade {{ vuln.cve_id }}">
+                                    {{ vuln.cve_id }}
+                                </a>
+                            </th>
+                            <td role="gridcell">
+                                <span class="severity-badge {{ vuln.base_severity|lower if vuln.base_severity else 'na' }}"
+                                      aria-label="Severidade: {{ vuln.base_severity|title if vuln.base_severity else 'N/A' }}">
+                                    {{ vuln.base_severity|title if vuln.base_severity else 'N/A' }}
+                                </span>
+                            </td>
+                            <td role="gridcell">
+                                <div class="vulnerability-description" id="vuln-{{ vuln.cve_id }}-desc">
+                                    {{ vuln.description[:80] }}{% if vuln.description|length > 80 %}...{% endif %}
+                                </div>
+                            </td>
+                            <td class="d-none-mobile" role="gridcell">
+                                {% if vuln.nvd_vendors_data %}
+                                    {% for vendor in vuln.nvd_vendors_data[:3] %}
+                                        <span class="badge bg-secondary me-1">{{ vendor }}</span>
+                                    {% endfor %}
+                                    {% if vuln.nvd_vendors_data|length > 3 %}
+                                        <span class="badge bg-light text-dark">+{{ vuln.nvd_vendors_data|length - 3 }}</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td class="d-none-mobile" role="gridcell">
+                                {% if vuln.nvd_products_data %}
+                                    {% for product in vuln.nvd_products_data[:3] %}
+                                        {% set product_name = product if product is string else product.name %}
+                                        <span class="badge bg-secondary me-1">{{ product_name }}</span>
+                                    {% endfor %}
+                                    {% if vuln.nvd_products_data|length > 3 %}
+                                        <span class="badge bg-light text-dark">+{{ vuln.nvd_products_data|length - 3 }}</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td class="d-none-mobile" role="gridcell">
+                                {% if vuln.cvss_score %}
+                                    <span class="badge bg-info cvss-badge" aria-label="CVSS Score {{ "%.1f"|format(vuln.cvss_score) }}">{{ "%.1f"|format(vuln.cvss_score) }}</span>
+                                {% else %}
+                                    <span class="text-muted" aria-label="CVSS Score não disponível">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td class="d-none-mobile" role="gridcell">
+                                <span aria-label="Publicado em {{ vuln.published_date[:10] if vuln.published_date else 'Data não disponível' }}">
+                                    {{ vuln.published_date[:10] if vuln.published_date else 'N/A' }}
+                                </span>
+                            </td>
+                            <td role="gridcell">
+                                <div class="action-buttons" role="group" aria-label="Ações para vulnerabilidade {{ vuln.cve_id }}">
+                                    <a href="{{ url_for('vulnerability_ui.vulnerability_details', cve_id=vuln.cve_id) }}" 
+                                       class="btn btn-sm btn-outline-primary btn-icon" 
+                                       title="Ver Detalhes"
+                                       aria-label="Ver detalhes da vulnerabilidade {{ vuln.cve_id }}">
+                                        <i class="fas fa-eye" aria-hidden="true"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    
+                    <!-- Integrated Pagination Footer -->
+                    <tfoot>
+                        <tr>
+                            <td colspan="8" class="table-pagination-footer">
+                                <div class="table-pagination-nav pagination-section" role="navigation" aria-label="Navegação de páginas de vulnerabilidades">
+                                    {% set args = request.args.to_dict(flat=False) %}
+                                    {% set _ = args.pop('page', None) %}
+                                    {% set _ = args.pop('severity', None) %}
+                                    <div class="d-flex justify-content-between align-items-center mt-3">
+                                        <div class="pagination-controls">
+                                            {% if pagination.has_prev %}
+                                                {% if filters.severity %}
+                                                    <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui', page=pagination.prev_num, severity=filters.severity, **args) }}" class="btn btn-sm btn-outline-primary page-link page-link-prev">
+                                                        <i class="fas fa-chevron-left"></i> Anterior
+                                                    </a>
+                                                {% else %}
+                                                    <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui', page=pagination.prev_num, **args) }}" class="btn btn-sm btn-outline-primary page-link page-link-prev">
+                                                        <i class="fas fa-chevron-left"></i> Anterior
+                                                    </a>
+                                                {% endif %}
+                                            {% else %}
+                                                <button class="btn btn-sm btn-outline-primary page-link page-link-prev" disabled>
+                                                    <i class="fas fa-chevron-left"></i> Anterior
+                                                </button>
+                                            {% endif %}
+                                            <span class="mx-3 pagination-text">
+                                                Página <span>{{ pagination.page }}</span> de <span>{{ pagination.pages }}</span>
+                                            </span>
+                                            {% if pagination.has_next %}
+                                                {% if filters.severity %}
+                                                    <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui', page=pagination.next_num, severity=filters.severity, **args) }}" class="btn btn-sm btn-outline-primary page-link page-link-next">
+                                                        Próxima <i class="fas fa-chevron-right"></i>
+                                                    </a>
+                                                {% else %}
+                                                    <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui', page=pagination.next_num, **args) }}" class="btn btn-sm btn-outline-primary page-link page-link-next">
+                                                        Próxima <i class="fas fa-chevron-right"></i>
+                                                    </a>
+                                                {% endif %}
+                                            {% else %}
+                                                <button class="btn btn-sm btn-outline-primary page-link page-link-next" disabled>
+                                                    Próxima <i class="fas fa-chevron-right"></i>
+                                                </button>
+                                            {% endif %}
+                                        </div>
+                                        <div class="page-size-controls">
+                                            <label for="per-page-select" class="form-label mb-0 me-2">Itens por página:</label>
+                                            {% set current_per_page = request.args.get('per_page', '20')|int %}
+                                            <select id="per-page-select" class="form-select form-select-sm" style="width: auto;" onchange="changePerPage(this.value)">
+                                                {% for option in [10, 20, 50, 100] %}
+                                                    <option value="{{ option }}" {{ 'selected' if option == current_per_page else '' }}>{{ option }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+                </div>
+            </div>
+            
+            <!-- Loading Overlay -->
+            <div id="table-loading" class="d-none">
+                <div class="spinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                </div>
+            </div>
+        
+        {% else %}
+        <div class="empty-state" role="region" aria-labelledby="empty-state-title">
+            <div class="empty-state-icon">
+                <i class="fas fa-shield-alt" aria-hidden="true"></i>
+            </div>
+            <h4 id="empty-state-title" class="empty-state-title">Nenhuma vulnerabilidade encontrada</h4>
+            <p class="empty-state-description">
+                Não há vulnerabilidades cadastradas no sistema no momento. 
+                Comece adicionando uma nova vulnerabilidade para monitorar.
+            </p>
+            <div class="empty-state-action" role="group" aria-label="Ações disponíveis">
+                <a href="{{ url_for('vulnerability_ui.create_vulnerability_ui') }}" 
+                   class="btn btn-primary"
+                   aria-label="Cadastrar nova vulnerabilidade no sistema">
+                    <i class="fas fa-plus me-2" aria-hidden="true"></i>Cadastrar Nova Vulnerabilidade
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </section>
+</div>
+
+<!-- Modais removidos: apenas ação de Ver Detalhes permanece na tabela -->
+{% endblock %}
+
+{% block extra_js %}
+<script nonce="{{ nonce }}">
+  (function() {
+    try {
+      new Function('const x=1;')();
+      var s = document.createElement('script');
+      s.src = "{{ url_for('static', filename='js/features/vulnerabilities.js') }}";
+      s.defer = true;
+      s.setAttribute('nonce', "{{ nonce }}");
+      document.body.appendChild(s);
+    } catch (e) {
+      var s = document.createElement('script');
+      s.src = "{{ url_for('static', filename='js/features/vulnerabilities.legacy.js') }}";
+      s.defer = true;
+      s.setAttribute('nonce', "{{ nonce }}");
+      document.body.appendChild(s);
+    }
+  })();
+</script>
+<script nonce="{{ nonce }}">
+  (function() {
+    try {
+      // Check for modern JS support (class/const/arrow)
+      new Function('class A{}; const x=1; let y=2; (()=>{})()')();
+      var s = document.createElement('script');
+      s.src = "{{ url_for('static', filename='js/components/cve-history-chart.js') }}";
+      s.defer = true;
+      s.setAttribute('nonce', "{{ nonce }}");
+      document.body.appendChild(s);
+    } catch (e) {
+      var s = document.createElement('script');
+      s.src = "{{ url_for('static', filename='js/components/cve-history-chart.legacy.js') }}";
+      s.defer = true;
+      s.setAttribute('nonce', "{{ nonce }}");
+      document.body.appendChild(s);
+    }
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,559 @@
+{% extends "core/base.html" %}
+{% set footer_has_utility = true %}
+{% from 'core/macros.html' import render_pagination %}
+
+{% block title %}Vulnerabilidades {{ severity_display }} - Open Monitor{% endblock %}
+
+{% block meta_description %}Análise detalhada das vulnerabilidades {{ (severity_display|default('unknown'))|lower }} da última semana. Estatísticas, gráficos e informações completas sobre segurança.{% endblock %}
+
+{% block meta_keywords %}vulnerabilidades {{ (severity_display|default('unknown'))|lower }}, segurança, CVE, CVSS, análise semanal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/severity-details.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+<script nonce="{{ nonce }}">
+    window.chartData = {
+        daily: {{ weekly_stats.daily_distribution | tojson }},
+        cvss: {{ weekly_stats.cvss_distribution | tojson }},
+        cvssAllSeverity: {{ cvss_all_severity | tojson }},
+        cvssGlobal: {{ weekly_cvss_all | tojson }},
+        products: {{ weekly_stats.top_products | tojson }},
+        // Contagens globais por severidade (todas as vulnerabilidades)
+        severity_counts: {{ general_counts | tojson }}
+    };
+
+    window.severityConfig = {
+        severity: '{{ severity|lower }}',
+        display: '{{ severity_display }}'
+    };
+</script>
+<script nonce="{{ nonce }}">
+  (function() {
+    try {
+      // Check for modern JS support (class/const/arrow)
+      new Function('class A{}; const x=1; let y=2; (()=>{})()')();
+      var s = document.createElement('script');
+      s.src = "{{ url_for('static', filename='js/features/vulnerability-charts.js') }}";
+      s.defer = true;
+      s.setAttribute('nonce', "{{ nonce }}");
+      document.body.appendChild(s);
+    } catch (e) {
+      var s = document.createElement('script');
+      s.src = "{{ url_for('static', filename='js/features/vulnerability-charts.legacy.js') }}";
+      s.defer = true;
+      s.setAttribute('nonce', "{{ nonce }}");
+      document.body.appendChild(s);
+    }
+  })();
+</script>
+
+<script nonce="{{ nonce }}">
+  (function() {
+    try {
+      new Function('const x=1;')();
+      var s = document.createElement('script');
+      s.src = "{{ url_for('static', filename='js/features/vulnerabilities.js') }}";
+      s.defer = true;
+      s.setAttribute('nonce', "{{ nonce }}");
+      document.body.appendChild(s);
+    } catch (e) {
+      var s = document.createElement('script');
+      s.src = "{{ url_for('static', filename='js/features/vulnerabilities.legacy.js') }}";
+      s.defer = true;
+      s.setAttribute('nonce', "{{ nonce }}");
+      document.body.appendChild(s);
+    }
+  })();
+</script>
+<script nonce="{{ nonce }}">
+  (function() {
+    try {
+      // Check for modern JS support (class/const/arrow)
+      new Function('class A{}; const x=1; let y=2; (()=>{})()')();
+      var s = document.createElement('script');
+      s.src = "{{ url_for('static', filename='js/features/vulnerability-details-table.js') }}";
+      s.defer = true;
+      s.setAttribute('nonce', "{{ nonce }}");
+      document.body.appendChild(s);
+    } catch (e) {
+      var s = document.createElement('script');
+      s.src = "{{ url_for('static', filename='js/features/vulnerability-details-table.legacy.js') }}";
+      s.defer = true;
+      s.setAttribute('nonce', "{{ nonce }}");
+      document.body.appendChild(s);
+    }
+  })();
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="vulnerability-details-page {% if severity == 'CRITICAL' %}critical-theme{% elif severity == 'HIGH' %}high-theme{% elif severity == 'MEDIUM' %}medium-theme{% elif severity == 'LOW' %}low-theme{% endif %}">
+    <!-- Header -->
+    <header class="vuln-header">
+        <div class="container">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="breadcrumb-custom">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('main.index') }}">
+                            <i class="bi bi-house"></i> Início
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        Vulnerabilidades {{ severity_display or 'UNKNOWN' }}
+                    </li>
+                </ol>
+            </nav>
+            
+            <!-- Title and Actions -->
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div class="page-title-group">
+                    <h1>
+                        <i class="bi bi-shield-exclamation me-2"></i>
+                        Vulnerabilidades {{ severity_display or 'UNKNOWN' }}
+                    </h1>
+                    <div class="mt-2">
+                        <span class="severity-badge {{ (severity|default('unknown'))|lower }}" title="Severidade">
+                            {{ severity_display or 'UNKNOWN' }}
+                        </span>
+                    </div>
+                    <p class="page-subtitle">
+                        Análise detalhada da última semana
+                    </p>
+                </div>
+                
+                <div class="d-flex gap-2">
+                    <!-- Removido botão duplicado de densidade no header -->
+                    <button id="exportBtn" class="btn btn-light" aria-label="Exportar CSV">
+                        <i class="bi bi-download"></i> Exportar
+                    </button>
+                    <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}?severity={{ severity }}" 
+                       class="btn btn-light">
+                        <i class="bi bi-list"></i> Ver Todas
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Quick Navigation -->
+        <nav class="quick-nav" aria-label="Navegação rápida">
+            <div class="d-flex justify-content-between align-items-center py-2">
+                <ul class="nav mb-0">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#statistics">
+                            <i class="bi bi-graph-up"></i> <span>Estatísticas</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#charts">
+                            <i class="bi bi-bar-chart"></i> <span>Gráficos</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#vulnerabilities">
+                            <i class="bi bi-table"></i> <span>Detalhes</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Statistics Section -->
+        <section id="statistics" class="mb-5 fade-in">
+            <h2 class="h4 mb-4">Visão Geral</h2>
+            
+            <div class="stats-grid" role="group" aria-label="Resumo semanal de vulnerabilidades">
+                <!-- Primary Card -->
+                <div class="stat-card stat-card-primary metric-card" aria-label="Novas vulnerabilidades nos últimos 7 dias">
+                    <div class="stat-card-header">
+                        <div class="stat-icon" aria-hidden="true" data-bs-toggle="tooltip" title="Novas Vulnerabilidades (7 dias)">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                        </div>
+                        <span class="stat-subtitle d-none d-sm-inline text-white-50">
+                            <i class="bi bi-calendar-week me-1" aria-hidden="true"></i> Últimos 7 dias
+                        </span>
+                    </div>
+                    <div class="stat-value">{{ weekly_stats.weekly_count }}</div>
+                    {% set daily = weekly_stats.daily_distribution %}
+                    {% if daily and daily|length >= 2 %}
+                        {% set last = daily[-1]['count'] %}
+                        {% set prev = daily[-2]['count'] %}
+                        {% set delta = last - prev %}
+                        {% set pct = ((delta / (prev if prev else 1)) * 100) | round(0) %}
+                        <div class="stat-trend {% if delta > 0 %}trend-up{% elif delta < 0 %}trend-down{% else %}trend-neutral{% endif %}" title="Variação vs dia anterior">
+                            {% if delta > 0 %}
+                                <i class="bi bi-arrow-up-short" aria-hidden="true"></i> {{ pct }}%
+                            {% elif delta < 0 %}
+                                <i class="bi bi-arrow-down-short" aria-hidden="true"></i> {{ (pct * -1) }}%
+                            {% else %}
+                                <i class="bi bi-dash" aria-hidden="true"></i> Estável
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                    <div class="stat-label">
+                        <i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i> Novas Vulnerabilidades
+                        <span class="badge bg-light text-dark ms-2" data-bs-toggle="tooltip" title="Severidade atual filtrada">
+                            {{ severity_display }}
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- Secondary Cards -->
+                <div class="stat-card" aria-label="Total de vulnerabilidades no último mês">
+                    <div class="stat-card-header">
+                        <div class="stat-icon stat-blue" aria-hidden="true" data-bs-toggle="tooltip" title="Total no último mês">
+                            <i class="bi bi-calendar-month"></i>
+                        </div>
+                        <span class="stat-subtitle d-none d-sm-inline text-muted">
+                            <i class="bi bi-clock-history me-1" aria-hidden="true"></i> Últimos 30 dias
+                        </span>
+                    </div>
+                    <div class="stat-value">{{ weekly_stats.monthly_count }}</div>
+                    {% if weekly_stats.monthly_count > 0 %}
+                        {% set share = ((weekly_stats.weekly_count / weekly_stats.monthly_count) * 100) | round(0) %}
+                        <div class="stat-trend trend-neutral" title="Participação da semana na atividade mensal">
+                            <i class="bi bi-activity me-1" aria-hidden="true"></i> {{ share }}% da atividade mensal
+                        </div>
+                    {% endif %}
+                    <div class="stat-label"><i class="bi bi-calendar-month me-1" aria-hidden="true"></i> Último Mês</div>
+                </div>
+                
+                <div class="stat-card" aria-label="Pontuação CVSS média das vulnerabilidades">
+                    <div class="stat-card-header">
+                        <div class="stat-icon stat-warning" aria-hidden="true" data-bs-toggle="tooltip" title="CVSS Médio">
+                            <i class="bi bi-speedometer2"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value">
+                        {% if avg_cvss_score is not none %}
+                            {{ "%.1f"|format(avg_cvss_score) }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </div>
+                    <div class="stat-label">
+                        <i class="bi bi-speedometer2 me-1" aria-hidden="true"></i> CVSS Médio
+                        {% if avg_cvss_score is not none %}
+                            {% set _cvss_class = 'cvss-low' %}
+                            {% set _cvss_label = 'Baixa' %}
+                            {% if avg_cvss_score >= 9.0 %}
+                                {% set _cvss_class = 'cvss-critical' %}
+                                {% set _cvss_label = 'Crítica' %}
+                            {% elif avg_cvss_score >= 7.0 %}
+                                {% set _cvss_class = 'cvss-high' %}
+                                {% set _cvss_label = 'Alta' %}
+                            {% elif avg_cvss_score >= 4.0 %}
+                                {% set _cvss_class = 'cvss-medium' %}
+                                {% set _cvss_label = 'Média' %}
+                            {% endif %}
+                            <span class="cvss-badge {{ _cvss_class }} ms-2" data-bs-toggle="tooltip" title="Severidade média baseada no CVSS">{{ _cvss_label }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="stat-card" aria-label="Quantidade de vulnerabilidades com patch disponível">
+                    <div class="stat-card-header">
+                        <div class="stat-icon stat-success" aria-hidden="true" data-bs-toggle="tooltip" title="Patches Disponíveis">
+                            <i class="bi bi-shield-check"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value">{{ patch_count }}</div>
+                    <div class="stat-label">
+                        <i class="bi bi-shield-check me-1" aria-hidden="true"></i> Patches Disponíveis
+                        {% if weekly_stats.weekly_count > 0 %}
+                            <span class="badge badge-soft-success ms-2" data-bs-toggle="tooltip" title="Percentual de CVEs com patch disponível">
+                                {{ (patch_count / weekly_stats.weekly_count * 100)|round|int }}%
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Charts Section -->
+        <section id="charts" class="mb-5 slide-in">
+            <h2 class="h4 mb-4">Análise Visual</h2>
+            
+            <div class="row g-4 mb-4">
+                <!-- Daily Distribution -->
+                <div class="col-12 col-lg-8">
+                    <div class="chart-card">
+                        <div class="chart-card-header">
+                            <h3>Distribuição Diária</h3>
+                            <p>Tendência de novas vulnerabilidades na última semana</p>
+                        </div>
+                        <div class="chart-card-body">
+                            <canvas id="dailyChart" data-daily='{{ weekly_stats.daily_distribution | tojson }}'></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- CVSS Distribution -->
+                <div class="col-12 col-lg-4">
+                    <div class="chart-card">
+                        <div class="chart-card-header">
+                            <h3>Distribuição CVSS</h3>
+                            <p>Por faixa de severidade</p>
+                        </div>
+                        <div class="chart-card-body">
+                            <canvas id="cvssChart"
+                                    data-cvss-all-severity='{{ cvss_all_severity | tojson }}'
+                                    data-cvss='{{ weekly_stats.cvss_distribution | tojson }}'
+                                    data-cvss-global='{{ weekly_cvss_all | tojson }}'
+                                    data-severity="{{ severity_display|lower }}"
+                                    aria-label="Gráfico de rosca da distribuição CVSS por severidade"
+                                    role="img"
+                                    {% if avg_cvss_score is not none %} data-cvss-score="{{ avg_cvss_score }}" data-cvss-severity="{{ severity_display|lower }}"{% endif %}></canvas>
+                        </div>
+                        <div class="chart-card-footer">
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle"></i>
+                                Fonte: <span id="cvssChartSource" class="chart-source-badge" aria-live="polite">Detectando...</span>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Top Products -->
+            <div class="chart-card">
+                <div class="chart-card-header">
+                    <h3>Top 10 Produtos Afetados</h3>
+                    <p class="mb-0">Produtos mais vulneráveis da severidade {{ severity_display }}</p>
+                </div>
+                <div class="chart-card-body">
+                    <canvas id="productsChart" data-products='{{ weekly_stats.top_products | tojson }}'></canvas>
+                </div>
+                <div class="chart-card-footer">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle"></i>
+                        Baseado em dados estruturados e análise de descrições
+                    </small>
+                </div>
+            </div>
+        </section>
+
+        <!-- Vulnerabilities Table Section -->
+        <section id="vulnerabilities" class="mb-5 fade-in">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="h4 mb-0">
+                    Detalhes das Vulnerabilidades
+                    <span class="badge bg-secondary ms-2">{{ vulnerabilities|length }}</span>
+                </h2>
+            </div>
+            
+            {% if vulnerabilities %}
+            <!-- Filters Card -->
+            <div class="filters-card">
+                <div class="quick-filters d-flex align-items-center gap-2 mb-2" aria-label="Filtros rápidos">
+                    <button type="button" class="btn btn-sm btn-outline-success quick-filter" data-patch="available" aria-pressed="false">
+                        <i class="bi bi-shield-check" aria-hidden="true"></i> Com patch
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary quick-filter" data-patch="pending" aria-pressed="false">
+                        <i class="bi bi-shield-exclamation" aria-hidden="true"></i> Sem patch
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-dark quick-filter" data-patch="all" aria-pressed="false">
+                        <i class="bi bi-funnel" aria-hidden="true"></i> Todos
+                    </button>
+                </div>
+                <div class="row g-3">
+                    <!-- Search -->
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <label for="tableSearch" class="filter-label" title="Buscar por CVE, vendor ou produto">
+                            <i class="bi bi-search"></i> Buscar
+                        </label>
+                        <input type="text" 
+                               id="tableSearch" 
+                               class="form-control" 
+                               placeholder="CVE-ID, Vendor ou Produto... ({{ severity_display }})"
+                               aria-label="Buscar vulnerabilidades {{ (severity_display|default('Desconhecida'))|lower }}">
+                    </div>
+                    
+                    <!-- Vendor Filter -->
+                    <div class="col-6 col-md-3 col-lg-2">
+                        <label for="vendorFilter" class="filter-label" title="Filtrar por fornecedor">
+                            <i class="bi bi-building"></i> Vendor
+                        </label>
+                        <select id="vendorFilter" class="form-select">
+                            <option value="all">Todos</option>
+                            {% set vendors = [] %}
+                            {% for vuln in vulnerabilities %}
+                                {% if vuln.nvd_vendors_data and vuln.nvd_vendors_data|length > 0 %}
+                                    {% set first_vendor = vuln.nvd_vendors_data[0] %}
+                                    {% set vendor_name = first_vendor if first_vendor is string else (first_vendor.name if first_vendor.name is defined else '') %}
+                                    {% if vendor_name and vendor_name not in vendors %}
+                                        {% set _ = vendors.append(vendor_name) %}
+                                        <option value="{{ vendor_name|lower }}">{{ vendor_name|title }}</option>
+                                    {% endif %}
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Patch Filter REMOVIDO -->
+                    
+                    <!-- Clear Filters -->
+                    <div class="col-12 col-md-12 col-lg-4 d-flex align-items-end justify-content-end">
+                        <button id="clearFiltersBtn" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Limpar filtros
+                        </button>
+                    </div>
+                </div>
+                <!-- CVSS Range (profissional) -->
+                <div class="row g-3 mt-1">
+                    <div class="col-6 col-md-3 col-lg-2">
+                        <label for="cvssMin" class="filter-label" title="Pontuação mínima CVSS (0.0 a 10.0)">
+                            <i class="bi bi-speedometer2"></i> CVSS Mín
+                        </label>
+                        <input id="cvssMin" type="number" class="form-control" min="0" max="10" step="0.1" placeholder="0.0" aria-label="Pontuação mínima CVSS">
+                    </div>
+                    <div class="col-6 col-md-3 col-lg-2">
+                        <label for="cvssMax" class="filter-label" title="Pontuação máxima CVSS (0.0 a 10.0)">
+                            <i class="bi bi-speedometer"></i> CVSS Máx
+                        </label>
+                        <input id="cvssMax" type="number" class="form-control" min="0" max="10" step="0.1" placeholder="10.0" aria-label="Pontuação máxima CVSS">
+                    </div>
+                </div>
+                <!-- Filtros ativos -->
+                <div id="activeFilters" class="active-filters d-none" aria-live="polite">
+                    <span class="filter-label"><i class="bi bi-filter"></i> Filtros ativos:</span>
+                    <div id="filterTags"></div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-section">
+                <div class="table-action-bar">
+                    <div class="action-left">
+                        <span class="text-muted">Mostrando <span id="showingCount">{{ vulnerabilities|length }}</span> de {{ vulnerabilities|length }}</span>
+                    </div>
+                    <div class="action-right d-flex gap-2">
+                        <button id="densityToggle" class="btn btn-light" aria-label="Alternar densidade da tabela" aria-pressed="false">
+                            <i class="bi bi-bar-chart-steps" aria-hidden="true"></i> Densidade
+                        </button>
+                        <button id="downloadCsvBtn" class="btn btn-light" aria-label="Exportar CSV">
+                            <i class="bi bi-filetype-csv"></i> Exportar CSV
+                        </button>
+                    </div>
+                </div>
+
+                <div id="vulnTable" class="table-responsive vuln-table">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="sortable" data-sort="cve" aria-sort="none">CVE-ID</th>
+                                <th scope="col">Descrição</th>
+                                <th scope="col" class="sortable" data-sort="vendor" aria-sort="none">Vendor</th>
+                                <th scope="col">Produto</th>
+                                <!-- Adicionada coluna CVSS -->
+                                <th scope="col" class="sortable" data-sort="cvss" aria-sort="none">CVSS</th>
+                                <th scope="col" class="sortable" data-sort="date" aria-sort="none">Publicado</th>
+                                <th scope="col">Patch</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for vuln in vulnerabilities %}
+                                {% set vendor_name = 'N/A' %}
+                                {% if vuln.nvd_vendors_data and vuln.nvd_vendors_data|length > 0 %}
+                                    {% set first_vendor = vuln.nvd_vendors_data[0] %}
+                                    {% set vendor_name = first_vendor if first_vendor is string else (first_vendor.name if first_vendor.name is defined else 'N/A') %}
+                                {% endif %}
+                                {% set patch_val = 'available' if vuln.patch_available else 'pending' %}
+                                {% set product_name = 'N/A' %}
+                                {% if vuln.nvd_products_data and vuln.nvd_products_data|length > 0 %}
+                                    {% set first_product = vuln.nvd_products_data[0] %}
+                                    {% set product_name = first_product if first_product is string else (first_product.name if first_product.name is defined else 'N/A') %}
+                                {% endif %}
+                                <tr data-cve="{{ vuln.cve_id }}" data-vendor="{{ vendor_name|lower }}" data-patch="{{ patch_val }}">
+                                    <td data-label="CVE ID">
+                                        <a class="cve-link" href="{{ url_for('vulnerability_api_legacy.get_vulnerability_api_legacy', cve_id=vuln.cve_id) }}" target="_blank" rel="noopener noreferrer">
+                                            {{ vuln.cve_id }}
+                                        </a>
+                                    </td>
+                                    <td class="description-cell" data-label="Descrição">
+                                        {{ vuln.description|default('N/A')|truncate(200) }}
+                                    </td>
+                                    <td data-label="Vendor">
+                                        <span class="text-truncate d-inline-block">{{ vendor_name|default('N/A') }}</span>
+                                    </td>
+                                    <td data-label="Produto">
+                                        <span class="text-truncate d-inline-block">{{ product_name|default('N/A') }}</span>
+                                    </td>
+                                    <!-- Nova célula CVSS para tornar filtros funcionais -->
+                                    <td data-label="CVSS">
+                                        {% if vuln.cvss_score %}
+                                            <span class="badge bg-info cvss-badge" aria-label="CVSS Score {{ '%.1f'|format(vuln.cvss_score) }}">{{ '%.1f'|format(vuln.cvss_score) }}</span>
+                                        {% else %}
+                                            <span class="text-muted" aria-label="CVSS Score não disponível">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td data-label="Publicado">
+                                        {% if vuln.published_date %}
+                                            <time datetime="{{ vuln.published_date.isoformat() }}">
+                                                {{ vuln.published_date.strftime('%d/%m/%Y') }}
+                                            </time>
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td data-label="Patch">
+                                        {% if vuln.patch_available %}
+                                            <span class="badge bg-success">Disponível</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Pendente</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State -->
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <i class="bi bi-emoji-frown"></i>
+                    </div>
+                    <h3>Nenhuma vulnerabilidade encontrada</h3>
+                    <p>Tente ajustar os filtros ou ver todas as vulnerabilidades da semana.</p>
+                    <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}" class="btn btn-primary">
+                        <i class="bi bi-arrow-left"></i> Voltar à lista
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination-section">
+                {{ render_pagination(pagination, 'vulnerability_ui.vulnerability_details_by_severity', severity) }}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+<script nonce="{{ nonce }}">
+  (function() {
+    const chips = document.querySelectorAll('.quick-filter');
+    const patchSelect = document.getElementById('patchFilter');
+    chips.forEach(chip => {
+      chip.addEventListener('click', function() {
+        if (!patchSelect) return;
+        const val = this.dataset.patch || 'all';
+        patchSelect.value = val;
+        // Visual: estado ativo
+        chips.forEach(c => c.classList.remove('active'));
+        this.classList.add('active');
+        // Aplicar filtro
+        if (window.vulnTable && typeof window.vulnTable.applyFilters === 'function') {
+          window.vulnTable.applyFilters();
+        }
+      });
+    });
+  })();
+</script>
