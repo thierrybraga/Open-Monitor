@@ -5,6 +5,8 @@ class DashboardCharts {
     constructor() {
         this.apiBase = '/api/v1';
         this.charts = {};
+        // Estado de preferências de vendors
+        this.selectedVendorIds = [];
         this.init();
     }
 
@@ -36,6 +38,69 @@ class DashboardCharts {
         } catch (error) {
             console.error('Failed to initialize dashboard charts:', error);
             this.showError('Failed to load dashboard charts');
+        }
+    }
+
+    // --- Helpers de vendor_ids (URL tem prioridade; fallback localStorage) ---
+    getVendorIdsFromUrl() {
+        try {
+            const params = new URLSearchParams(window.location.search || '');
+            const multi = params.getAll('vendor_ids');
+            let ids = [];
+            if (multi && multi.length) {
+                multi.forEach(v => {
+                    const parts = String(v).split(',');
+                    parts.forEach(p => {
+                        const n = parseInt(p.trim(), 10);
+                        if (!isNaN(n)) ids.push(n);
+                    });
+                });
+            }
+            const single = params.get('vendor');
+            if (single) {
+                const parts2 = String(single).split(',');
+                parts2.forEach(p => {
+                    const n = parseInt(p.trim(), 10);
+                    if (!isNaN(n)) ids.push(n);
+                });
+            }
+            ids = Array.from(new Set(ids)).sort((a, b) => a - b);
+            return ids;
+        } catch (_) {
+            return [];
+        }
+    }
+
+    getVendorIdsFromLocalStorage() {
+        try {
+            const raw = localStorage.getItem('vendorSelection.selectedVendorIds');
+            if (!raw) return [];
+            const arr = JSON.parse(raw);
+            if (!Array.isArray(arr)) return [];
+            const ids = [];
+            arr.forEach(v => {
+                const n = parseInt(String(v).trim(), 10);
+                if (!isNaN(n)) ids.push(n);
+            });
+            return Array.from(new Set(ids)).sort((a, b) => a - b);
+        } catch (_) {
+            return [];
+        }
+    }
+
+    buildVendorParam(prefix = '?') {
+        try {
+            const urlVendorIds = this.getVendorIdsFromUrl();
+            const effectiveIds = (urlVendorIds && urlVendorIds.length)
+                ? urlVendorIds
+                : (this.selectedVendorIds && this.selectedVendorIds.length
+                    ? this.selectedVendorIds
+                    : this.getVendorIdsFromLocalStorage());
+            return (effectiveIds && effectiveIds.length)
+                ? `${prefix}vendor_ids=${effectiveIds.join(',')}`
+                : '';
+        } catch (_) {
+            return '';
         }
     }
 
@@ -118,7 +183,8 @@ class DashboardCharts {
     async getSeverityData() {
         try {
             console.log('🔍 Buscando dados de severidade da API...');
-            const response = await fetch('/api/v1/dashboard/charts');
+            const vendorParam = this.buildVendorParam('?');
+            const response = await fetch(`/api/v1/dashboard/charts${vendorParam}`);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -179,7 +245,8 @@ class DashboardCharts {
 
     async getWeeklyTrendData() {
         try {
-            const response = await fetch('/api/v1/dashboard/charts');
+            const vendorParam = this.buildVendorParam('?');
+            const response = await fetch(`/api/v1/dashboard/charts${vendorParam}`);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -213,7 +280,8 @@ class DashboardCharts {
 
     async getTimelineData() {
         try {
-            const response = await fetch('/api/v1/dashboard/charts');
+            const vendorParam = this.buildVendorParam('?');
+            const response = await fetch(`/api/v1/dashboard/charts${vendorParam}`);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -235,7 +303,8 @@ class DashboardCharts {
 
     async getTopCVSSData() {
         try {
-            const response = await fetch('/api/v1/dashboard/charts');
+            const vendorParam = this.buildVendorParam('?');
+            const response = await fetch(`/api/v1/dashboard/charts${vendorParam}`);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }

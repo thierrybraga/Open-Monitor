@@ -45,6 +45,8 @@
   --font-size-2xl: clamp(1.5rem, 1.40rem + 0.60vw, 1.875rem);
   --font-size-3xl: clamp(1.875rem, 1.70rem + 0.80vw, 2.25rem);
   --font-size-4xl: clamp(2.25rem, 2.0rem + 1.0vw, 3rem);
+  /* Alias solicitado para consistência com tokens mencionados */
+  --font-size-xxl: var(--font-size-2xl);
 
   /* Alturas de linha */
   --line-height-base: 1.6; /* texto longo */

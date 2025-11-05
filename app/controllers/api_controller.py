@@ -1,6 +1,6 @@
 # controllers/api_controller.py
 
-from flask import Blueprint, jsonify, request, current_app, url_for
+from flask import Blueprint, jsonify, request, current_app, url_for, session
 from flask.wrappers import Response
 from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.exceptions import BadRequest, NotFound, InternalServerError
@@ -17,7 +17,7 @@ from app.services.vulnerability_service import VulnerabilityService
 from app.extensions import login_manager
 from typing import Any, Dict
 from datetime import datetime, timedelta
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, or_, cast, Text
 import requests
 from flask_login import current_user
 
@@ -231,6 +231,30 @@ def trigger_nvd_sync() -> Response:
 def _apply_filters(query, params: APIQueryForm) -> Any:
     if params.severity.data:
         query = query.filter_by(base_severity=params.severity.data)
+    # Filtro por catalog_tag (NVD Catalog Tag) mapeado para CPE part com fallback via JSON
+    try:
+        catalog_tag = (params.catalog_tag.data or '').strip().lower() if hasattr(params, 'catalog_tag') else ''
+        part_map = {
+            'application': 'a',
+            'operating_system': 'o',
+            'hardware': 'h',
+            # compatibilidade legada
+            'software': 'a',
+            'os': 'o'
+        }
+        selected_part = part_map.get(catalog_tag)
+        if selected_part:
+            from app.models.cve_part import CVEPart
+            part_subq = db.session.query(CVEPart.cve_id).filter(CVEPart.part == selected_part)
+            like_expr = f"%cpe:2.3:{selected_part}%"
+            query = query.filter(
+                or_(
+                    Vulnerability.cve_id.in_(part_subq),
+                    func.lower(cast(Vulnerability.nvd_cpe_configurations, Text)).like(like_expr)
+                )
+            )
+    except Exception as e:
+        current_app.logger.warning(f"Falha ao aplicar filtro catalog_tag: {e}")
     # Vendor filtering via CVEVendor -> Vendor relationship
     if params.vendor.data:
         try:
@@ -250,6 +274,29 @@ def _apply_filters(query, params: APIQueryForm) -> Any:
                 )
         except Exception as e:
             current_app.logger.warning(f"Falha ao aplicar filtro de vendor: {e}")
+    else:
+        # Apply user vendor preferences globally when no explicit vendor filter is provided
+        try:
+            if current_user.is_authenticated:
+                from app.models.sync_metadata import SyncMetadata
+                from app.models.cve_vendor import CVEVendor
+                key = f'user_vendor_preferences:{current_user.id}'
+                sm = db.session.query(SyncMetadata).filter_by(key=key).first()
+                vendor_ids: list[int] = []
+                if sm and sm.value:
+                    try:
+                        vendor_ids = [int(x) for x in sm.value.split(',') if x.strip().isdigit()]
+                    except Exception:
+                        vendor_ids = []
+                if vendor_ids:
+                    query = (
+                        query
+                        .join(CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id)
+                        .filter(CVEVendor.vendor_id.in_(vendor_ids))
+                        .distinct()
+                    )
+        except Exception as e:
+            current_app.logger.warning(f"Falha ao aplicar preferências globais de vendor: {e}")
     return query
 
 
@@ -334,6 +381,9 @@ def list_vendors() -> Response:
             offset = int(request.args.get('offset', 0))
         except Exception:
             offset = 0
+        # Validar e normalizar paginação básica
+        limit = min(max(1, limit), 100)
+        offset = max(0, offset)
         query = db.session.query(Vendor)
         if q:
             like = f"%{q}%"
@@ -368,22 +418,55 @@ def get_vendor_preferences() -> Response:
         current_app.logger.error('Erro ao buscar preferências de vendors', exc_info=e)
         return jsonify({ 'error': 'Erro ao buscar preferências' }), 500
 
-@api_v1_bp.route('/account/vendor-preferences', methods=['PUT'])
+@api_v1_bp.route('/account/vendor-preferences', methods=['PUT', 'POST'])
 def set_vendor_preferences() -> Response:
     """Persist a list of vendor IDs as the user's preferences."""
     if not current_user.is_authenticated:
         return jsonify({ 'error': 'Authentication required' }), 401
+    # Suportar payloads enviados via navigator.sendBeacon (POST com Blob)
     data = request.get_json(silent=True) or {}
+    if not data and request.method == 'POST':
+        try:
+            raw = request.get_data(as_text=True) or ''
+            import json as _json
+            data = _json.loads(raw) if raw else {}
+        except Exception:
+            data = {}
     raw_ids = data.get('vendor_ids', [])
     if not isinstance(raw_ids, list):
         raise BadRequest('vendor_ids must be a list')
-    # Sanitize to integers
+
+    # Sanitizar, deduplicar e validar limites
     vendor_ids: list[int] = []
     for v in raw_ids:
         try:
             vendor_ids.append(int(v))
         except Exception:
             continue
+    # Remover duplicados e ordenar para consistência
+    vendor_ids = sorted(set(vendor_ids))
+
+    # Limitar quantidade máxima para evitar payloads excessivos
+    MAX_PREFS = 100
+    if len(vendor_ids) > MAX_PREFS:
+        return jsonify({
+            'success': False,
+            'error': f'Número de vendors excede o máximo permitido ({MAX_PREFS})',
+            'max': MAX_PREFS
+        }), 400
+
+    # Validar que IDs existem
+    from app.models.vendor import Vendor
+    if vendor_ids:
+        existing = db.session.query(Vendor.id).filter(Vendor.id.in_(vendor_ids)).all()
+        existing_ids = {row.id for row in existing}
+        invalid_ids = [vid for vid in vendor_ids if vid not in existing_ids]
+        if invalid_ids:
+            return jsonify({
+                'success': False,
+                'error': 'IDs de vendor inválidos',
+                'invalid_ids': invalid_ids
+            }), 400
     key = f'user_vendor_preferences:{current_user.id}'
     value = ','.join(str(x) for x in vendor_ids)
     try:
@@ -398,11 +481,129 @@ def set_vendor_preferences() -> Response:
             sm.last_modified = now
             sm.sync_type = 'user_pref'
         db.session.commit()
+        # Para beacon POST, responder rapidamente
+        if request.method == 'POST':
+            return jsonify({ 'success': True }), 200
         return jsonify({ 'success': True, 'vendor_ids': vendor_ids }), 200
     except SQLAlchemyError as e:
         db.session.rollback()
         current_app.logger.error('Erro ao salvar preferências de vendors', exc_info=e)
         return jsonify({ 'success': False, 'error': 'Database error' }), 500
+
+
+# --- User Settings (per-user persistence) ---
+
+def _default_user_settings() -> Dict[str, Any]:
+    try:
+        lang = current_app.config.get('HTML_LANG', 'pt-BR')
+    except Exception:
+        lang = 'pt-BR'
+    return {
+        'general': {
+            'theme': 'auto',
+            'language': lang,
+            'timezone': 'UTC',
+        },
+        'security': {
+            'two_factor': False,
+            'login_notifications': False,
+            'session_timeout': 30,
+        },
+        'notifications': {
+            'email_notifications': True,
+            'vulnerability_alerts': True,
+            'report_notifications': True,
+        },
+        'reports': {
+            'default_format': 'pdf',
+            'auto_export': False,
+            'include_charts': True,
+        },
+    }
+
+
+@api_v1_bp.route('/account/user-settings', methods=['GET'])
+def get_user_settings() -> Response:
+    """
+    Retorna configurações persistidas do usuário autenticado.
+    """
+    try:
+        if not current_user.is_authenticated:
+            return jsonify({'success': False, 'error': 'Authentication required'}), 401
+        key = f'user_settings:{current_user.id}'
+        sm = db.session.query(SyncMetadata).filter_by(key=key).first()
+        settings = _default_user_settings()
+        if sm and sm.value:
+            try:
+                import json as _json
+                parsed = _json.loads(sm.value)
+                if isinstance(parsed, dict):
+                    settings = parsed
+            except Exception:
+                pass
+        return jsonify({'success': True, 'settings': settings}), 200
+    except Exception as e:
+        current_app.logger.error('Erro ao obter configurações do usuário', exc_info=e)
+        return jsonify({'success': False, 'error': 'Erro ao obter configurações'}), 500
+
+
+@api_v1_bp.route('/account/user-settings', methods=['POST', 'PUT'])
+def set_user_settings() -> Response:
+    """
+    Persiste configurações do usuário autenticado e atualiza sessão.
+    """
+    try:
+        if not current_user.is_authenticated:
+            return jsonify({'success': False, 'error': 'Authentication required'}), 401
+
+        payload = request.get_json(silent=True) or {}
+        if not isinstance(payload, dict):
+            raise BadRequest('Payload must be a JSON object')
+
+        defaults = _default_user_settings()
+        sanitized: Dict[str, Any] = {}
+        for section, defvals in defaults.items():
+            section_data = payload.get(section) if isinstance(payload.get(section), dict) else {}
+            merged = {**defvals, **section_data}
+            sanitized[section] = merged
+
+        key = f'user_settings:{current_user.id}'
+        sm = db.session.query(SyncMetadata).filter_by(key=key).first()
+        try:
+            import json as _json
+            serialized = _json.dumps(sanitized, ensure_ascii=False)
+        except Exception:
+            serialized = str(sanitized)
+
+        now = datetime.utcnow()
+        if sm:
+            sm.value = serialized
+            sm.status = 'active'
+            sm.sync_type = 'user_settings'
+            sm.last_modified = now
+        else:
+            sm = SyncMetadata(
+                key=key,
+                value=serialized,
+                status='active',
+                last_modified=now,
+                sync_type='user_settings'
+            )
+            db.session.add(sm)
+        db.session.commit()
+
+        try:
+            session['settings'] = sanitized
+        except Exception:
+            pass
+
+        return jsonify({'success': True}), 200
+    except BadRequest as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error('Erro ao salvar configurações do usuário', exc_info=e)
+        return jsonify({'success': False, 'error': 'Erro ao salvar configurações'}), 500
 
 
 # --- Endpoints RiskAssessment ---
@@ -466,7 +667,16 @@ def list_assets() -> Response:
 def create_asset() -> Response:
     """
     POST /api/v1/assets
-    JSON body: { name: str, ip_address: str, vendor?: str, vendor_id?: int }
+    JSON body: { 
+      name: str, 
+      ip_address: str, 
+      vendor?: str, 
+      vendor_id?: int,
+      rto_hours?: int,
+      rpo_hours?: int,
+      uptime_text?: str,
+      operational_cost_per_hour?: float
+    }
     """
     data = request.get_json(silent=False)
     name = data.get('name')
@@ -505,7 +715,33 @@ def create_asset() -> Response:
             except Exception:
                 owner_id = None
 
-            asset = Asset(name=name, ip_address=ip, vendor_id=vendor.id if vendor else None, owner_id=owner_id)
+            # Parse optional BIA fields
+            def _parse_int(v):
+                try:
+                    return int(v) if v is not None and str(v).strip() != '' else None
+                except Exception:
+                    return None
+            def _parse_float(v):
+                try:
+                    return float(v) if v is not None and str(v).strip() != '' else None
+                except Exception:
+                    return None
+
+            rto_hours = _parse_int(data.get('rto_hours'))
+            rpo_hours = _parse_int(data.get('rpo_hours'))
+            uptime_text = data.get('uptime_text')
+            operational_cost_per_hour = _parse_float(data.get('operational_cost_per_hour'))
+
+            asset = Asset(
+                name=name,
+                ip_address=ip,
+                vendor_id=vendor.id if vendor else None,
+                owner_id=owner_id,
+                rto_hours=rto_hours,
+                rpo_hours=rpo_hours,
+                uptime_text=uptime_text,
+                operational_cost_per_hour=operational_cost_per_hour,
+            )
             db.session.add(asset)
     except SQLAlchemyError:
         raise InternalServerError()
@@ -621,15 +857,82 @@ def get_dashboard_charts_data() -> Response:
     """
     try:
         from app.services.vulnerability_service import VulnerabilityService
+        # Imports adicionais para filtro por vendors
+        from sqlalchemy import union
+        from app.models.cve_vendor import CVEVendor
+        from app.models.cve_product import CVEProduct
+        from app.models.product import Product
+        from app.models.sync_metadata import SyncMetadata
+        from flask_login import current_user
         
         # Instanciar o serviço com a sessão do banco
         vuln_service = VulnerabilityService(db.session)
         
+        # Determinar vendor_ids selecionados (URL sobrescreve preferências do usuário)
+        raw_vendor_ids_list = request.args.getlist('vendor_ids')
+        raw_vendor_ids_param = request.args.get('vendor_ids', '')
+        selected_vendor_ids: list[int] = []
+        if raw_vendor_ids_list:
+            for item in raw_vendor_ids_list:
+                for p in str(item).split(','):
+                    p = p.strip()
+                    if p.isdigit():
+                        selected_vendor_ids.append(int(p))
+        elif raw_vendor_ids_param:
+            for p in str(raw_vendor_ids_param).split(','):
+                p = p.strip()
+                if p.isdigit():
+                    selected_vendor_ids.append(int(p))
+        else:
+            try:
+                if current_user.is_authenticated:
+                    key = f'user_vendor_preferences:{current_user.id}'
+                    pref = db.session.query(SyncMetadata).filter_by(key=key).first()
+                    if pref and pref.value:
+                        selected_vendor_ids = [int(x) for x in pref.value.split(',') if x.strip().isdigit()]
+            except Exception:
+                selected_vendor_ids = []
+        # Normalizar lista única
+        selected_vendor_ids = sorted(list(set(selected_vendor_ids)))
+        
+        # Construir consulta base com filtro por vendors quando aplicável
+        base_query = db.session.query(Vulnerability)
+        if selected_vendor_ids:
+            try:
+                cves_por_vendor = (
+                    db.session
+                    .query(CVEVendor.cve_id)
+                    .filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+                )
+                cves_por_produto_vendor = (
+                    db.session
+                    .query(CVEProduct.cve_id)
+                    .join(Product, Product.id == CVEProduct.product_id)
+                    .filter(Product.vendor_id.in_(selected_vendor_ids))
+                )
+                cves_unificados_sq = union(cves_por_vendor, cves_por_produto_vendor).subquery()
+                base_query = base_query.filter(
+                    Vulnerability.cve_id.in_(db.session.query(cves_unificados_sq.c.cve_id))
+                ).distinct()
+            except Exception:
+                # Fallback simples: apenas por CVEVendor
+                base_query = (
+                    base_query
+                    .join(CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id)
+                    .filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+                    .distinct()
+                )
+        
         # Distribuição por severidade
-        severity_data = db.session.query(
-            Vulnerability.base_severity,
-            func.count(Vulnerability.cve_id).label('count')
-        ).group_by(Vulnerability.base_severity).all()
+        severity_data = (
+            base_query
+            .with_entities(
+                Vulnerability.base_severity,
+                func.count(Vulnerability.cve_id).label('count')
+            )
+            .group_by(Vulnerability.base_severity)
+            .all()
+        )
         
         severity_distribution = {
             'labels': [item[0] or 'Unknown' for item in severity_data],
@@ -641,14 +944,17 @@ def get_dashboard_charts_data() -> Response:
         start_date = end_date - timedelta(weeks=8)
         
         # Para SQLite, usar strftime para agrupar por semana
-        weekly_data = db.session.query(
-            func.strftime('%Y-%W', Vulnerability.published_date).label('week'),
-            func.count(Vulnerability.cve_id).label('count')
-        ).filter(
-            Vulnerability.published_date >= start_date
-        ).group_by(
-            func.strftime('%Y-%W', Vulnerability.published_date)
-        ).order_by('week').all()
+        weekly_data = (
+            base_query
+            .with_entities(
+                func.strftime('%Y-%W', Vulnerability.published_date).label('week'),
+                func.count(Vulnerability.cve_id).label('count')
+            )
+            .filter(Vulnerability.published_date >= start_date)
+            .group_by(func.strftime('%Y-%W', Vulnerability.published_date))
+            .order_by('week')
+            .all()
+        )
         
         weekly_trend = {
             'labels': [f'Semana {item[0]}' if item[0] else 'Unknown' for item in weekly_data],
@@ -659,14 +965,17 @@ def get_dashboard_charts_data() -> Response:
         timeline_start = end_date - timedelta(days=30)
         
         # Para SQLite, usar strftime para agrupar por data
-        timeline_data = db.session.query(
-            func.strftime('%Y-%m-%d', Vulnerability.published_date).label('date'),
-            func.count(Vulnerability.cve_id).label('count')
-        ).filter(
-            Vulnerability.published_date >= timeline_start
-        ).group_by(
-            func.strftime('%Y-%m-%d', Vulnerability.published_date)
-        ).order_by('date').all()
+        timeline_data = (
+            base_query
+            .with_entities(
+                func.strftime('%Y-%m-%d', Vulnerability.published_date).label('date'),
+                func.count(Vulnerability.cve_id).label('count')
+            )
+            .filter(Vulnerability.published_date >= timeline_start)
+            .group_by(func.strftime('%Y-%m-%d', Vulnerability.published_date))
+            .order_by('date')
+            .all()
+        )
         
         vulnerability_timeline = {
             'labels': [item[0] if item[0] else 'Unknown' for item in timeline_data],
@@ -674,14 +983,17 @@ def get_dashboard_charts_data() -> Response:
         }
         
         # Top 5 CVSS Scores
-        top_cvss_data = db.session.query(
-            Vulnerability.cve_id,
-            Vulnerability.cvss_score
-        ).filter(
-            Vulnerability.cvss_score.isnot(None)
-        ).order_by(
-            desc(Vulnerability.cvss_score)
-        ).limit(5).all()
+        top_cvss_data = (
+            base_query
+            .with_entities(
+                Vulnerability.cve_id,
+                Vulnerability.cvss_score
+            )
+            .filter(Vulnerability.cvss_score.isnot(None))
+            .order_by(desc(Vulnerability.cvss_score))
+            .limit(5)
+            .all()
+        )
         
         top_cvss = {
             'labels': [item[0] for item in top_cvss_data],
@@ -689,7 +1001,7 @@ def get_dashboard_charts_data() -> Response:
         }
         
         # Estatísticas gerais
-        stats = vuln_service.get_dashboard_counts()
+        stats = vuln_service.get_dashboard_counts(selected_vendor_ids or None)
         
         return jsonify({
             'severity_distribution': severity_distribution,

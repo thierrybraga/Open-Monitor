@@ -1,0 +1,376 @@
+/* ============================================
+   Open-Monitor Reports Stylesheet
+   Tipografia, espaçamento e cores padronizadas
+   ============================================ */
+
+/* Header do relatório */
+.report-header {
+  background: linear-gradient(
+    135deg,
+    var(--primary-500, #3b82f6) 0%,
+    var(--primary-600, #2563eb) 100%
+  );
+  color: var(--surface-0, #ffffff);
+  padding: 2rem 0;
+  margin-bottom: 2rem;
+  border-radius: 0.5rem;
+}
+
+/* Badges */
+.report-badge {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.report-badge-neutral {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: var(--surface-0, #ffffff);
+}
+
+.report-badge.impact-high { background-color: var(--color-danger, #dc3545); color: var(--surface-0, #ffffff); }
+.report-badge.impact-medium { background-color: var(--color-warning, #ffc107); color: var(--neutral-900, #111827); }
+.report-badge.impact-low { background-color: var(--color-success, #28a745); color: var(--surface-0, #ffffff); }
+.report-badge.urgency-high { background-color: var(--color-danger, #dc3545); color: var(--surface-0, #ffffff); }
+.report-badge.urgency-medium { background-color: var(--color-info, #17a2b8); color: var(--surface-0, #ffffff); }
+.report-badge.urgency-low { background-color: var(--color-secondary, #6c757d); color: var(--surface-0, #ffffff); }
+
+/* Cartões de seção */
+.section-card {
+  border: 1px solid var(--surface-200, #e5e7eb);
+  box-shadow: var(--shadow-sm, 0 2px 10px rgba(0, 0, 0, 0.08));
+  border-radius: 0.75rem;
+  margin-bottom: 2rem;
+  overflow: hidden;
+  background: var(--surface-0, #ffffff);
+}
+
+.section-header {
+  background: var(--surface-50, #f9fafb);
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--surface-200, #e5e7eb);
+}
+
+.section-content { padding: 2rem; }
+
+/* Gráficos */
+.chart-container {
+  position: relative;
+  height: 400px;
+  margin: 1rem 0;
+  background: var(--glass-bg-light, rgba(255, 255, 255, 0.85));
+  border: 1px solid var(--glass-border-light, rgba(226, 232, 240, 0.8));
+  border-radius: var(--radius-modern-md, 12px);
+  padding: 1rem;
+  min-height: 300px;
+}
+
+.chart-container.small { height: 300px; min-height: 200px; }
+.chart-container.large { height: 500px; min-height: 400px; }
+
+.chart-placeholder {
+  position: absolute;
+  inset: 0;
+  background: var(--glass-bg-light, rgba(255, 255, 255, 0.85));
+  border-radius: var(--radius-modern-md, 12px);
+  transition: opacity 0.3s ease;
+}
+
+.chart-placeholder.fade-out { opacity: 0; pointer-events: none; }
+
+/* Métricas */
+.metric-card {
+  background: var(--surface-0, #ffffff);
+  border: 1px solid var(--surface-200, #e5e7eb);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  text-align: center;
+  margin-bottom: 1rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metric-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm, 0 4px 12px rgba(0,0,0,0.08)); }
+.metric-value { font-size: var(--font-size-2xl, 2rem); font-weight: var(--font-weight-bold, 700); margin-bottom: 0.5rem; }
+.metric-label { color: var(--text-muted, #6c757d); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* Vulnerabilidades */
+.vulnerability-item {
+  border-left: 4px solid var(--surface-200, #e5e7eb);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background-color: var(--surface-50, #f9fafb);
+  border-radius: 0 0.375rem 0.375rem 0;
+}
+
+.vulnerability-item.critical { border-left-color: var(--color-danger, #dc3545); }
+.vulnerability-item.high { border-left-color: var(--color-warning, #ffc107); }
+.vulnerability-item.medium { border-left-color: var(--color-info, #17a2b8); }
+.vulnerability-item.low { border-left-color: var(--color-success, #28a745); }
+
+/* Análise com IA */
+.ai-analysis {
+  background: var(--primary-50, #eff6ff);
+  border: 1px solid var(--primary-200, #bfdbfe);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  margin: 1rem 0;
+}
+
+.ai-analysis .ai-icon { color: var(--color-primary, #1976d2); font-size: 1.5rem; margin-right: 0.5rem; }
+
+/* Timeline */
+.timeline-item { position: relative; padding-left: 2rem; margin-bottom: 1.5rem; }
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.5rem;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--color-primary, #007bff);
+}
+
+.timeline-item::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 1.2rem;
+  width: 2px;
+  height: calc(100% + 0.5rem);
+  background-color: var(--surface-300, #cbd5e1);
+}
+
+.timeline-item:last-child::after { display: none; }
+
+/* Toolbar de exportação */
+.export-toolbar {
+  background-color: var(--surface-50, #f9fafb);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 2rem;
+}
+
+/* Sumário flutuante */
+.floating-toc {
+  position: fixed;
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%);
+  background: var(--surface-0, #ffffff);
+  border: 1px solid var(--surface-200, #e5e7eb);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  box-shadow: var(--shadow-sm, 0 4px 12px rgba(0, 0, 0, 0.08));
+  max-width: 250px;
+  z-index: 1000;
+}
+
+.floating-toc ul { list-style: none; padding: 0; margin: 0; }
+.floating-toc li { margin-bottom: 0.5rem; }
+
+.floating-toc a {
+  color: var(--content-medium, #6c757d);
+  text-decoration: none;
+  font-size: 0.875rem;
+  display: block;
+  padding: 0.25rem 0;
+  border-left: 2px solid transparent;
+  padding-left: 0.5rem;
+}
+
+.floating-toc a:hover,
+.floating-toc a.active {
+  color: var(--color-primary, #007bff);
+  border-left-color: var(--color-primary, #007bff);
+}
+
+/* Estados */
+.status-processing {
+  background: linear-gradient(45deg, var(--color-warning, #ffc107), var(--color-info, #17a2b8));
+  background-size: 400% 400%;
+  animation: gradient 2s ease infinite;
+}
+
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Impressão */
+.print-only { display: none; }
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  .section-card { break-inside: avoid; }
+  .chart-container { height: 300px !important; }
+}
+
+/* ============================ */
+/* Estilos Técnicos (Technical) */
+/* ============================ */
+
+.technical-header {
+  background: var(--surface-elevated, #ffffff);
+  color: var(--content-strong, #111827);
+  border: 1px solid var(--border-color, rgba(17, 24, 39, 0.1));
+  border-radius: var(--radius-lg, 0.75rem);
+  padding: var(--space-5, 1.25rem) var(--space-6, 1.5rem);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.05));
+}
+
+.technical-section {
+  background: var(--surface-card, #ffffff);
+  border: 1px solid var(--border-color, rgba(17, 24, 39, 0.08));
+  border-radius: var(--radius-md, 0.5rem);
+  padding: var(--space-5, 1.25rem);
+}
+
+.code-block {
+  background: var(--surface-subtle, #0f172a);
+  color: var(--content-on-inverted, #e5e7eb);
+  border-radius: var(--radius-md, 0.5rem);
+  padding: var(--space-4, 1rem);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+  font-size: var(--font-size-sm, 0.875rem);
+  overflow-x: auto;
+}
+
+.vulnerability-detail {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4, 1rem);
+}
+
+.vulnerability-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vulnerability-content {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4, 1rem);
+}
+
+.cvss-vector,
+.exploit-info,
+.mitigation-step {
+  background: var(--surface-muted, #f9fafb);
+  border: 1px solid var(--border-color, rgba(17, 24, 39, 0.06));
+  border-radius: var(--radius-md, 0.5rem);
+  padding: var(--space-4, 1rem);
+}
+
+.technical-metric {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2, 0.5rem);
+}
+
+.technical-metric .metric-value {
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--content-strong, #111827);
+}
+
+.technical-metric .metric-label {
+  color: var(--content-medium, #374151);
+}
+
+.asset-detail,
+.network-diagram,
+.attack-vector,
+.remediation-timeline {
+  background: var(--surface-muted, #f9fafb);
+  border: 1px solid var(--border-color, rgba(17, 24, 39, 0.06));
+  border-radius: var(--radius-md, 0.5rem);
+  padding: var(--space-4, 1rem);
+}
+
+.remediation-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3, 0.75rem);
+}
+
+.technical-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm, 0.875rem);
+}
+
+.technical-table th,
+.technical-table td {
+  border: 1px solid var(--border-color, rgba(17, 24, 39, 0.08));
+  padding: var(--space-3, 0.75rem);
+}
+
+.technical-table th {
+  background: var(--surface-muted, #f9fafb);
+  color: var(--content-strong, #111827);
+  text-align: left;
+}
+
+/* Severidades – usa tokens semânticos */
+.severity-critical { color: var(--color-danger-600, #dc2626); }
+.severity-high { color: var(--color-danger-500, #ef4444); }
+.severity-medium { color: var(--color-warning-600, #d97706); }
+.severity-low { color: var(--color-success-600, #16a34a); }
+.severity-info { color: var(--color-primary-600, #2563eb); }
+
+/* Seções colapsáveis */
+.collapsible-section {
+  border: 1px solid var(--border-color, rgba(17, 24, 39, 0.08));
+  border-radius: var(--radius-md, 0.5rem);
+  overflow: hidden;
+}
+
+.collapsible-header {
+  background: var(--surface-muted, #f9fafb);
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.collapsible-content {
+  padding: var(--space-4, 1rem);
+}
+
+.toggle-icon {
+  color: var(--content-medium, #374151);
+}
+
+/* Responsividade */
+@media (max-width: 1024px) {
+  .vulnerability-content {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .vulnerability-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Impressão */
+@media print {
+  .technical-header {
+    box-shadow: none;
+    border-color: rgba(17, 24, 39, 0.15);
+  }
+  .code-block {
+    color: #111827;
+    background: #ffffff;
+    border: 1px solid rgba(17, 24, 39, 0.15);
+  }
+}

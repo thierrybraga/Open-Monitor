@@ -1,0 +1,311 @@
+{# Newsletter Notification Settings Section (Partial) #}
+<section class="newsletter-card" aria-labelledby="notification-settings-heading">
+  <div class="card-header text-center">
+    <h2 class="card-title mb-0" id="notification-settings-heading">
+      <i class="bi bi-gear me-2 fs-4"></i>
+      Notification Settings
+    </h2>
+  </div>
+  <div class="card-body p-4">
+    <div class="alert alert-info d-flex align-items-center mb-4" role="alert">
+      <i class="bi bi-info-circle me-3 fs-5"></i>
+      <div>
+        <strong>Configure your preferences:</strong> Choose how you want to receive cybersecurity updates. Some methods require additional setup.
+      </div>
+    </div>
+
+    <form id="notification-form" method="POST" action="{{ form_action or url_for('main.newsletter') }}" novalidate>
+      {% if form_type %}
+      <input type="hidden" name="form_type" value="{{ form_type }}">
+      {% endif %}
+      {{ form.hidden_tag() }}
+
+      <div class="row g-4">
+        {# Email Method #}
+        <div class="col-md-6">
+          <div class="notification-method mb-4 {% if user_preferences and user_preferences.email_enabled %}enabled{% endif %}" data-method="email">
+            <div class="row align-items-center mb-3">
+              <div class="col-lg-8">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-envelope-fill fs-3 text-primary me-3" aria-hidden="true"></i>
+                  <div>
+                    <h6 class="mb-1 fw-semibold">Email Notifications</h6>
+                    <small class="text-muted">Receive reports directly in your inbox</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-lg-4 text-end">
+                <div class="form-check form-switch d-inline-block">
+                  {{ form.email_notifications(id='emailToggle', class='form-check-input') }}
+                  <label class="form-check-label visually-hidden" for="emailToggle">Enable email notifications</label>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <div class="row">
+                <div class="col-lg-8">
+                  <label for="email" class="form-label required mb-2">
+                    <i class="bi bi-at me-1"></i>
+                    Email Address
+                  </label>
+                  {{ form.email(class="form-control form-control-lg", placeholder="your.email@example.com", id="email") }}
+                  <div class="form-text mt-2">We'll never share your email with anyone else.</div>
+                  <div class="invalid-feedback" id="email-feedback">Please provide a valid email address.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {# Telegram Method #}
+        <div class="col-md-6">
+          <div class="notification-method disabled mb-4 {% if user_preferences and user_preferences.telegram_enabled %}enabled{% endif %}" data-method="telegram">
+            <div class="row align-items-center mb-3">
+              <div class="col-lg-6">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-telegram fs-3 text-info me-3" aria-hidden="true"></i>
+                  <div>
+                    <h6 class="mb-1 fw-semibold">Telegram Notifications</h6>
+                    <small class="text-muted">Instant messaging alerts</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-lg-6 text-end">
+                <div class="d-flex align-items-center justify-content-end">
+                  <span class="badge bg-warning text-dark me-3">Coming Soon</span>
+                  <div class="form-check form-switch d-inline-block">
+                    <input class="form-check-input" type="checkbox" role="switch" id="telegramToggle" name="telegram_enabled" disabled aria-describedby="telegramToggleHelp">
+                    <label class="form-check-label visually-hidden" for="telegramToggle">Enable Telegram notifications (coming soon)</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="telegram" class="form-label">
+                <i class="bi bi-person-badge me-1"></i>
+                Telegram Handle
+              </label>
+              <input type="text" id="telegram" name="telegram" class="form-control" placeholder="@YourTelegram" disabled value="{{ user_preferences.telegram_handle if user_preferences else '' }}">
+              <div class="invalid-feedback" id="telegram-feedback"></div>
+            </div>
+          </div>
+        </div>
+
+        {# WhatsApp Method #}
+        <div class="col-md-6">
+          <div class="notification-method disabled">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-whatsapp fs-4 text-success me-3"></i>
+                <div>
+                  <h6 class="mb-0">WhatsApp</h6>
+                  <small class="text-muted">Mobile messaging</small>
+                </div>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge coming-soon">Coming Soon</span>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" role="switch" id="whatsappToggle" name="whatsappToggle" disabled>
+                  <label class="form-check-label" for="whatsappToggle"></label>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="whatsapp" class="form-label">
+                <i class="bi bi-phone me-1"></i>
+                WhatsApp Number
+              </label>
+              <input type="tel" id="whatsapp" name="whatsapp" class="form-control" placeholder="+1 (555) 123-4567" disabled value="{{ user_preferences.whatsapp_number if user_preferences else '' }}">
+              <div class="invalid-feedback" id="whatsapp-feedback"></div>
+            </div>
+          </div>
+        </div>
+
+        {# Phone Method #}
+        <div class="col-md-6">
+          <div class="notification-method disabled">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-telephone-fill fs-4 text-warning me-3"></i>
+                <div>
+                  <h6 class="mb-0">Voice Call</h6>
+                  <small class="text-muted">Emergency alerts</small>
+                </div>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge coming-soon">Coming Soon</span>
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" role="switch" id="phoneToggle" name="phoneToggle" disabled>
+                  <label class="form-check-label" for="phoneToggle"></label>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="phone" class="form-label">
+                <i class="bi bi-telephone me-1"></i>
+                Phone Number
+              </label>
+              <input type="tel" id="phone" name="phone" class="form-control" placeholder="+1 (555) 123-4567" disabled value="{{ user_preferences.phone_number if user_preferences else '' }}">
+              <div class="invalid-feedback" id="phone-feedback"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions mt-5">
+        <div class="row">
+          <div class="col-12">
+            <div class="d-flex flex-column flex-md-row gap-3 justify-content-center align-items-center">
+              <button type="submit" class="btn btn-primary btn-lg px-4" id="submit-btn">
+                <i class="bi bi-envelope-plus me-2"></i>
+                <span class="btn-text">Subscribe to Newsletter</span>
+                <span class="btn-loading d-none">
+                  <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                  Saving...
+                </span>
+              </button>
+              <button type="button" class="btn btn-outline-secondary btn-lg px-4" id="reset-btn">
+                <i class="bi bi-arrow-clockwise me-2"></i>
+                Reset
+              </button>
+              <a href="{{ url_for('main.newsletter_unsubscribe') }}" class="btn btn-outline-warning btn-lg px-4">
+                <i class="bi bi-envelope-x me-2"></i>
+                Unsubscribe
+              </a>
+            </div>
+            <div class="text-center mt-3">
+              <span id="success-message" class="text-success fw-medium d-none" aria-live="polite">
+                <i class="bi bi-check-circle-fill me-1"></i>
+                Newsletter subscription successful!
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+
+    {# Saved Preferences Display Section - Visibility controlled by JS based on backend data #}
+    {# Current Settings Summary #}
+    {% if user_preferences %}
+    <div id="saved-preferences" class="notification-card mt-4" aria-labelledby="current-settings-heading">
+      <div class="card-header">
+        <h3 class="card-title" id="current-settings-heading">
+          <i class="bi bi-check-circle me-2"></i>
+          Current Settings
+        </h3>
+      </div>
+      <div class="card-body">
+        <div class="preferences-summary">
+          {% if user_preferences.email %}
+          <div class="preference-item">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-envelope-fill text-primary me-3"></i>
+                <div>
+                  <h6 class="mb-0">Email</h6>
+                  <small class="text-muted">{{ user_preferences.email }}</small>
+                </div>
+              </div>
+              <div class="status-badge">
+                {% if user_preferences.email_enabled %}
+                <span class="badge status-enabled">
+                  <i class="bi bi-check-circle-fill me-1"></i>
+                  Active
+                </span>
+                {% else %}
+                <span class="badge status-disabled">
+                  <i class="bi bi-x-circle-fill me-1"></i>
+                  Inactive
+                </span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+          {% if user_preferences.telegram_handle %}
+          <div class="preference-item">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-telegram text-info me-3"></i>
+                <div>
+                  <h6 class="mb-0">Telegram</h6>
+                  <small class="text-muted">{{ user_preferences.telegram_handle }}</small>
+                </div>
+              </div>
+              <div class="status-badge">
+                {% if user_preferences.telegram_enabled %}
+                <span class="badge status-enabled">
+                  <i class="bi bi-check-circle-fill me-1"></i>
+                  Active
+                </span>
+                {% else %}
+                <span class="badge status-disabled">
+                  <i class="bi bi-x-circle-fill me-1"></i>
+                  Inactive
+                </span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+          {% if user_preferences.whatsapp_number %}
+          <div class="preference-item">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-whatsapp text-success me-3"></i>
+                <div>
+                  <h6 class="mb-0">WhatsApp</h6>
+                  <small class="text-muted">{{ user_preferences.whatsapp_number }}</small>
+                </div>
+              </div>
+              <div class="status-badge">
+                {% if user_preferences.whatsapp_enabled %}
+                <span class="badge status-enabled">
+                  <i class="bi bi-check-circle-fill me-1"></i>
+                  Active
+                </span>
+                {% else %}
+                <span class="badge status-disabled">
+                  <i class="bi bi-x-circle-fill me-1"></i>
+                  Inactive
+                </span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+          {% if user_preferences.phone_number %}
+          <div class="preference-item">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-telephone-fill text-warning me-3"></i>
+                <div>
+                  <h6 class="mb-0">Phone</h6>
+                  <small class="text-muted">{{ user_preferences.phone_number }}</small>
+                </div>
+              </div>
+              <div class="status-badge">
+                {% if user_preferences.phone_enabled %}
+                <span class="badge status-enabled">
+                  <i class="bi bi-check-circle-fill me-1"></i>
+                  Active
+                </span>
+                {% else %}
+                <span class="badge status-disabled">
+                  <i class="bi bi-x-circle-fill me-1"></i>
+                  Inactive
+                </span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>

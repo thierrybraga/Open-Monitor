@@ -7,8 +7,8 @@
 const profileForm = document.getElementById('profile-form');
 const passwordForm = document.getElementById('password-form');
 const resetBtn = document.getElementById('reset-btn');
-const profilePictureInput = document.getElementById('profile_picture');
-const profilePicturePreview = document.querySelector('.profile-picture img');
+const profilePictureInput = document.getElementById('profile-pic');
+const profilePicturePreview = document.getElementById('profile-pic-preview');
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeFormReset();
     initializeTooltips();
     initializeAjaxSubmissions();
+    initializePasswordCancel();
 });
 
 /**
@@ -315,6 +316,11 @@ function initializeTabSwitching() {
     // Handle hash changes
     window.addEventListener('hashchange', function() {
         const hash = window.location.hash;
+        // Fallback: se hash for #vendors, redireciona para /vulnerabilities/vendors
+        if (hash === '#vendors') {
+            window.location.href = '/vulnerabilities/vendors';
+            return;
+        }
         if (hash) {
             const tabButton = document.querySelector(`[data-bs-target="${hash}"]`);
             if (tabButton) {
@@ -326,6 +332,11 @@ function initializeTabSwitching() {
     
     // Set initial tab based on hash
     const initialHash = window.location.hash;
+    // Fallback inicial: se hash for #vendors, redireciona para /vulnerabilities/vendors
+    if (initialHash === '#vendors') {
+        window.location.href = '/vulnerabilities/vendors';
+        return;
+    }
     if (initialHash) {
         const tabButton = document.querySelector(`[data-bs-target="${initialHash}"]`);
         if (tabButton) {
@@ -438,9 +449,8 @@ document.addEventListener('DOMContentLoaded', initializeTabSwitching);
     const rows = filtered.map(a => {
       const ip = a.ip_address || '-';
       const vendor = a.vendor_name || '-';
-      // Placeholders for fields not present in model
-      const uptime = '-';
-      const feature = '-';
+      const uptime = a.uptime_text || '-';
+      const feature = a.name || '-';
       return `
         <tr data-asset-id="${a.id}">
           <td><input type="checkbox" class="row-select" aria-label="Selecionar ativo ${a.id}"></td>
@@ -488,7 +498,15 @@ document.addEventListener('DOMContentLoaded', initializeTabSwitching);
     if (pageSizeSel) pageSizeSel.addEventListener('change', () => loadAssets(1));
 
     // Filtering
-    if (searchInput) searchInput.addEventListener('input', renderAssets);
+    function debounce(fn, wait) {
+      let t;
+      return function() {
+        const ctx = this, args = arguments;
+        clearTimeout(t);
+        t = setTimeout(() => fn.apply(ctx, args), wait);
+      };
+    }
+    if (searchInput) searchInput.addEventListener('input', debounce(renderAssets, 150));
 
     // Select all / deselect all
     function setAllSelections(checked) {
@@ -525,119 +543,12 @@ document.addEventListener('DOMContentLoaded', initializeTabSwitching);
 
   // Initialize bindings
   bindEvents();
+  // Expose asset loader for post-submit refresh
+  try { window.accountLoadAssets = loadAssets; } catch (_) {}
 })();
 
 // --- Vendors Tab Logic ---
-(() => {
-  const listEl = document.getElementById('vendor-list');
-  const searchEl = document.getElementById('vendor-search-input');
-  const saveBtn = document.getElementById('save-vendor-preferences');
-  const clearBtn = document.getElementById('clear-vendor-selection');
-  const countEl = document.getElementById('vendor-selected-count');
-
-  let allVendors = [];
-  let selected = new Set();
-  let initialized = false;
-
-  async function fetchVendors() {
-    const res = await fetch('/api/v1/vendors', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    return data.data || [];
-  }
-  async function fetchPrefs() {
-    const res = await fetch('/api/v1/account/vendor-preferences', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
-    if (!res.ok) return [];
-    const data = await res.json();
-    const ids = Array.isArray(data.vendor_ids) ? data.vendor_ids : [];
-    return ids;
-  }
-  function updateCount() {
-    if (countEl) countEl.textContent = selected.size.toString();
-  }
-  function render() {
-    if (!listEl) return;
-    const filter = (searchEl?.value || '').trim().toLowerCase();
-    const items = allVendors.filter(v => !filter || (v.name || '').toLowerCase().includes(filter));
-    if (!items.length) {
-      listEl.innerHTML = `<li class="list-group-item text-muted">No vendors found</li>`;
-      updateCount();
-      return;
-    }
-    listEl.innerHTML = items.map(v => {
-      const checked = selected.has(Number(v.id)) ? 'checked' : '';
-      const safeName = (v.name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      return `
-        <li class="list-group-item d-flex align-items-center justify-content-between">
-          <div class="form-check">
-            <input class="form-check-input vendor-check" type="checkbox" value="${v.id}" id="vendor-${v.id}" ${checked}>
-            <label class="form-check-label" for="vendor-${v.id}">${safeName}</label>
-          </div>
-        </li>
-      `;
-    }).join('');
-    updateCount();
-  }
-  function bind() {
-    if (searchEl) searchEl.addEventListener('input', render);
-    if (listEl) listEl.addEventListener('change', (e) => {
-      const target = e.target;
-      if (target && target.classList.contains('vendor-check')) {
-        const id = parseInt(target.value, 10);
-        if (target.checked) selected.add(id);
-        else selected.delete(id);
-        updateCount();
-      }
-    });
-    if (clearBtn) clearBtn.addEventListener('click', () => {
-      selected.clear();
-      render();
-    });
-    if (saveBtn) saveBtn.addEventListener('click', async () => {
-      try {
-        const body = JSON.stringify({ vendor_ids: Array.from(selected) });
-        const res = await fetch('/api/v1/account/vendor-preferences', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          credentials: 'same-origin',
-          body
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        showAlert('Vendor preferences saved', 'success');
-      } catch (err) {
-        console.error('[account.js] Save vendor preferences failed:', err);
-        showAlert('Failed to save vendor preferences', 'danger');
-      }
-    });
-
-    // Lazy init when the tab is shown
-    const vendorsTabBtn = document.getElementById('vendors-tab');
-    if (vendorsTabBtn) vendorsTabBtn.addEventListener('shown.bs.tab', init);
-
-    // If the tab is already active on load, init immediately
-    document.addEventListener('DOMContentLoaded', () => {
-      const pane = document.getElementById('vendors');
-      if (pane && pane.classList.contains('show') && pane.classList.contains('active')) {
-        init();
-      }
-    });
-  }
-  async function init() {
-    if (initialized) return;
-    initialized = true;
-    try {
-      const [vendors, prefIds] = await Promise.all([fetchVendors(), fetchPrefs()]);
-      allVendors = vendors;
-      selected = new Set(prefIds.map(Number));
-      render();
-    } catch (err) {
-      console.error('[account.js] Load vendors/prefs failed:', err);
-      if (listEl) listEl.innerHTML = `<li class="list-group-item text-danger">Failed to load vendors</li>`;
-    }
-  }
-
-  bind();
-})();
+// Vendors Tab Logic removida: navegação direta para /vulnerabilities/vendors
 
 function initializeAjaxSubmissions() {
   // Profile form AJAX submission
@@ -670,6 +581,39 @@ function initializeAjaxSubmissions() {
       }
       const formData = new FormData(passwordForm);
       submitPasswordForm(formData);
+    });
+  }
+
+  // Asset form AJAX submission
+  const assetForm = document.getElementById('asset-form');
+  if (assetForm) {
+    assetForm.addEventListener('submit', function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      const isValid = assetForm.checkValidity();
+      assetForm.classList.add('was-validated');
+      if (!isValid) {
+        showAlert('Por favor, corrija os erros de validação do ativo.', 'warning');
+        return;
+      }
+      // Build JSON payload from fields
+      const name = document.getElementById('asset-name')?.value?.trim() || '';
+      const ip = document.getElementById('asset-ip')?.value?.trim() || '';
+      const vendor = document.getElementById('asset-vendor')?.value?.trim() || '';
+      const uptimeText = document.getElementById('asset-uptime')?.value?.trim() || '';
+      const rtoVal = document.getElementById('asset-rto')?.value;
+      const rpoVal = document.getElementById('asset-rpo')?.value;
+      const costVal = document.getElementById('asset-cost')?.value;
+      const payload = {
+        name,
+        ip_address: ip,
+        vendor: vendor || undefined,
+        uptime_text: uptimeText || undefined,
+        rto_hours: rtoVal !== '' && rtoVal != null ? parseInt(rtoVal, 10) : undefined,
+        rpo_hours: rpoVal !== '' && rpoVal != null ? parseInt(rpoVal, 10) : undefined,
+        operational_cost_per_hour: costVal !== '' && costVal != null ? parseFloat(costVal) : undefined
+      };
+      submitAssetForm(payload, assetForm);
     });
   }
 }
@@ -716,5 +660,66 @@ function submitPasswordForm(formData) {
   .catch(error => {
     console.error('Error:', error);
     showAlert('An error occurred while changing your password', 'error');
+  });
+}
+
+/**
+ * Initialize password form cancel button without inline handlers (CSP-safe)
+ */
+function initializePasswordCancel() {
+    const cancelBtn = document.getElementById('cancel-password-btn');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function() {
+            const form = cancelBtn.closest('form');
+            if (form) {
+                form.reset();
+                form.classList.remove('was-validated');
+            }
+        });
+    }
+}
+
+/**
+ * Handle AJAX form submission for asset creation
+ */
+function submitAssetForm(jsonPayload, assetForm) {
+  fetch('/api/v1/assets', {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    },
+    credentials: 'same-origin',
+    body: JSON.stringify(jsonPayload)
+  })
+  .then(async (response) => {
+    const contentType = response.headers.get('content-type') || '';
+    if (!response.ok) {
+      const errText = await response.text();
+      showAlert('Falha ao salvar ativo: ' + (errText || 'Erro desconhecido'), 'error');
+      return;
+    }
+    if (contentType.includes('application/json')) {
+      const data = await response.json();
+      showAlert('Ativo salvo com sucesso!', 'success');
+    } else {
+      showAlert('Ativo salvo com sucesso!', 'success');
+    }
+    // Close modal and reset form
+    try {
+      const modalEl = document.getElementById('asset-modal');
+      if (modalEl) {
+        const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+        modal.hide();
+      }
+      assetForm?.reset();
+      assetForm?.classList.remove('was-validated');
+    } catch (_) {}
+    // Reload assets table
+    try { window.accountLoadAssets?.(1); } catch (_) {}
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    showAlert('Ocorreu um erro ao salvar o ativo', 'error');
   });
 }

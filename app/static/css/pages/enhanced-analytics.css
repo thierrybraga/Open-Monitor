@@ -299,6 +299,8 @@
 .trend-up { color: #dc3545; }
 .trend-down { color: #28a745; }
 .trend-stable { color: #6c757d; }
+/* Normalização para token semântico */
+.trend-stable { color: var(--content-medium, #6c757d); }
 
 /* CVSS Score Display */
 .cvss-score {
@@ -310,12 +312,12 @@
 .cvss-primary {
     font-weight: 600;
     font-size: 0.9rem;
-    color: #495057;
+    color: var(--content-strong, #495057);
 }
 
 .cvss-range {
     font-size: 0.7rem;
-    color: #6c757d;
+    color: var(--content-medium, #6c757d);
     margin-top: 0.125rem;
 }
 
@@ -497,11 +499,12 @@
 .metric-primary {
     font-weight: 600;
     font-size: 0.9rem;
+    color: var(--content-strong, #495057);
 }
 
 .metric-secondary {
     font-size: 0.75rem;
-    color: #6c757d;
+    color: var(--content-medium, #6c757d);
     margin-top: 0.125rem;
 }
 
@@ -785,7 +788,7 @@
 .cvss-score {
     font-weight: 700;
     font-size: 1rem;
-    color: #495057;
+    color: var(--content-strong, #495057);
 }
 
 .cvss-range {
@@ -803,7 +806,7 @@
 }
 
 .recent-count-badge {
-    background: linear-gradient(135deg, #17a2b8, #138496);
+    background: linear-gradient(135deg, var(--info-500, #17a2b8), var(--info-700, #138496));
     color: white;
     padding: 0.375rem 0.75rem;
     border-radius: 0.5rem;
@@ -816,7 +819,7 @@
 
 .recent-percentage {
     font-size: 0.7rem;
-    color: #17a2b8;
+    color: var(--info-600, #17a2b8);
     font-weight: 500;
 }
 

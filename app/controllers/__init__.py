@@ -21,6 +21,7 @@ from app.controllers.vulnerability_controller import vuln_ui_bp, vuln_api_bp, vu
 
 # Importação do Blueprint do analytics_controller
 from app.controllers.analytics_controller import analytics_api_bp
+from app.controllers.insights_controller import insights_api_bp
 
 # Importação do Blueprint do newsletter_admin_controller
 from app.controllers.newsletter_admin_controller import newsletter_admin_bp
@@ -43,6 +44,7 @@ BLUEPRINTS: List[Blueprint] = [
     vuln_api_legacy_bp,
     api_v1_bp,
     analytics_api_bp,
+    insights_api_bp,
     newsletter_admin_bp,
     chat_bp,
     report_bp,

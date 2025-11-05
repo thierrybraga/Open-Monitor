@@ -135,7 +135,8 @@ class NVDScheduler:
             "NVD_RATE_LIMIT": getattr(self.app.config, 'NVD_RATE_LIMIT', (2, 1)),
             "NVD_CACHE_DIR": getattr(self.app.config, 'NVD_CACHE_DIR', "cache"),
             "NVD_REQUEST_TIMEOUT": getattr(self.app.config, 'NVD_REQUEST_TIMEOUT', 30),
-            "NVD_USER_AGENT": getattr(self.app.config, 'NVD_USER_AGENT', "Sec4all.co NVD Fetcher")
+            "NVD_USER_AGENT": getattr(self.app.config, 'NVD_USER_AGENT', "Sec4all.co NVD Fetcher"),
+            "NVD_MAX_WINDOW_DAYS": getattr(self.app.config, 'NVD_MAX_WINDOW_DAYS', 120)
         }
         
         # Validar configurações essenciais

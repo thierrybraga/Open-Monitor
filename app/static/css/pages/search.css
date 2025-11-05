@@ -46,22 +46,22 @@
 
 /* ===== Search Container ===== */
 .search-container {
-  max-width: 1400px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: var(--space-md);
 }
 
 /* ===== Page Header ===== */
 .page-header {
-  margin-bottom: var(--space-lg);
+  margin-bottom: var(--space-md);
 }
 
 .page-header-content {
-  padding: var(--space-lg) 0;
+  padding: var(--space-md) 0;
 }
 
 .page-title {
-  font-size: 2rem;
+  font-size: 1.75rem;
   font-weight: 700;
   color: var(--neutral-700);
   margin-bottom: var(--space-sm);
@@ -77,21 +77,19 @@
 
 /* ===== Search Card ===== */
 .search-card {
-  background: var(--glass-bg-light);
-  border: 1px solid var(--glass-border-light);
-  border-radius: var(--radius-modern-lg);
-  backdrop-filter: var(--glass-blur-light);
-  box-shadow: var(--shadow-soft-lg);
+  background: var(--surface-0);
+  border: 1px solid var(--surface-200);
+  border-radius: var(--radius-modern-md);
 }
 
 .search-card .card-header {
   background: transparent;
-  border-bottom: 1px solid var(--glass-border-light);
-  padding: var(--space-md);
+  border-bottom: 1px solid var(--surface-200);
+  padding: var(--space-sm) var(--space-md);
 }
 
 .search-card .card-title {
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--neutral-700);
   margin: 0;
@@ -101,19 +99,14 @@
 
 /* ===== Statistics Cards ===== */
 .stat-card {
-  background: var(--glass-bg-light);
-  border: 1px solid var(--glass-border-light);
-  border-radius: var(--radius-modern-lg);
-  backdrop-filter: var(--glass-blur-light);
-  transition: var(--transition-soft-normal);
+  background: transparent;
+  border: 1px solid var(--surface-200);
+  border-radius: var(--radius-modern-md);
+  transition: none;
   cursor: default;
 }
 
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-soft-lg);
-  border-color: var(--primary-200);
-}
+.stat-card:hover { /* efeito hover removido para minimalismo */ }
 
 .stat-card i {
   opacity: 0.8;
@@ -185,11 +178,6 @@
 }
 
 /* ===== Search Buttons ===== */
-.input-group-append {
-  display: flex;
-  gap: 0.5rem;
-  padding: 0.25rem;
-}
 
 #search-btn,
 #clear-form {
@@ -335,41 +323,7 @@
   color: var(--neutral-700);
 }
 
-/* ===== Quick Examples ===== */
-.quick-examples {
-  background: var(--glass-bg-medium);
-  border-radius: var(--radius-modern-md);
-  padding: var(--space-md);
-  border: 1px solid var(--glass-border-light);
-  backdrop-filter: var(--glass-blur-light);
-}
-
-.quick-examples h6 {
-  color: var(--neutral-700);
-  font-size: 0.875rem;
-  font-weight: 600;
-  margin-bottom: var(--space-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
-}
-
-.example-btn {
-  width: 100%;
-  text-align: left;
-  padding: 0.625rem var(--space-md);
-  border-radius: var(--radius-modern-sm);
-  transition: var(--transition-soft-fast);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
-}
-
-.example-btn:hover {
-  transform: translateX(4px);
-  background: var(--primary-50);
-  border-color: var(--primary-300);
-}
+/* Removidos: estilos de exemplos rápidos e botões de exemplo */
 
 /* ===== Recent Searches ===== */
 .recent-searches {
@@ -460,26 +414,20 @@
 .summary-card,
 .map-card,
 .table-card {
-  background: var(--glass-bg-light);
-  border: 1px solid var(--glass-border-light);
-  border-radius: var(--radius-modern-lg);
-  backdrop-filter: var(--glass-blur-light);
-  box-shadow: var(--shadow-soft-lg);
+  background: var(--surface-0);
+  border: 1px solid var(--surface-200);
+  border-radius: var(--radius-modern-md);
   overflow: hidden;
 }
 
 .metric-card {
-  background: var(--surface-0);
+  background: transparent;
   border: 1px solid var(--surface-200);
   border-radius: var(--radius-modern-md);
-  transition: var(--transition-soft-normal);
+  transition: none;
 }
 
-.metric-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-soft-lg);
-  border-color: var(--primary-200);
-}
+.metric-card:hover { /* efeito hover removido */ }
 
 /* ===== Map Container ===== */
 .map-container,
@@ -682,16 +630,7 @@
     font-size: 1.5rem;
   }
   
-  .input-group-append {
-    flex-direction: column;
-    width: 100%;
-  }
-  
-  #search-btn,
-  #clear-form {
-    width: 100%;
-    justify-content: center;
-  }
+  /* Removido: layout responsivo para input-group-append */
   
   .map-container,
   #map {
@@ -718,7 +657,6 @@
 }
 
 @media (max-width: 576px) {
-  .quick-examples,
   .recent-searches {
     margin-top: var(--space-sm);
   }
@@ -727,10 +665,7 @@
     font-size: 1rem;
   }
   
-  .example-btn {
-    font-size: 0.85rem;
-    padding: 0.5rem 0.75rem;
-  }
+  /* Removido: responsivo de .example-btn */
 }
 
 /* ===== Accessibility ===== */

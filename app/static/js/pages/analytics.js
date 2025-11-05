@@ -21,6 +21,9 @@ class AnalyticsDashboard {
         this.perPage = 10;
         this.currentSort = { field: 'total_cves', direction: 'desc' };
         this.currentFilters = { severity: '', risk: '', search: '' };
+        // Estado de preferências de vendors
+        this.selectedVendorIds = [];
+        this.isAuthenticated = false;
         this.originalProductsData = [];
         this.filteredProductsData = [];
         // CVE filtering and sorting
@@ -40,6 +43,24 @@ class AnalyticsDashboard {
         this.isLoadingProducts = false;
         this.isLoadingCWEs = false;
         this.isLoadingCVEs = false;
+        // Fallback: garantir que fetchWithRetry esteja disponível
+        if (typeof this.fetchWithRetry !== 'function') {
+            if (typeof window !== 'undefined' && typeof window.fetchWithRetry === 'function') {
+                this.fetchWithRetry = window.fetchWithRetry.bind(this);
+            } else {
+                this.fetchWithRetry = async (url, options = {}) => fetch(url, options);
+            }
+        }
+        // Feature flags configuráveis para comportamento sem vendors
+        const featuresFromWindow = (typeof window !== 'undefined' && window.__analyticsFeatures) ? window.__analyticsFeatures : {};
+        this.features = Object.assign({
+            // Carregar CWEs globalmente quando não há vendors selecionados
+            allowGlobalCWEs: true,
+            // Carregar Latest CVEs globalmente quando não há vendors selecionados
+            allowGlobalLatestCVEs: true,
+            // Carregar métricas de Overview globalmente quando não há vendors selecionados
+            allowGlobalOverview: true
+        }, featuresFromWindow);
         this.init();
     }
 
@@ -47,43 +68,243 @@ class AnalyticsDashboard {
         try {
             // Wait a bit to ensure DOM is fully ready
             await new Promise(resolve => setTimeout(resolve, 100));
+            // Buscar preferências de vendors antes de carregar dados
+            await this.fetchVendorPreferences();
+
+            // Fallback: se não houver preferências salvas, tentar obter da URL ou do localStorage
+            if (!this.selectedVendorIds || this.selectedVendorIds.length === 0) {
+                const fromUrl = this.getVendorIdsFromUrl();
+                const fromLocal = this.getVendorIdsFromLocalStorage();
+                const fallbackIds = (fromUrl && fromUrl.length ? fromUrl : fromLocal);
+                if (fallbackIds && fallbackIds.length) {
+                    this.selectedVendorIds = fallbackIds;
+                    // Persistir no backend para que os endpoints de analytics apliquem o filtro
+                    await this.persistVendorPreferences(this.selectedVendorIds);
+                    // Aviso de sincronização automática
+                    if (typeof window.safeNotify === 'function') {
+                        window.safeNotify('success', 'Preferências', 'Preferências de vendor sincronizadas automaticamente.', 2500);
+                    }
+                }
+            }
+            if (!this.selectedVendorIds || this.selectedVendorIds.length === 0) {
+                this.showVendorNotice('Nenhum vendor selecionado. Vá em Conta → Preferências de Vendor e selecione pelo menos um vendor para visualizar os dados.');
+            } else {
+                this.hideVendorNotice();
+            }
             
             // Initialize pagination controls
             this.initializeProductsPagination();
             this.initializeCWEsPagination();
             this.initializeCVEsPagination();
             
-            // Load overview data first
-            await this.loadOverviewData();
-            
-            // Load table data
-            await this.loadTopProducts();
-            await this.loadTopCWEs(1, 10, true);
-            await this.loadLatestCVEs();
-            
-            // Load and create charts
-            await this.loadCharts();
+            // Load overview data quando houver vendors selecionados OU se permitido globalmente
+            if ((this.selectedVendorIds && this.selectedVendorIds.length > 0) || this.features.allowGlobalOverview) {
+                await this.loadOverviewData();
+            }
+
+            // Carregar CWEs (tabela) quando houver vendors ou flag global ativa
+            if ((this.selectedVendorIds && this.selectedVendorIds.length > 0) || this.features.allowGlobalCWEs) {
+                await this.loadTopCWEs(1, 10, true);
+            }
+
+            // Carregar Top Products apenas quando houver vendors selecionados
+            // Otimização: lazy load da tabela Top Products quando entrar na viewport
+            // Evita custo inicial no carregamento da página
+            // A tabela será carregada quando seu container for visível
+            // Carregar Latest CVEs quando houver vendors ou flag global ativa
+            if ((this.selectedVendorIds && this.selectedVendorIds.length > 0) || this.features.allowGlobalLatestCVEs) {
+                await this.loadLatestCVEs();
+            }
+
+            // Garantir Chart.js e carregar todos os gráficos iniciais
+            if (typeof Chart === 'undefined') {
+                await this.loadChartJS();
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            // Carregar todos os gráficos assim que Chart.js estiver disponível
+            if (typeof Chart !== 'undefined') {
+                await this.loadCharts();
+            }
+            // Otimização: lazy load de gráficos pesados (ex.: Product Chart)
+            // Em vez de carregar todos os gráficos imediatamente, configurar observadores
+            this.setupLazyLoadObservers();
             
             // Setup event listeners
             this.setupEventListeners();
             
             console.log('Analytics dashboard initialized successfully');
         } catch (error) {
+            const msg = String(error && (error.message || error)).toLowerCase();
+            const isAbort = (error && error.name === 'AbortError') || msg.includes('abort');
+            const isTransientFetchFail = (error instanceof TypeError) && /failed to fetch/i.test(String(error.message || ''));
+            if (isAbort || isTransientFetchFail) {
+                return;
+            }
             console.error('Failed to initialize analytics dashboard:', error);
             this.showError('Failed to load analytics data');
         }
     }
 
+    async fetchVendorPreferences() {
+        try {
+            const resp = await fetch('/api/v1/account/vendor-preferences', { credentials: 'include' });
+            if (!resp.ok) {
+                throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+            }
+            const pref = await resp.json();
+            this.selectedVendorIds = Array.isArray(pref.vendor_ids) ? pref.vendor_ids : [];
+            this.isAuthenticated = !!pref.authenticated;
+            console.log('Vendor preferences loaded:', this.selectedVendorIds);
+            return pref;
+        } catch (e) {
+            console.warn('Failed to fetch vendor preferences:', e);
+            this.selectedVendorIds = [];
+            this.isAuthenticated = false;
+        }
+    }
+
+    // Obtém vendor_ids da query string (suporta vendor_ids=1,2,3 e múltiplos vendor_ids)
+    getVendorIdsFromUrl() {
+        try {
+            const params = new URLSearchParams(window.location.search || '');
+            const multi = params.getAll('vendor_ids');
+            let ids = [];
+            if (multi && multi.length) {
+                multi.forEach(v => {
+                    const parts = String(v).split(',');
+                    parts.forEach(p => {
+                        const n = parseInt(p.trim(), 10);
+                        if (!isNaN(n)) ids.push(n);
+                    });
+                });
+            }
+            // Suporte também a parâmetro singular 'vendor'
+            const vendorParam = params.get('vendor');
+            if (vendorParam) {
+                const parts2 = String(vendorParam).split(',');
+                parts2.forEach(p => {
+                    const n = parseInt(p.trim(), 10);
+                    if (!isNaN(n)) ids.push(n);
+                });
+            }
+            // Deduplicar e ordenar
+            ids = Array.from(new Set(ids)).sort((a, b) => a - b);
+            return ids;
+        } catch (_) {
+            return [];
+        }
+    }
+
+    // Obtém vendor_ids salvos no localStorage pela página de seleção de vendors
+    getVendorIdsFromLocalStorage() {
+        try {
+            const raw = localStorage.getItem('vendorSelection.selectedVendorIds');
+            if (!raw) return [];
+            const arr = JSON.parse(raw);
+            if (!Array.isArray(arr)) return [];
+            const ids = [];
+            arr.forEach(v => {
+                const n = parseInt(String(v).trim(), 10);
+                if (!isNaN(n)) ids.push(n);
+            });
+            return Array.from(new Set(ids)).sort((a, b) => a - b);
+        } catch (_) {
+            return [];
+        }
+    }
+
+    // Constrói vendor_ids priorizando URL, com prefixo configurável ('?' ou '&')
+    buildVendorParam(prefix = '?') {
+        try {
+            const urlVendorIds = this.getVendorIdsFromUrl();
+            const effectiveIds = (urlVendorIds && urlVendorIds.length)
+                ? urlVendorIds
+                : (this.selectedVendorIds || []);
+            return (effectiveIds && effectiveIds.length)
+                ? `${prefix}vendor_ids=${effectiveIds.join(',')}`
+                : '';
+        } catch (_) {
+            return '';
+        }
+    }
+
+    // Persiste vendor_ids no backend para alinhar filtros dos endpoints
+    async persistVendorPreferences(ids) {
+        try {
+            if (!ids || !ids.length) return;
+            // Evitar ruído de logs e chamadas desnecessárias quando não autenticado
+            if (!this.isAuthenticated) {
+                console.debug('Skipping vendor preferences persistence: user not authenticated');
+                return;
+            }
+            await fetch('/api/v1/account/vendor-preferences', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ vendor_ids: ids })
+            });
+            console.log('Vendor preferences persisted from fallback:', ids);
+        } catch (e) {
+            console.warn('Failed to persist vendor preferences:', e);
+        }
+    }
+
+    showVendorNotice(message) {
+        const container = document.querySelector('.analytics-dashboard');
+        if (!container) return;
+        let notice = document.getElementById('vendor-pref-notice');
+        if (!notice) {
+            notice = document.createElement('div');
+            notice.id = 'vendor-pref-notice';
+            notice.className = 'alert alert-warning';
+            notice.setAttribute('role', 'alert');
+            container.insertBefore(notice, container.firstChild);
+        }
+        notice.textContent = message;
+    }
+
+    hideVendorNotice() {
+        const notice = document.getElementById('vendor-pref-notice');
+        if (notice) notice.remove();
+    }
+
     async loadOverviewData() {
         try {
-            const response = await fetch(`${this.apiBase}/overview`);
+            const vendorParam = this.buildVendorParam('?');
+            // Cache cliente curto em sessionStorage para evitar chamadas repetidas
+            try {
+                const cacheKey = `analytics:overview${vendorParam}`;
+                const cachedRaw = sessionStorage.getItem(cacheKey);
+                if (cachedRaw) {
+                    const cached = JSON.parse(cachedRaw);
+                    if (cached && cached.ts && (Date.now() - cached.ts) < 120000 && cached.data) {
+                        this.updateOverviewMetrics(cached.data);
+                        return;
+                    }
+                }
+            } catch (_) {}
+            const response = await this.fetchWithRetry(`${this.apiBase}/overview${vendorParam}`, { credentials: 'include' }, 2, 300);
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
             const data = await response.json();
             this.updateOverviewMetrics(data);
+            // Salvar em cache de sessão
+            try {
+                const cacheKey = `analytics:overview${vendorParam}`;
+                sessionStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data }));
+            } catch (_) {}
         } catch (error) {
+            // Ignore fetch aborts caused by navigation transitions
+            const msg = String(error && (error.message || error)).toLowerCase();
+            if (error && (error.name === 'AbortError' || msg.includes('abort'))) {
+                return;
+            }
+            const isTransientFetchFail = (error instanceof TypeError) && /failed to fetch/i.test(String(error.message || ''));
+            if (isTransientFetchFail) {
+                return;
+            }
             console.error('Error loading overview data:', error);
             throw error;
         }
@@ -129,8 +350,35 @@ class AnalyticsDashboard {
             // Sempre fazer requisição para o servidor com paginação correta
             this.showLoading(true);
             
-            const url = `${this.apiBase}/details/top_products?page=${page}&per_page=${perPage}`;
-            const response = await fetch(url);
+            // Priorizar vendor_ids da URL para permitir escopo temporário na página
+            const urlVendorIds = this.getVendorIdsFromUrl();
+            const vendorIdsForRequest = (urlVendorIds && urlVendorIds.length)
+                ? urlVendorIds
+                : (this.selectedVendorIds || []);
+            const vendorParam = vendorIdsForRequest.length
+                ? `&vendor_ids=${vendorIdsForRequest.join(',')}`
+                : '';
+            // Cache cliente (sessionStorage) por vendor/page/perPage
+            try {
+                if (!refresh) {
+                    const cacheKey = `analytics:top_products:${vendorParam}:p${page}:pp${perPage}`;
+                    const cachedRaw = sessionStorage.getItem(cacheKey);
+                    if (cachedRaw) {
+                        const cached = JSON.parse(cachedRaw);
+                        if (cached && cached.ts && (Date.now() - cached.ts) < 120000 && cached.data && cached.pagination) {
+                            this.currentProductsData = cached.data || [];
+                            this.populateProductTable(this.currentProductsData);
+                            this.originalProductsData = this.currentProductsData.slice();
+                            this.applyFiltersAndSort();
+                            this.updateProductsPagination(cached.pagination);
+                            this.showLoading(false);
+                            return;
+                        }
+                    }
+                }
+            } catch (_) {}
+            const url = `${this.apiBase}/details/top_products?page=${page}&per_page=${perPage}${vendorParam}`;
+            const response = await this.fetchWithRetry(url, { credentials: 'include' }, 2, 300);
             
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -141,19 +389,93 @@ class AnalyticsDashboard {
             // Atualizar dados e tabela
             this.currentProductsData = result.data || [];
             this.populateProductTable(this.currentProductsData);
+            // Definir dados originais para que filtros e busca funcionem
+            this.originalProductsData = this.currentProductsData.slice();
+            // Aplicar filtros/ordenação locais com base nos controles do usuário
+            this.applyFiltersAndSort();
             
             // Atualizar controles de paginação
             if (result.pagination) {
                 this.updateProductsPagination(result.pagination);
             }
+            // Salvar em cache de sessão
+            try {
+                const cacheKey = `analytics:top_products:${vendorParam}:p${page}:pp${perPage}`;
+                sessionStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: this.currentProductsData, pagination: result.pagination || null }));
+            } catch (_) {}
             
             this.showLoading(false);
         } catch (error) {
+            // Ignore fetch aborts caused by navigation transitions
+            const msg = String(error && (error.message || error)).toLowerCase();
+            if (error && (error.name === 'AbortError' || msg.includes('abort'))) {
+                this.showLoading(false);
+                return;
+            }
+            const isTransientFetchFail = (error instanceof TypeError) && /failed to fetch/i.test(String(error.message || ''));
+            if (isTransientFetchFail) {
+                this.showLoading(false);
+                return;
+            }
             console.error('Error loading top products:', error);
             this.showTableError('product-table-body', 'Failed to load products data');
             this.showLoading(false);
         } finally {
             this.isLoadingProducts = false;
+        }
+    }
+
+    // Lazy loading: carregar gráficos e tabela pesada quando entram na viewport
+    setupLazyLoadObservers() {
+        try {
+            // Product Chart
+            const productCanvas = document.getElementById('productChart');
+            if (productCanvas && !this._productChartLoadedOnce) {
+                const chartObserver = new IntersectionObserver(async (entries, observer) => {
+                    entries.forEach(async entry => {
+                        if (entry.isIntersecting && !this._productChartLoadedOnce) {
+                            this._productChartLoadedOnce = true;
+                            observer.disconnect();
+                            try {
+                                if (typeof Chart === 'undefined') {
+                                    await this.loadChartJS();
+                                    await new Promise(r => setTimeout(r, 300));
+                                }
+                                if (typeof Chart !== 'undefined') {
+                                    await this.loadProductChart(Chart);
+                                }
+                            } catch (e) {
+                                console.warn('Lazy load product chart failed:', e);
+                            }
+                        }
+                    });
+                }, { root: null, rootMargin: '0px', threshold: 0.2 });
+                chartObserver.observe(productCanvas);
+            }
+
+            // Top Products table section
+            const tableBody = document.getElementById('product-table-body');
+            const tableContainer = tableBody ? (tableBody.closest('.table-card') || tableBody.closest('section') || tableBody) : null;
+            // Remover dependência de vendors para registrar o observer.
+            // O endpoint suporta retorno global; quando vendors forem selecionados, o filtro será aplicado via URL.
+            if (tableContainer && !this._productsLoadedOnce) {
+                const tableObserver = new IntersectionObserver(async (entries, observer) => {
+                    entries.forEach(async entry => {
+                        if (entry.isIntersecting && !this._productsLoadedOnce) {
+                            this._productsLoadedOnce = true;
+                            observer.disconnect();
+                            try {
+                                await this.loadTopProducts(this.currentProductsPage || this.currentPage || 1, this.currentProductsPerPage || this.perPage || 10, false);
+                            } catch (e) {
+                                console.warn('Lazy load top products failed:', e);
+                            }
+                        }
+                    });
+                }, { root: null, rootMargin: '0px', threshold: 0.15 });
+                tableObserver.observe(tableContainer);
+            }
+        } catch (e) {
+            console.warn('setupLazyLoadObservers failed, falling back to eager load:', e);
         }
     }
 
@@ -199,14 +521,22 @@ class AnalyticsDashboard {
             };
             
             const patchInfo = getPatchStatusInfo(patchPercentage);
+
+            // Build link to vulnerabilities list filtered by product (and current vendor_ids when available)
+            const productName = String(product.product || 'Unknown');
+            const vendorParam = this.buildVendorParam('?');
+            const sep = vendorParam ? '&' : '?';
+            const productHref = `/vulnerabilities/${vendorParam}${sep}product=${encodeURIComponent(productName)}`;
             
             return `
                 <tr>
                     <td>
                         <div class="d-flex flex-column">
-                            <strong title="Nome original: ${this.escapeHtml(product.product_original || product.product || 'Unknown')}">
-                                ${this.escapeHtml(product.product || 'Unknown')}
-                            </strong>
+                            <a href="${productHref}" class="text-decoration-none" aria-label="Ver CVEs do produto ${this.escapeHtml(product.product || 'Unknown')}">
+                                <strong title="Nome original: ${this.escapeHtml(product.product_original || product.product || 'Unknown')}">
+                                    ${this.escapeHtml(product.product || 'Unknown')}
+                                </strong>
+                            </a>
                             ${product.product_category && product.product_category !== 'Software' ? 
                                 `<span class="badge bg-secondary mt-1" style="font-size: 0.7em;">${this.escapeHtml(product.product_category)}</span>` : 
                                 ''
@@ -359,31 +689,59 @@ class AnalyticsDashboard {
 
     async loadTopCWEs(page = 1, perPage = 10, refresh = false) {
         try {
-            const response = await fetch(`${this.apiBase}/details/top_cwes?page=${page}&per_page=${perPage}`);
+            const vendorParam = this.buildVendorParam('&');
+            // Build query params with pagination, filters and sorting
+            const params = new URLSearchParams();
+            params.set('page', String(page));
+            params.set('per_page', String(perPage));
+            // Filters
+            if (this.currentCWEFilters?.severity) params.set('severity', this.currentCWEFilters.severity);
+            if (this.currentCWEFilters?.risk) params.set('risk', String(this.currentCWEFilters.risk));
+            if (this.currentCWEFilters?.search) params.set('search', this.currentCWEFilters.search);
+            // Sorting
+            if (this.currentCWESort?.field) params.set('sort_by', this.currentCWESort.field);
+            if (this.currentCWESort?.direction) params.set('sort_order', this.currentCWESort.direction);
+
+            const url = `${this.apiBase}/top-cwes?${params.toString()}${vendorParam}`;
+            const response = await this.fetchWithRetry(url, { credentials: 'include' }, 2, 300);
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-            
+
             const result = await response.json();
-            
+
             // Store the data and pagination info
             this.originalCWEsData = result.data || [];
             this.filteredCWEsData = [...this.originalCWEsData];
-            
-            // Update pagination state from API response
+
+            // Update pagination state from API response if present
             if (result.pagination) {
                 this.currentCWEsPage = result.pagination.page;
                 this.totalCWEsPages = result.pagination.total_pages || result.pagination.pages;
                 this.currentCWEsPerPage = result.pagination.per_page;
                 this.updateCWEsPagination(result.pagination);
+            } else {
+                // Fallback pagination based on available data
+                this.currentCWEsPage = page;
+                this.currentCWEsPerPage = perPage;
+                this.totalCWEsPages = 1;
             }
-            
+
             // Populate the table with current page data
             this.populateCWETable(this.originalCWEsData);
-            
+
         } catch (error) {
+            // Ignore fetch aborts caused by navigation transitions
+            const msg = String(error && (error.message || error)).toLowerCase();
+            if (error && (error.name === 'AbortError' || msg.includes('abort'))) {
+                return;
+            }
+            const isTransientFetchFail = (error instanceof TypeError) && /failed to fetch/i.test(String(error.message || ''));
+            if (isTransientFetchFail) {
+                return;
+            }
             console.error('Error loading top CWEs:', error);
-            this.showTableError('cwe-table-body', 'Failed to load CWEs data');
+            this.showTableError('cwe-table-body', 'Falha ao carregar dados de CWEs');
         }
     }
 
@@ -392,7 +750,7 @@ class AnalyticsDashboard {
         if (!tbody) return;
 
         if (!cwes || cwes.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">No CWEs data available</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted">Nenhum dado de CWE disponível</td></tr>';
             return;
         }
 
@@ -453,7 +811,7 @@ class AnalyticsDashboard {
         if (paginationInfo) {
             const start = (pagination.page - 1) * pagination.per_page + 1;
             const end = Math.min(pagination.page * pagination.per_page, pagination.total_items || pagination.total);
-            paginationInfo.textContent = `Showing ${start}-${end} of ${pagination.total_items || pagination.total} CWEs`;
+            paginationInfo.textContent = `Exibindo ${start}-${end} de ${pagination.total_items || pagination.total} CWEs`;
         }
         
         // Update page numbers
@@ -507,7 +865,8 @@ class AnalyticsDashboard {
 
     async loadLatestCVEs(page = 1, perPage = 20, refresh = false) {
         try {
-            const response = await fetch(`${this.apiBase}/latest-cves?page=${page}&per_page=${perPage}`);
+            const vendorParam = this.buildVendorParam('&');
+            const response = await this.fetchWithRetry(`${this.apiBase}/latest-cves?page=${page}&per_page=${perPage}${vendorParam}`, { credentials: 'include' }, 2, 300);
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
@@ -530,6 +889,15 @@ class AnalyticsDashboard {
             this.populateCVETable(this.originalCVEsData);
             
         } catch (error) {
+            // Ignore fetch aborts caused by navigation transitions
+            const msg = String(error && (error.message || error)).toLowerCase();
+            if (error && (error.name === 'AbortError' || msg.includes('abort'))) {
+                return;
+            }
+            const isTransientFetchFail = (error instanceof TypeError) && /failed to fetch/i.test(String(error.message || ''));
+            if (isTransientFetchFail) {
+                return;
+            }
             console.error('Error loading latest CVEs:', error);
             this.showTableError('cve-table-body', 'Failed to load CVEs data');
         }
@@ -857,21 +1225,31 @@ class AnalyticsDashboard {
             });
         }
         
-        // Ordenação por colunas
-        const sortableHeaders = document.querySelector('#cve-table-body').closest('table').querySelectorAll('.sortable');
-        sortableHeaders.forEach(header => {
-            header.addEventListener('click', () => {
-                const sortField = header.dataset.sort;
-                if (this.currentCVESort.field === sortField) {
-                    this.currentCVESort.direction = this.currentCVESort.direction === 'asc' ? 'desc' : 'asc';
-                } else {
-                    this.currentCVESort.field = sortField;
-                    this.currentCVESort.direction = 'desc';
-                }
-                this.updateCVESortIcons();
-                this.applyCVEFiltersAndSort();
-            });
-        });
+        // Ordenação por colunas (com proteção para elementos ausentes)
+        const cveTableBody = document.querySelector('#cve-table-body');
+        if (cveTableBody) {
+            const cveTable = cveTableBody.closest('table');
+            if (cveTable) {
+                const sortableHeaders = cveTable.querySelectorAll('.sortable');
+                sortableHeaders.forEach(header => {
+                    header.addEventListener('click', () => {
+                        const sortField = header.dataset.sort;
+                        if (this.currentCVESort.field === sortField) {
+                            this.currentCVESort.direction = this.currentCVESort.direction === 'asc' ? 'desc' : 'asc';
+                        } else {
+                            this.currentCVESort.field = sortField;
+                            this.currentCVESort.direction = 'desc';
+                        }
+                        this.updateCVESortIcons();
+                        this.applyCVEFiltersAndSort();
+                    });
+                });
+            } else {
+                console.warn('Tabela de CVEs não encontrada para ordenação');
+            }
+        } else {
+            console.warn('Elemento #cve-table-body não encontrado para ordenação');
+        }
     }
 
     setupCWEEventListeners() {
@@ -952,6 +1330,27 @@ class AnalyticsDashboard {
     async refreshAllData() {
         try {
             this.showLoading(true);
+            await this.fetchVendorPreferences();
+            // Fallback novamente em refresh
+            if (!this.selectedVendorIds || this.selectedVendorIds.length === 0) {
+                const fromUrl = this.getVendorIdsFromUrl();
+                const fromLocal = this.getVendorIdsFromLocalStorage();
+                const fallbackIds = (fromUrl && fromUrl.length ? fromUrl : fromLocal);
+                if (fallbackIds && fallbackIds.length) {
+                    this.selectedVendorIds = fallbackIds;
+                    await this.persistVendorPreferences(this.selectedVendorIds);
+                    if (typeof window.safeNotify === 'function') {
+                        window.safeNotify('success', 'Preferências', 'Preferências de vendor sincronizadas automaticamente.', 2500);
+                    }
+                }
+            }
+            if (!this.selectedVendorIds || this.selectedVendorIds.length === 0) {
+                this.showVendorNotice('Nenhum vendor selecionado. Atualize suas preferências para visualizar os dados.');
+                this.showLoading(false);
+                return;
+            } else {
+                this.hideVendorNotice();
+            }
             await this.loadOverviewData();
             await this.loadTopProducts();
             await this.loadTopCWEs(1, this.currentCWEsPerPage, true);
@@ -1098,6 +1497,8 @@ class AnalyticsDashboard {
         this.filteredProductsData = filteredData;
         this.populateProductTable(filteredData);
         this.updateFilteredPagination(filteredData.length);
+        // Atualizar ícones de ordenação para refletir o estado atual
+        this.updateSortIcons();
     }
     
     clearAllFilters() {
@@ -1235,30 +1636,34 @@ class AnalyticsDashboard {
     }
 
     loadChartJS() {
+        try {
+            if (typeof window.Utils !== 'undefined' && Utils.ChartLoader && typeof Utils.ChartLoader.ensure === 'function') {
+                return Utils.ChartLoader.ensure();
+            }
+        } catch (e) {
+            console.warn('Utils.ChartLoader indisponível, fallback simples será usado.');
+        }
+        // Fallback simples: se Chart já estiver presente, resolve; caso contrário, tenta carregar via CDN
         return new Promise((resolve, reject) => {
-            // Check if Chart.js script is already loaded
-            if (document.querySelector('script[src*="chart.js"]')) {
-                resolve();
+            if (typeof window.Chart !== 'undefined') { resolve(window.Chart); return; }
+            const existing = document.querySelector('script[src*="chart.js"]');
+            if (existing) {
+                existing.addEventListener('load', () => resolve(window.Chart));
+                existing.addEventListener('error', () => reject(new Error('Failed to load Chart.js')));
                 return;
             }
-
             const script = document.createElement('script');
             script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js';
-            script.onload = () => {
-                console.log('Chart.js script loaded');
-                resolve();
-            };
-            script.onerror = () => {
-                console.error('Failed to load Chart.js script');
-                reject(new Error('Failed to load Chart.js'));
-            };
+            script.onload = () => resolve(window.Chart);
+            script.onerror = () => reject(new Error('Failed to load Chart.js'));
             document.head.appendChild(script);
         });
     }
 
     async loadSeverityChart(Chart) {
         try {
-            const response = await fetch(`${this.apiBase}/severity-distribution`);
+            const vendorParam = this.buildVendorParam('?');
+            const response = await fetch(`${this.apiBase}/severity-distribution${vendorParam}`, { credentials: 'include' });
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -1272,7 +1677,8 @@ class AnalyticsDashboard {
 
     async loadPatchStatusChart(Chart) {
         try {
-            const response = await fetch(`${this.apiBase}/patch-status`);
+            const vendorParam = this.buildVendorParam('?');
+            const response = await this.fetchWithRetry(`${this.apiBase}/patch-status${vendorParam}`, { credentials: 'include' }, 2, 300);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -1280,6 +1686,14 @@ class AnalyticsDashboard {
             const result = await response.json();
             this.createPatchStatusChart(Chart, result.data);
         } catch (error) {
+            const msg = String(error && (error.message || error)).toLowerCase();
+            if (error && (error.name === 'AbortError' || msg.includes('abort'))) {
+                return;
+            }
+            const isTransientFetchFail = (error instanceof TypeError) && /failed to fetch/i.test(String(error.message || ''));
+            if (isTransientFetchFail) {
+                return;
+            }
             console.error('Error loading patch status chart:', error);
         }
     }
@@ -1506,7 +1920,13 @@ class AnalyticsDashboard {
 
     async loadProductChart(Chart) {
         try {
-            const response = await fetch('/api/analytics/details/top_products');
+            // Prefer vendor_ids from URL to override saved preferences; fallback to selectedVendorIds
+            const urlVendorIds = this.getVendorIdsFromUrl();
+            const vendorIdsForRequest = (urlVendorIds && urlVendorIds.length) ? urlVendorIds : (this.selectedVendorIds || []);
+            const vendorParam = vendorIdsForRequest.length ? `&vendor_ids=${vendorIdsForRequest.join(',')}` : '';
+
+            // Use relational details endpoint to ensure accurate vendor-scoped products
+            const response = await this.fetchWithRetry(`/api/analytics/details/top_products?page=1&per_page=5${vendorParam}`, { credentials: 'include' }, 2, 300);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -1526,7 +1946,7 @@ class AnalyticsDashboard {
                 const vendor = item.vendor && item.vendor !== 'Unknown' ? ` (${item.vendor})` : '';
                 return `${item.product || 'Unknown'}${vendor}`;
             });
-            const values = topProducts.map(item => item.count || 0);
+            const values = topProducts.map(item => (item.total_cves != null ? Number(item.total_cves) : Number(item.count || 0)));
             
             const colors = [
                 '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
@@ -1539,7 +1959,12 @@ class AnalyticsDashboard {
                 return;
             }
             
-            this.productChart = new Chart(ctx, {
+            // Destroy existing chart if it exists
+            if (this.charts.productChart) {
+                this.charts.productChart.destroy();
+            }
+
+            this.charts.productChart = new Chart(ctx, {
                 type: 'pie',
                 data: {
                     labels: labels,
@@ -1573,10 +1998,11 @@ class AnalyticsDashboard {
                                 },
                                 label: function(context) {
                                     const dataIndex = context.dataIndex;
-                                    const product = topProducts[dataIndex];
-                                    const value = context.parsed || 0;
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    const product = topProducts[dataIndex] || {};
+                                    const value = Number(context.parsed || 0);
+                                    const datasetData = Array.isArray(context.dataset?.data) ? context.dataset.data : [];
+                                    const total = datasetData.length ? datasetData.reduce((a, b) => a + b, 0) : 0;
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
                                     return [
                                         `Vendor: ${product.vendor || 'Unknown'}`,
                                         `CVEs: ${value} (${percentage}%)`,
@@ -1590,13 +2016,32 @@ class AnalyticsDashboard {
             });
             
         } catch (error) {
+            // Ignore transient aborts
+            const msg = String(error && (error.message || error)).toLowerCase();
+            if (error && (error.name === 'AbortError' || msg.includes('abort'))) {
+                return;
+            }
+            const isTransientFetchFail = (error instanceof TypeError) && /failed to fetch/i.test(String(error.message || ''));
+            if (isTransientFetchFail) {
+                return;
+            }
             console.error('Error loading product chart:', error);
         }
     }
 
     async loadCWEChart(Chart) {
         try {
-            const response = await fetch('/api/analytics/details/top_cwes');
+            const vendorParam = this.buildVendorParam('&');
+            const params = new URLSearchParams();
+            // Always show top 5 by count for chart, respecting current filters
+            params.set('page', '1');
+            params.set('per_page', '5');
+            params.set('sort_by', 'count');
+            params.set('sort_order', 'desc');
+            if (this.currentCWEFilters?.severity) params.set('severity', this.currentCWEFilters.severity);
+            if (this.currentCWEFilters?.risk) params.set('risk', String(this.currentCWEFilters.risk));
+            if (this.currentCWEFilters?.search) params.set('search', this.currentCWEFilters.search);
+            const response = await fetch(`/api/analytics/top-cwes?${params.toString()}${vendorParam}`, { credentials: 'include' });
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -1609,8 +2054,8 @@ class AnalyticsDashboard {
                 return;
             }
             
-            // Take only top 5 CWEs
-            const top5CWEs = data.data.slice(0, 5);
+            // The API already returned the top 5 due to per_page=5
+            const top5CWEs = data.data;
             
             const labels = top5CWEs.map(item => item.cwe || 'Unknown');
             const values = top5CWEs.map(item => item.count || 0);
@@ -1625,7 +2070,12 @@ class AnalyticsDashboard {
                 return;
             }
             
-            this.cweChart = new Chart(ctx, {
+            // Destroy existing chart if it exists
+            if (this.charts.cweChart) {
+                this.charts.cweChart.destroy();
+            }
+
+            this.charts.cweChart = new Chart(ctx, {
                 type: 'pie',
                 data: {
                     labels: labels,
@@ -1672,7 +2122,8 @@ class AnalyticsDashboard {
 
     async loadExploitImpactChart(Chart) {
         try {
-            const response = await fetch('/api/analytics/exploit-impact');
+            const vendorParam = this.buildVendorParam('?');
+            const response = await fetch(`/api/analytics/exploit-impact${vendorParam}`, { credentials: 'include' });
             const result = await response.json();
             
             if (!result.success) {
@@ -1686,8 +2137,8 @@ class AnalyticsDashboard {
             }
             
             // Destroy existing chart if it exists
-            if (this.exploitImpactChart) {
-                this.exploitImpactChart.destroy();
+            if (this.charts.exploitImpactChart) {
+                this.charts.exploitImpactChart.destroy();
             }
             
             // Group data by severity for different datasets
@@ -1729,7 +2180,7 @@ class AnalyticsDashboard {
                 }
             });
             
-            this.exploitImpactChart = new Chart(ctx, {
+            this.charts.exploitImpactChart = new Chart(ctx, {
                 type: 'scatter',
                 data: {
                     datasets: datasets
@@ -1801,7 +2252,8 @@ class AnalyticsDashboard {
             console.log('Loading CVE History chart...');
             
             // Fetch CVE history data from API
-            const response = await fetch('/api/analytics/timeseries/cve_history');
+            const vendorParam = this.buildVendorParam('?');
+            const response = await fetch(`/api/analytics/timeseries/cve_history${vendorParam}`, { credentials: 'include' });
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -1831,8 +2283,13 @@ class AnalyticsDashboard {
             
             const values = result.data.map(item => item.value);
             
+            // Destroy existing chart if it exists
+            if (this.charts.cveHistoryChart) {
+                this.charts.cveHistoryChart.destroy();
+            }
+
             // Create line chart
-            this.historyChart = new Chart(ctx, {
+            this.charts.cveHistoryChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
@@ -1914,7 +2371,8 @@ class AnalyticsDashboard {
 
     async loadAttackVectorChart(Chart) {
         try {
-            const response = await fetch('/api/analytics/attack-vector');
+            const vendorParam = this.buildVendorParam('?');
+            const response = await fetch(`/api/analytics/attack-vector${vendorParam}`, { credentials: 'include' });
             const data = await response.json();
             
             if (!data.success) {
@@ -1928,8 +2386,8 @@ class AnalyticsDashboard {
             }
             
             // Destroy existing chart if it exists
-            if (this.attackVectorChart) {
-                this.attackVectorChart.destroy();
+            if (this.charts.attackVectorChart) {
+                this.charts.attackVectorChart.destroy();
             }
             
             // Prepare data for pie chart
@@ -1945,7 +2403,7 @@ class AnalyticsDashboard {
             };
             
             // Create pie chart
-            this.attackVectorChart = new Chart(ctx, {
+            this.charts.attackVectorChart = new Chart(ctx, {
                 type: 'pie',
                 data: chartData,
                 options: {
@@ -1991,9 +2449,27 @@ class AnalyticsDashboard {
     async loadAssigneeChart(Chart) {
         try {
             console.log('Starting loadAssigneeChart function');
-            const response = await fetch('/api/analytics/top-assigners');
+            const vendorParam = this.buildVendorParam('?');
+            const response = await fetch(`/api/analytics/top-assigners${vendorParam}`, { credentials: 'include' });
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const ctxErr = document.getElementById('assigneeChart');
+                if (ctxErr) {
+                    const containerErr = ctxErr.closest('.chart-container');
+                    if (containerErr) {
+                        const prevEmpty = containerErr.querySelector('.chart-empty');
+                        if (prevEmpty) prevEmpty.remove();
+                        const emptyMsg = document.createElement('div');
+                        emptyMsg.className = 'chart-empty text-muted small';
+                        emptyMsg.style.display = 'flex';
+                        emptyMsg.style.alignItems = 'center';
+                        emptyMsg.style.justifyContent = 'center';
+                        emptyMsg.style.height = '100%';
+                        emptyMsg.textContent = `Falha ao carregar dados (HTTP ${response.status}).`;
+                        containerErr.appendChild(emptyMsg);
+                    }
+                }
+                console.warn('Top Assigners chart degraded:', `HTTP ${response.status}`, response.statusText);
+                return;
             }
             
             const data = await response.json();
@@ -2005,22 +2481,44 @@ class AnalyticsDashboard {
                 return;
             }
             console.log('Canvas element found:', ctx);
-            
-            // Destroy existing chart if it exists
-            if (this.assigneeChart) {
-                console.log('Destroying existing chart');
-                this.assigneeChart.destroy();
+            const container = ctx.closest('.chart-container');
+            // Clear any previous empty-state message
+            if (container) {
+                const prevEmpty = container.querySelector('.chart-empty');
+                if (prevEmpty) prevEmpty.remove();
             }
             
-            this.assigneeChart = new Chart(ctx, {
+            // Destroy existing chart if it exists
+            if (this.charts.assigneeChart) {
+                console.log('Destroying existing chart');
+                this.charts.assigneeChart.destroy();
+            }
+            
+            // If no data, show an empty-state message and skip chart rendering
+            const hasData = Array.isArray(data.labels) && data.labels.length > 0 && Array.isArray(data.values) && data.values.length > 0;
+            if (!hasData) {
+                if (container) {
+                    const emptyMsg = document.createElement('div');
+                    emptyMsg.className = 'chart-empty text-muted small';
+                    emptyMsg.style.display = 'flex';
+                    emptyMsg.style.alignItems = 'center';
+                    emptyMsg.style.justifyContent = 'center';
+                    emptyMsg.style.height = '100%';
+                    emptyMsg.textContent = 'Sem dados para os filtros selecionados.';
+                    container.appendChild(emptyMsg);
+                }
+                return;
+            }
+
+            this.charts.assigneeChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: data.labels,
+                    labels: Array.isArray(data.labels) ? data.labels : [],
                     datasets: [{
                         label: 'CVEs Atribuídos',
-                        data: data.values,
-                        backgroundColor: data.colors,
-                        borderColor: data.colors.map(color => color + '80'), // Add transparency
+                        data: Array.isArray(data.values) ? data.values : [],
+                        backgroundColor: Array.isArray(data.colors) ? data.colors : [],
+                        borderColor: (Array.isArray(data.colors) ? data.colors : []).map(color => color + '80'), // Add transparency
                         borderWidth: 1,
                         borderRadius: 4,
                         borderSkipped: false
@@ -2078,12 +2576,13 @@ class AnalyticsDashboard {
                 }
             });
             
-            console.log('Chart instance created:', this.assigneeChart);
-            console.log('Chart data:', this.assigneeChart.data);
+            const assigneeChartInstance = this.charts.assigneeChart;
+            console.log('Chart instance created:', assigneeChartInstance);
+            console.log('Chart data:', assigneeChartInstance ? assigneeChartInstance.data : undefined);
             console.log('Top Assigners chart loaded successfully');
             
         } catch (error) {
-            console.error('Error loading Top Assigners chart:', error);
+            console.warn('Top Assigners chart degraded:', error);
         }
     }
     
@@ -2146,7 +2645,7 @@ class AnalyticsDashboard {
         // Reset filter controls
         const severityFilter = document.getElementById('cwe-severity-filter');
         const riskFilter = document.getElementById('cwe-risk-filter');
-        const searchInput = document.getElementById('cwe-search-input');
+        const searchInput = document.getElementById('cwe-search');
         
         if (severityFilter) severityFilter.value = '';
         if (riskFilter) riskFilter.value = '';
@@ -2316,9 +2815,14 @@ class ChartExpansionModal {
     expandChart(chartId, chartTitle) {
         const originalCanvas = document.getElementById(chartId);
         if (!originalCanvas || !window.analytics) return;
+        // Guard: Chart.js must be available
+        if (typeof window.Chart === 'undefined') {
+            console.warn('ChartExpansionModal: Chart.js não está disponível, abortando expansão.');
+            return;
+        }
 
         // Get the original chart instance
-        this.originalChart = window.analytics[chartId];
+        this.originalChart = (window.analytics.charts && window.analytics.charts[chartId]) || null;
         if (!this.originalChart) return;
 
         // Get modal elements
@@ -2356,8 +2860,12 @@ class ChartExpansionModal {
 
         // Create expanded chart
         setTimeout(() => {
-            const ctx = expandedCanvas.getContext('2d');
-            this.expandedChart = new Chart(ctx, config);
+            try {
+                const ctx = expandedCanvas.getContext('2d');
+                this.expandedChart = new Chart(ctx, config);
+            } catch (e) {
+                console.error('ChartExpansionModal: falha ao criar gráfico expandido:', e);
+            }
         }, 100);
     }
 
@@ -2407,11 +2915,50 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('DEBUG: Analytics dashboard already initialized, skipping');
         return;
     }
-    
-    console.log('DEBUG: Initializing analytics dashboard');
-    analytics = new AnalyticsDashboard();
-    chartModal = new ChartExpansionModal();
-    // Export for global access after initialization
-    window.analytics = analytics;
-    window.chartModal = chartModal;
+
+    // Guard: only initialize on Analytics page
+    const analyticsRoot = document.querySelector('.analytics-dashboard');
+    if (!analyticsRoot) {
+        console.log('DEBUG: Not on Analytics page, skipping analytics.js initialization');
+        return;
+    }
+
+    try {
+        console.log('DEBUG: Initializing analytics dashboard');
+        analytics = new AnalyticsDashboard();
+        chartModal = new ChartExpansionModal();
+        // Export for global access after initialization
+        window.analytics = analytics;
+        window.chartModal = chartModal;
+    } catch (err) {
+        console.error('ERROR: Failed to initialize analytics dashboard:', err);
+    }
 });
+// Helper: fetch with simple retry/backoff for transient network aborts
+// Expose globally so AnalyticsDashboard can bind to it when available
+if (typeof window.fetchWithRetry !== 'function') {
+window.fetchWithRetry = async function fetchWithRetry(url, options = {}, retries = 2, backoffMs = 300) {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            const resp = await fetch(url, options);
+            if (resp && resp.ok) return resp;
+            // Do not retry for client errors (4xx)
+            if (resp && resp.status >= 400 && resp.status < 500) {
+                return resp;
+            }
+            // For server errors, try again
+            const isLast = attempt === retries;
+            if (isLast) return resp;
+        } catch (err) {
+            const msg = String(err && (err.message || err)).toLowerCase();
+            const isAbort = (err && err.name === 'AbortError') || msg.includes('abort');
+            // Retry on abort/network errors
+            if (attempt === retries) throw err;
+            // Small backoff before next attempt
+        }
+        await new Promise(r => setTimeout(r, backoffMs));
+    }
+    // Fallback: one last fetch to surface any error
+    return fetch(url, options);
+};
+}

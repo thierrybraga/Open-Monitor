@@ -88,6 +88,30 @@
       {# Category: Ferramentas #}
       <li class="sidebar-category text-xs text-uppercase px-3 mt-4 mb-2 text-muted">Ferramentas</li>
 
+      {# Assets Link #}
+      <li class="sidebar-item">
+        <a href="{{ url_for('main.assets') }}"
+           class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2 {% if request.endpoint == 'main.assets' %}active{% endif %}"
+           {% if request.endpoint == 'main.assets' %}aria-current="page"{% endif %}
+           title="Gerenciar Assets"
+           data-bs-toggle="tooltip" data-bs-placement="right">
+          <i class="bi bi-server fs-5"></i>
+          <span class="sidebar-label">Assets</span>
+        </a>
+      </li>
+
+      {# Insights Link #}
+      <li class="sidebar-item">
+        <a href="{{ url_for('main.insights') }}"
+           class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2 {% if request.endpoint == 'main.insights' %}active{% endif %}"
+           {% if request.endpoint == 'main.insights' %}aria-current="page"{% endif %}
+           title="Explorar Insights"
+           data-bs-toggle="tooltip" data-bs-placement="right">
+          <i class="bi bi-lightbulb fs-5"></i>
+          <span class="sidebar-label">Insights</span>
+        </a>
+      </li>
+
       {# Monitoring Link (moved above Newsletter) #}
       <li class="sidebar-item">
         <a href="{{ url_for('main.monitoring') }}"
@@ -127,8 +151,8 @@
 
 
       {# Dynamic 'Other' Section #}
-      {% set static_endpoints = ['index', 'monitoring', 'analytics', 'chat', 'newsletter', 'search', 'account', 'settings'] %}
-      {% set dynamic_items = nav_items|selectattr('endpoint', 'not in', static_endpoints)|list if nav_items else [] %}
+      {% set static_endpoints = ['index', 'monitoring', 'analytics', 'chat', 'newsletter', 'search', 'account', 'settings', 'assets', 'insights'] %}
+      {% set dynamic_items = nav_items|rejectattr('endpoint', 'in', static_endpoints)|list if nav_items else [] %}
 
       {% if dynamic_items %}
         <li class="sidebar-category text-xs text-uppercase px-3 mt-4 mb-2 text-muted">Outros</li>
@@ -151,8 +175,8 @@
   {# Sidebar Footer: User Profile and Settings #}
   <div class="sidebar-footer px-3 py-3 border-top mt-auto"> {# mt-auto pushes to bottom #}
 
-    {# User Account Link - Sempre mostra usuário visitante #}
-    <a href="{% if current_user.is_authenticated %}{{ url_for('main.account') }}{% else %}{{ url_for('auth.login') }}{% endif %}"
+    {# User Account Link - vai para conta se autenticado, senão login #}
+    <a href="{{ url_for('main.account') if current_user.is_authenticated else url_for('auth.login') }}"
        class="sidebar-link d-flex align-items-center gap-2 py-2 text-decoration-none"
        title="Acessar configurações da conta">
       <div class="user-avatar rounded-circle bg-light d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
@@ -177,7 +201,7 @@
     </a>
 
     {# Optional: Dedicated Settings Link #}
-    {% if 'settings' in nav_items|map(attribute='endpoint')|list %}
+    {% if nav_items and 'settings' in (nav_items|map(attribute='endpoint')|list) %}
       <li class="sidebar-item list-unstyled mt-2"> {# Added list-unstyled to remove default list styling if this is an li #}
         <a href="{{ url_for('main.settings') }}"
            class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2"

@@ -249,6 +249,76 @@
   background: #f0fff4;
 }
 
+/* ========================================
+   🔎 BARRA DE FILTROS DO FEED
+   ======================================== */
+.newsletter-filters {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem 1rem 0.75rem;
+}
+
+.newsletter-filters .form-select {
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.625rem 2rem 0.625rem 0.75rem;
+}
+
+.newsletter-filters .badge.rounded-pill {
+  padding: 0.5rem 0.75rem;
+  font-weight: 600;
+  border: 1px solid #e2e8f0;
+}
+
+.newsletter-filters .badge.rounded-pill.bg-primary {
+  border-color: #2b6cb0;
+  box-shadow: 0 2px 6px rgba(43, 108, 176, 0.25);
+}
+
+/* ========================================
+   📰 ITENS DO FEED
+   ======================================== */
+.list-group-item {
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.05s ease;
+  border-left: 3px solid transparent;
+}
+
+.list-group-item:hover {
+  background-color: #f8fafc;
+  box-shadow: inset 0 1px 0 rgba(0,0,0,0.03);
+  border-left-color: #3182ce;
+}
+
+.list-group-item h3 a {
+  color: #1a202c;
+}
+
+.list-group-item h3 a:hover {
+  color: #2b6cb0;
+}
+
+.badge.bg-secondary {
+  background-color: #edf2f7 !important;
+  color: #2d3748;
+}
+
+.badge.bg-light.text-dark.border {
+  background-color: #ffffff;
+}
+
+/* ========================================
+   📄 PAGINAÇÃO
+   ======================================== */
+.pagination .page-link {
+  border-radius: 8px;
+}
+
+.pagination .page-item.active .page-link {
+  background-color: #3182ce;
+  border-color: #3182ce;
+}
+
 .form-control.is-invalid {
   border-color: #f56565;
   background: #fff5f5;

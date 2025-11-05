@@ -27,6 +27,7 @@ class CVEProduct(db.Model):
 
     __table_args__ = (
         PrimaryKeyConstraint('cve_id', 'product_id', name='pk_cve_product'),
+        Index('ix_cve_products_product_cve', 'product_id', 'cve_id'),
     )
 
     vulnerability: Vulnerability = relationship(

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ config.get('HTML_LANG', 'pt-BR') }}">
+<html lang="{{ ui_settings.language }}" data-theme="{{ ui_settings.theme }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -37,6 +37,9 @@
   <link rel="apple-touch-icon" sizes="512x512" href="{{ url_for('static', filename='images/logo.png') }}">
   <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
 
+  {# Bloco opcional para metatags ou elementos extras no head #}
+  {% block extra_head %}{% endblock %}
+
   {# Importação de Bootstrap CSS via CDN (forçada) #}
   <!-- Bootstrap CSS via CDN removido; usando vendor local via main.css -->
   {# Ícones locais: Bootstrap Icons e Font Awesome são servidos via main.css (vendor) e fontes em /static/fonts #}
@@ -44,10 +47,7 @@
 
   {# CSS Principal - Ponto de entrada único seguindo arquitetura otimizada #}
   {# main.css gerencia todas as importações na ordem correta da cascata #}
-  <link href="{{ url_for('static', filename='css/main.css') }}?v=20251005" rel="stylesheet">
-  
-  {# CSS para transições suaves entre páginas #}
-  <!-- page-transitions.css removido do head; já importado via main.css -->
+  <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet">
   
   {# Bundle CSS minificado para produção - descomente para usar versão otimizada #}
   {# <link href="{{ url_for('static', filename='css/bundle.min.css') }}" rel="stylesheet"> #}
@@ -159,7 +159,7 @@
   {# Importação de Bootstrap JS via CDN (sem fallback local) - padronizado #}
   {# Colocado no final do body para carregamento não bloquear a renderização da página #}
   {# Usar nonce para CSP #}
-  <script type="module" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
           integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
           crossorigin="anonymous" referrerpolicy="no-referrer"
           nonce="{{ nonce }}"></script> {# Carregado como módulo para evitar execução em ambientes legados #}
@@ -176,6 +176,11 @@
   {# Utilitários consolidados - Carregamento prioritário #}
   <script defer src="{{ url_for('static', filename='js/core/base.js') }}" nonce="{{ nonce }}"></script>
   <script src="{{ url_for('static', filename='js/core/utils.js') }}" nonce="{{ nonce }}"></script>
+
+  {# Expor linguagem atual ao JavaScript para formatação local-aware #}
+  <script nonce="{{ nonce }}">
+    window.UI_LANGUAGE = "{{ ui_settings.language }}";
+  </script>
 
 
   {# Polyfill seguro para helpers globais, caso base.js falhe ou carregue depois #}
@@ -403,15 +408,14 @@
    {# <script src="{{ url_for('static', filename='js/bundle-config.js') }}"></script> #}
    
    {# Performance Metrics - Monitoramento de performance #}
-   {# <script src="{{ url_for('static', filename='js/performance-metrics.js') }}" defer></script> #}
+   {# <script src="{{ url_for('static', filename='js/utils/performance-metrics.js') }}" defer></script> #}
    
    {# Modern Pagination System #}
    <script src="{{ url_for('static', filename='js/utils/pagination.js') }}" defer nonce="{{ nonce }}"></script>
    
    {# Fallback para desenvolvimento - descomente se necessário #}
    {# {% if config.DEBUG %}
-   
-   <script src="{{ url_for('static', filename='js/utils/performance-optimizer.js') }}" defer nonce="{{ nonce }}"></script>
+   <script src="{{ url_for('static', filename='js/utils/performance-optimizer.js') }}" defer></script>
    {% endif %} #}
 
    {# Footer JavaScript - Funcionalidades do rodapé #}
@@ -419,6 +423,9 @@
    
    {# JavaScript para transições suaves entre páginas #}
    <script src="{{ url_for('static', filename='js/utils/page-transitions.js') }}" defer nonce="{{ nonce }}"></script>
+
+   {# Vendor Scope - Propaga vendor_ids em links de navegação #}
+   <script src="{{ url_for('static', filename='js/components/vendor_scope.js') }}" defer nonce="{{ nonce }}"></script>
 
    {# Bloco para scripts específicos de cada página #}
    {% block extra_js %}{% endblock %}

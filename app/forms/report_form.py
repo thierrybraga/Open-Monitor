@@ -5,6 +5,7 @@ Formulários para configuração e geração de relatórios de cybersegurança.
 """
 
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileField, FileAllowed
 from wtforms import (
     StringField, TextAreaField, SelectField, DateTimeField, 
     SelectMultipleField, BooleanField, IntegerField, HiddenField,
@@ -210,6 +211,12 @@ class ReportConfigForm(FlaskForm):
         validators=[Optional(), Email(message='Email inválido')],
         render_kw={'placeholder': 'seu@email.com'}
     )
+
+    # Upload opcional de CSV com colunas na ordem: hostid, alias, os
+    csv_file = FileField(
+        'Importar CSV de Ativos (hostid, alias, os)',
+        validators=[Optional(), FileAllowed(['csv'], 'Apenas arquivos CSV são permitidos.')]
+    )
     
     def validate_period_end(self, field):
         """Valida se a data de fim é posterior à data de início."""
@@ -390,6 +397,12 @@ class QuickReportForm(FlaskForm):
         validators=[Optional(), Length(max=1000)],
         render_kw={'rows': 3, 'placeholder': 'Descreva o contexto e objetivo do relatório...'}
     )
+
+    # Upload opcional de CSV com colunas na ordem: hostid, alias, os
+    csv_file = FileField(
+        'Importar CSV de Ativos (hostid, alias, os)',
+        validators=[Optional(), FileAllowed(['csv'], 'Apenas arquivos CSV são permitidos.')]
+    )
     
     detail_level = SelectField(
         'Nível de Detalhe',
@@ -432,4 +445,29 @@ class QuickReportForm(FlaskForm):
             ('criticos', 'Apenas Ativos Críticos')
         ],
         default='todos_ativos'
+    )
+
+    # Opções avançadas (Opcional) alinhadas ao template quick_create
+    include_ai_analysis = BooleanField(
+        'Incluir Análise de IA',
+        default=True,
+        render_kw={'class': 'form-check-input'}
+    )
+
+    include_charts = BooleanField(
+        'Incluir Gráficos Interativos',
+        default=True,
+        render_kw={'class': 'form-check-input'}
+    )
+
+    auto_export_pdf = BooleanField(
+        'Exportar automaticamente em PDF',
+        default=False,
+        render_kw={'class': 'form-check-input'}
+    )
+
+    send_notification = BooleanField(
+        'Notificar quando o relatório estiver pronto',
+        default=False,
+        render_kw={'class': 'form-check-input'}
     )

@@ -6,9 +6,10 @@ Responsável por processar solicitações de relatórios, compilar dados e gerar
 """
 
 import logging
+import json
 from datetime import datetime, timedelta, timezone
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file
-from flask_login import current_user
+from flask_login import current_user, login_required
 # from flask_login import login_required  # Removido - não requer mais login
 from sqlalchemy import and_, or_
 from app.extensions.middleware import audit_log
@@ -126,6 +127,7 @@ def list_reports():
 
 
 @report_bp.route('/create', methods=['GET', 'POST'])
+@login_required
 def create_report():
     """Cria um novo relatório com configurações detalhadas."""
     # Detectar se a requisição espera JSON (fetch/AJAX)
@@ -229,6 +231,51 @@ def create_report():
             except Exception:
                 scope_enum = ReportScope.ALL_ASSETS
             
+            # Processar CSV opcional para restringir o escopo por ativos
+            try:
+                file_field = getattr(form, 'csv_file', None)
+                asset_ids_from_csv = []
+                csv_rows = []
+                if file_field and file_field.data:
+                    fs = file_field.data
+                    try:
+                        fs.stream.seek(0)
+                        raw = fs.stream.read()
+                    except Exception:
+                        raw = b''
+                    try:
+                        text = raw.decode('utf-8')
+                    except Exception:
+                        try:
+                            text = raw.decode('latin-1')
+                        except Exception:
+                            text = ''
+                    if text:
+                        import csv, io
+                        reader = csv.reader(io.StringIO(text))
+                        for row in reader:
+                            if not row:
+                                continue
+                            hostid = (row[0] or '').strip() if len(row) > 0 else ''
+                            alias = (row[1] or '').strip() if len(row) > 1 else ''
+                            os_val = (row[2] or '').strip() if len(row) > 2 else ''
+                            if not hostid and not alias:
+                                continue
+                            csv_rows.append({'hostid': hostid, 'alias': alias, 'os': os_val})
+                        hostids = [r['hostid'] for r in csv_rows if r.get('hostid')]
+                        aliases = [r['alias'] for r in csv_rows if r.get('alias')]
+                        if hostids or aliases:
+                            try:
+                                matches = Asset.query.filter(or_(Asset.ip_address.in_(hostids), Asset.name.in_(aliases))).all()
+                            except Exception:
+                                matches = []
+                            asset_ids_from_csv = [a.id for a in matches]
+                # Se houver ativos do CSV, ajustar escopo para customizado
+                if asset_ids_from_csv:
+                    scope_enum = ReportScope.CUSTOM
+            except Exception as e:
+                logger.warning(f"Falha ao processar arquivo CSV na criação de relatório: {e}")
+
             try:
                 detail_enum = DetailLevel(form.detail_level.data)
             except Exception:
@@ -239,6 +286,15 @@ def create_report():
                 'selected_groups': form.selected_groups.data or [],
                 'custom_assets': form.custom_assets.data or []
             }
+
+            # Incluir dados do CSV processado no scope_config
+            try:
+                if 'asset_ids_from_csv' in locals() and asset_ids_from_csv:
+                    scope_config['asset_ids'] = asset_ids_from_csv
+                if 'csv_rows' in locals() and csv_rows:
+                    scope_config['csv_hosts'] = csv_rows
+            except Exception:
+                pass
 
             report_metadata = {
                 'include_charts': bool(form.include_charts.data),
@@ -371,6 +427,7 @@ def create_report():
 
 
 @report_bp.route('/quick-create', methods=['GET', 'POST'])
+@login_required
 def quick_create_report():
     """Cria um relatório rápido com configurações simplificadas."""
     # Detectar se a requisição espera JSON (fetch/AJAX)
@@ -410,6 +467,53 @@ def quick_create_report():
                 scope_enum = ReportScope.CUSTOM
                 scope_cfg['critical_only'] = True
 
+            # Processar CSV opcional para restringir o escopo por ativos
+            try:
+                file_field = getattr(form, 'csv_file', None)
+                asset_ids_from_csv = []
+                if file_field and file_field.data:
+                    fs = file_field.data
+                    try:
+                        fs.stream.seek(0)
+                        raw = fs.stream.read()
+                    except Exception:
+                        raw = b''
+                    try:
+                        text = raw.decode('utf-8')
+                    except Exception:
+                        try:
+                            text = raw.decode('latin-1')
+                        except Exception:
+                            text = ''
+                    if text:
+                        import csv, io
+                        reader = csv.reader(io.StringIO(text))
+                        rows = []
+                        for row in reader:
+                            if not row:
+                                continue
+                            hostid = (row[0] or '').strip() if len(row) > 0 else ''
+                            alias = (row[1] or '').strip() if len(row) > 1 else ''
+                            os_val = (row[2] or '').strip() if len(row) > 2 else ''
+                            if not hostid and not alias:
+                                continue
+                            rows.append({'hostid': hostid, 'alias': alias, 'os': os_val})
+                        hostids = [r['hostid'] for r in rows if r.get('hostid')]
+                        aliases = [r['alias'] for r in rows if r.get('alias')]
+                        if hostids or aliases:
+                            try:
+                                matches = Asset.query.filter(or_(Asset.ip_address.in_(hostids), Asset.name.in_(aliases))).all()
+                            except Exception:
+                                matches = []
+                            asset_ids_from_csv = [a.id for a in matches]
+                            scope_cfg['csv_hosts'] = rows
+                # Se houver ativos do CSV, ajustar escopo para customizado e definir asset_ids
+                if asset_ids_from_csv:
+                    scope_cfg['asset_ids'] = asset_ids_from_csv
+                    scope_enum = ReportScope.CUSTOM
+            except Exception as e:
+                logger.warning(f"Falha ao processar arquivo CSV no Quick Create: {e}")
+
             # Mapear nível de detalhe opcional
             try:
                 detail_level_enum = DetailLevel(form.detail_level.data or 'resumido')
@@ -439,6 +543,17 @@ def quick_create_report():
             }
             ai_types_default = ai_defaults_map.get(report_type_enum, ['executive_summary'])
             report_metadata['ai_analysis_types'] = ai_types_default
+
+            # Ajustar tipos de gráficos padrão por tipo de relatório
+            try:
+                if report_type_enum == ReportType.KPI_KRI:
+                    report_metadata['chart_types'] = ['kpi_timeline', 'vulnerability_trend']
+                elif report_type_enum == ReportType.EXECUTIVE:
+                    report_metadata['chart_types'] = ['cvss_distribution', 'top_assets_risk']
+                else:
+                    report_metadata['chart_types'] = report_metadata['chart_types']
+            except Exception:
+                pass
 
             # Usar campos opcionais do formulário quando fornecidos
             title_value = (form.title.data or '').strip()
@@ -526,9 +641,19 @@ def quick_create_report():
     except Exception as e:
         logger.exception(f"Erro ao criar relatório rápido: {e}")
         if wants_json:
-            return jsonify({'success': False, 'message': 'Erro ao criar relatório rápido.', 'error': str(e)}), 500
+            return jsonify({
+                'success': False,
+                'message': 'Erro ao criar relatório rápido.',
+                'error': str(e),
+                'redirect_url': url_for('report.quick_create_report')
+            }), 500
         flash('Erro ao criar relatório rápido.', 'error')
-        return redirect(url_for('report.list_reports'))
+        # Evitar loop de redirecionamento: renderizar a página com erro (status 500)
+        try:
+            fallback_form = QuickReportForm()
+        except Exception:
+            fallback_form = None
+        return render_template('reports/report_quick_create.html', form=fallback_form), 500
 
 
 @report_bp.route('/<int:report_id>')
@@ -952,8 +1077,21 @@ def _generate_report_async(report_id):
             logger.info(f"Gerando dados de gráficos para relatório {report_id}")
             chart_data = _generate_chart_data(report, report_data)
         
+        # Compor conteúdo final conforme estrutura esperada pelo template
+        try:
+            composed_content = _compose_display_content(
+                content or {},
+                ai_analysis or {},
+                chart_data or {},
+                report_data or {},
+                report
+            )
+        except Exception as _compose_err:
+            logger.warning(f"Falha ao compor conteúdo de exibição: {_compose_err}")
+            composed_content = content or {}
+
         # Atualizar relatório com dados gerados
-        report.content = content
+        report.content = composed_content
         report.ai_analysis = ai_analysis
         report.charts_data = chart_data
         report.status = ReportStatus.COMPLETED
@@ -961,7 +1099,7 @@ def _generate_report_async(report_id):
         
         db.session.commit()
         
-        # Enviar notificação de conclusão
+        # Enviar notificação de conclusão (respeitando preferências)
         try:
             user = User.query.get(report.generated_by_id)
 
@@ -996,24 +1134,47 @@ def _generate_report_async(report_id):
                 'attempts': 1,
                 'max_attempts': 1,
             }
+            meta = report.report_metadata or {}
+            notify_enabled = bool(meta.get('notify_completion'))
+            recipient_email = meta.get('notification_email')
 
-            notification_service.send_notification(
-                event=NotificationEvent.REPORT_COMPLETED,
-                report_data=notification_payload,
-                priority=NotificationPriority.NORMAL,
-            )
-
-            # Verificar se há vulnerabilidades críticas para notificação especial
-            if critical_count:
+            if notify_enabled:
                 notification_service.send_notification(
-                    event=NotificationEvent.CRITICAL_VULNERABILITIES,
-                    report_data={**notification_payload, 'critical_vulnerabilities': critical_count},
-                    priority=NotificationPriority.HIGH,
-                    custom_data={'critical_count': critical_count}
+                    event=NotificationEvent.REPORT_COMPLETED,
+                    report_data=notification_payload,
+                    priority=NotificationPriority.NORMAL,
+                    custom_data={'recipient_email': recipient_email} if recipient_email else None,
                 )
+
+                # Verificar se há vulnerabilidades críticas para notificação especial
+                if critical_count:
+                    notification_service.send_notification(
+                        event=NotificationEvent.CRITICAL_VULNERABILITIES,
+                        report_data={**notification_payload, 'critical_vulnerabilities': critical_count},
+                        priority=NotificationPriority.HIGH,
+                        custom_data={'critical_count': critical_count, 'recipient_email': recipient_email} if recipient_email else {'critical_count': critical_count}
+                    )
         except Exception as e:
             logger.warning(f"Erro ao enviar notificação de conclusão do relatório {report_id}: {e}")
-        
+
+        # Auto-exportar relatório se configurado
+        try:
+            meta = report.report_metadata or {}
+            if bool(meta.get('auto_export')):
+                export_format = (meta.get('export_format') or 'pdf').lower()
+                result = pdf_service.export_report(report, format_type=export_format)
+                filepath = result.get('filepath')
+                meta['auto_export_result'] = {
+                    'format': export_format,
+                    'filepath': filepath,
+                    'exported_at': datetime.utcnow().isoformat()
+                }
+                report.report_metadata = meta
+                db.session.commit()
+                logger.info(f"Auto-export realizado para relatório {report_id} em {export_format}: {filepath}")
+        except Exception as export_err:
+            logger.warning(f"Falha na auto-exportação do relatório {report_id}: {export_err}")
+
         logger.info(f"Relatório {report_id} gerado com sucesso")
         
     except Exception as e:
@@ -1026,7 +1187,7 @@ def _generate_report_async(report_id):
             report.report_metadata = meta
             db.session.commit()
             
-            # Enviar notificação de falha
+            # Enviar notificação de falha (respeitando preferências)
             try:
                 user = User.query.get(report.generated_by_id)
 
@@ -1048,11 +1209,17 @@ def _generate_report_async(report_id):
                     'max_attempts': 3,
                 }
 
-                notification_service.send_notification(
-                    event=NotificationEvent.REPORT_FAILED,
-                    report_data=failure_payload,
-                    priority=NotificationPriority.HIGH,
-                )
+                meta = report.report_metadata or {}
+                notify_enabled = bool(meta.get('notify_completion'))
+                recipient_email = meta.get('notification_email')
+
+                if notify_enabled:
+                    notification_service.send_notification(
+                        event=NotificationEvent.REPORT_FAILED,
+                        report_data=failure_payload,
+                        priority=NotificationPriority.HIGH,
+                        custom_data={'recipient_email': recipient_email} if recipient_email else None,
+                    )
             except Exception as notify_error:
                 logger.warning(f"Erro ao enviar notificação de falha do relatório {report_id}: {notify_error}")
 
@@ -1142,50 +1309,69 @@ def _generate_ai_analysis(report, report_data):
     """Gera análise de IA para o relatório."""
     ai_analysis = {}
     
+    def _normalize_ai_output(val, analysis_type):
+        if isinstance(val, dict) and 'markdown' in val:
+            return val
+        # Envolver string simples em formato estruturado
+        return {
+            'type': analysis_type,
+            'markdown': val if isinstance(val, str) else json.dumps(val, ensure_ascii=False, default=str),
+            'created_at': datetime.utcnow().isoformat(),
+            'model': 'unknown',
+            'request_id': f'ctrl_{analysis_type}_{int(datetime.utcnow().timestamp())}'
+        }
+    
     try:
         for analysis_type in report.ai_analysis_types:
             if analysis_type == 'executive_summary':
-                ai_analysis['executive_summary'] = ai_service.generate_executive_summary(
+                val = ai_service.generate_executive_summary(
                     report_data, report.report_type.value
                 )
+                ai_analysis['executive_summary'] = _normalize_ai_output(val, 'executive_summary')
             elif analysis_type == 'business_impact':
                 # Obter atributos de ativos e mapeamentos CVE
                 asset_attributes = _get_asset_attributes(report_data.get('assets', {}))
                 cve_mappings = _get_cve_mappings(report_data.get('vulnerabilities', {}))
                 
-                ai_analysis['business_impact'] = ai_service.generate_business_impact_analysis(
+                val = ai_service.generate_business_impact_analysis(
                     report_data, asset_attributes, cve_mappings
                 )
+                ai_analysis['business_impact'] = _normalize_ai_output(val, 'business_impact')
             elif analysis_type == 'remediation_plan':
                 priority_vulns = _get_priority_vulnerabilities(report_data.get('vulnerabilities', {}))
                 
-                ai_analysis['remediation_plan'] = ai_service.generate_remediation_plan(
+                val = ai_service.generate_remediation_plan(
                     report_data, priority_vulns
                 )
+                ai_analysis['remediation_plan'] = _normalize_ai_output(val, 'remediation_plan')
             elif analysis_type == 'technical_analysis':
                 cve_details = _get_cve_details(report_data.get('vulnerabilities', {}))
                 
-                ai_analysis['technical_analysis'] = ai_service.generate_technical_analysis(
+                val = ai_service.generate_technical_analysis(
                     report_data.get('vulnerabilities', {}), cve_details
                 )
+                ai_analysis['technical_analysis'] = _normalize_ai_output(val, 'technical_analysis')
             elif analysis_type == 'cisa_kev_analysis':
                 # Nova análise específica para CISA KEV
                 cisa_kev_data = report_data.get('vulnerabilities', {}).get('cisa_kev_data', {})
-                ai_analysis['cisa_kev_analysis'] = ai_service.generate_cisa_kev_analysis(
+                val = ai_service.generate_cisa_kev_analysis(
                     cisa_kev_data, report_data.get('vulnerabilities', {})
                 )
+                ai_analysis['cisa_kev_analysis'] = _normalize_ai_output(val, 'cisa_kev_analysis')
             elif analysis_type == 'epss_analysis':
                 # Nova análise específica para EPSS
                 epss_data = report_data.get('vulnerabilities', {}).get('epss_data', {})
-                ai_analysis['epss_analysis'] = ai_service.generate_epss_analysis(
+                val = ai_service.generate_epss_analysis(
                     epss_data, report_data.get('vulnerabilities', {})
                 )
+                ai_analysis['epss_analysis'] = _normalize_ai_output(val, 'epss_analysis')
             elif analysis_type == 'vendor_product_analysis':
                 # Nova análise específica para vendors/products
                 vendor_product_data = report_data.get('vulnerabilities', {}).get('vendor_product_data', {})
-                ai_analysis['vendor_product_analysis'] = ai_service.generate_vendor_product_analysis(
+                val = ai_service.generate_vendor_product_analysis(
                     vendor_product_data, report_data.get('vulnerabilities', {})
                 )
+                ai_analysis['vendor_product_analysis'] = _normalize_ai_output(val, 'vendor_product_analysis')
     
     except Exception as e:
         logger.error(f"Erro ao gerar análise de IA: {e}")
@@ -1375,6 +1561,148 @@ def _generate_security_maturity_data(report_data):
         'data': report_data.get('security_maturity', {}),
         'title': 'Maturidade de Segurança por Domínio'
     }
+
+
+def _compose_display_content(base_content, ai_analysis, chart_data, report_data, report):
+    """Compoe `report.content` no formato esperado pelo template de visualização.
+
+    - Garante `executive_summary` com campos `content`, `ai_generated` e `key_metrics`.
+    - Converte `chart_data` em lista `content.charts` exibível.
+    - Adiciona seções opcionais: `vulnerabilities`, `bia_analysis`, `remediation_plan`, `technical_analysis`.
+    """
+    try:
+        content = dict(base_content or {})
+
+        # Métricas chave
+        assets = (report_data or {}).get('assets', {})
+        vulns = (report_data or {}).get('vulnerabilities', {})
+        risks = (report_data or {}).get('risks', {})
+        by_sev = vulns.get('by_severity', {}) or {}
+        critical_count = by_sev.get('Critical') or by_sev.get('critical') or 0
+        high_count = by_sev.get('High') or by_sev.get('high') or 0
+        total_vulns = vulns.get('total_vulnerabilities', 0) or (
+            (by_sev.get('Critical') or 0) + (by_sev.get('High') or 0) + (by_sev.get('Medium') or 0) + (by_sev.get('Low') or 0)
+        )
+        risk_score = risks.get('overall_score', 0)
+
+        # Sumário executivo
+        ai_exec_val = (ai_analysis or {}).get('executive_summary')
+        ai_exec_md = ai_exec_val.get('markdown') if isinstance(ai_exec_val, dict) else ai_exec_val
+        if not ai_exec_md:
+            # Fallback simples para evitar branco
+            org_name = getattr(report, 'title', 'Relatório de Segurança')
+            ai_exec_md = (
+                f"Resumo do {org_name}:\n\n"
+                f"- Ativos analisados: {assets.get('total_assets', 0)}\n"
+                f"- Vulnerabilidades totais: {total_vulns}\n"
+                f"- Críticas: {critical_count} | Altas: {high_count}\n"
+                f"- Score geral de risco: {risk_score}"
+            )
+
+        content['executive_summary'] = {
+            'content': ai_exec_md,
+            'ai_generated': bool(ai_exec_val),
+            'key_metrics': [
+                {'label': 'Ativos', 'value': assets.get('total_assets', 0), 'color': 'primary'},
+                {'label': 'Vulnerabilidades', 'value': total_vulns, 'color': 'warning'},
+                {'label': 'Críticas', 'value': critical_count, 'color': 'danger'},
+                {'label': 'Score de Risco', 'value': risk_score, 'color': 'info'},
+            ]
+        }
+
+        # Enriquecer métricas-chave com KPIs de SLA e cobertura de patch
+        try:
+            patch_cov = (vulns.get('patch_coverage') or {})
+            patched = int(patch_cov.get('patched', 0) or 0)
+            unpatched = int(patch_cov.get('unpatched', 0) or 0)
+            known_total = patched + unpatched
+            patch_pct = round((patched / known_total) * 100.0, 1) if known_total > 0 else 0.0
+
+            rem_kpis = (vulns.get('remediation_kpis') or {})
+            mttr_days = float(rem_kpis.get('mttr_days', 0.0) or 0.0)
+            remediation_rate = float(rem_kpis.get('remediation_rate_pct', 0.0) or 0.0)
+            sla_compliance = float(rem_kpis.get('sla_compliance_pct', 0.0) or 0.0)
+
+            # Adicionar ao executive_summary.key_metrics
+            content['executive_summary']['key_metrics'].extend([
+                {'label': 'Cobertura de Patch (%)', 'value': patch_pct, 'color': 'success'},
+                {'label': 'MTTR (dias)', 'value': mttr_days, 'color': 'secondary'},
+                {'label': 'Conformidade SLA (%)', 'value': sla_compliance, 'color': 'success' if sla_compliance >= 80 else 'warning' if sla_compliance >= 50 else 'danger'},
+                {'label': 'Taxa de Remediação (%)', 'value': remediation_rate, 'color': 'info'},
+            ])
+
+            # Popular `content.kpis` para exibição de cards na UI, espelhando principais métricas
+            content['kpis'] = [
+                {'label': 'Vulnerabilidades', 'value': total_vulns, 'color': 'warning'},
+                {'label': 'Críticas', 'value': critical_count, 'color': 'danger'},
+                {'label': 'Cobertura de Patch (%)', 'value': patch_pct, 'color': 'success'},
+                {'label': 'Conformidade SLA (%)', 'value': sla_compliance, 'color': 'success' if sla_compliance >= 80 else 'warning' if sla_compliance >= 50 else 'danger'},
+            ]
+        except Exception as _kpi_err:
+            logger.warning(f"Falha ao enriquecer KPIs do sumário executivo: {_kpi_err}")
+
+        # Vulnerabilidades
+        v_summary = {}
+        for sev_key, count in (by_sev or {}).items():
+            v_summary[str(sev_key).lower()] = count
+        if v_summary or vulns.get('details'):
+            content['vulnerabilities'] = {
+                'summary': v_summary,
+                'details': vulns.get('details', [])
+            }
+
+        # BIA
+        if (ai_analysis or {}).get('business_impact'):
+            bia_val = ai_analysis.get('business_impact')
+            bia_md = bia_val.get('markdown') if isinstance(bia_val, dict) else bia_val
+            content['bia_analysis'] = {
+                'content': bia_md,
+                'ai_generated': True,
+                'critical_assets': assets.get('critical_assets', [])
+            }
+
+        # Plano de remediação
+        if (ai_analysis or {}).get('remediation_plan'):
+            rem_val = ai_analysis.get('remediation_plan')
+            rem_md = rem_val.get('markdown') if isinstance(rem_val, dict) else rem_val
+            content['remediation_plan'] = {
+                'content': rem_md,
+                'ai_generated': True
+            }
+
+        # Análise técnica
+        if (ai_analysis or {}).get('technical_analysis'):
+            tech_val = ai_analysis.get('technical_analysis')
+            tech_md = tech_val.get('markdown') if isinstance(tech_val, dict) else tech_val
+            content['technical_analysis'] = {
+                'content': tech_md,
+                'ai_generated': True
+            }
+
+        # Charts: converter dict em lista com título e tipo
+        charts_list = []
+        if isinstance(chart_data, dict):
+            for key, obj in chart_data.items():
+                if not isinstance(obj, dict):
+                    continue
+                data_payload = obj.get('data') if 'data' in obj else obj
+                title = obj.get('title') or str(key).replace('_', ' ').title()
+                chart_type = obj.get('type') or 'bar'
+                charts_list.append({
+                    'title': title,
+                    'type': chart_type,
+                    'data': data_payload,
+                    'size': 'medium'
+                })
+
+        # Apenas definir se houver algo para mostrar
+        if charts_list:
+            content['charts'] = charts_list
+
+        return content
+    except Exception as e:
+        logger.error(f"Erro ao compor conteúdo de relatório: {e}")
+        return base_content or {}
 
 
 # ============================================================================

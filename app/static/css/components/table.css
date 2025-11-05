@@ -1,0 +1,33 @@
+/* Modern table styles: sticky header, compact spacing, improved hover */
+.table-modern {
+  --table-header-bg: #f8f9fa;
+  --table-header-border: #dee2e6;
+}
+
+.table-modern thead th {
+  position: sticky;
+  top: 0;
+  background: var(--table-header-bg);
+  z-index: 2;
+  border-bottom: 1px solid var(--table-header-border);
+}
+
+.table-modern tbody tr:hover {
+  background-color: rgba(13, 110, 253, 0.06);
+}
+
+.table-modern td, .table-modern th {
+  vertical-align: middle;
+}
+
+.table-modern .table-pagination-footer {
+  background: #fff;
+}
+
+/* Responsive tweaks for mobile */
+@media (max-width: 576px) {
+  .table-modern thead th {
+    position: sticky;
+    top: 0;
+  }
+}

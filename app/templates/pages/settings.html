@@ -45,35 +45,38 @@
                 <div class="settings-section">
                     <h3>General Preferences</h3>
                     <form method="POST" action="{{ url_for('main.settings') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="section" value="general">
                         
                         <div class="form-group">
-                            <label for="theme">Theme</label>
-                            <select class="form-control" id="theme" name="theme">
-                                <option value="light">Light</option>
-                                <option value="dark">Dark</option>
-                                <option value="auto">Auto</option>
+                            <label for="theme-select">Theme</label>
+                            <select class="form-control" id="theme-select" name="theme">
+                                <option value="light" {% if settings_data.general.theme == 'light' %}selected{% endif %}>Light</option>
+                                <option value="dark" {% if settings_data.general.theme == 'dark' %}selected{% endif %}>Dark</option>
+                                <option value="auto" {% if settings_data.general.theme == 'auto' %}selected{% endif %}>Auto</option>
                             </select>
                         </div>
 
                         <div class="form-group">
                             <label for="language">Language</label>
                             <select class="form-control" id="language" name="language">
-                                <option value="en">English</option>
-                                <option value="pt">Português</option>
+                                <option value="en-US" {% if settings_data.general.language.startswith('en') %}selected{% endif %}>English</option>
+                                <option value="pt-BR" {% if settings_data.general.language.startswith('pt') %}selected{% endif %}>Português</option>
                             </select>
                         </div>
 
                         <div class="form-group">
                             <label for="timezone">Timezone</label>
                             <select class="form-control" id="timezone" name="timezone">
-                                <option value="UTC">UTC</option>
-                                <option value="America/Sao_Paulo">America/São Paulo</option>
-                                <option value="America/New_York">America/New York</option>
+                                <option value="UTC" {% if settings_data.general.timezone == 'UTC' %}selected{% endif %}>UTC</option>
+                                <option value="America/Sao_Paulo" {% if settings_data.general.timezone == 'America/Sao_Paulo' %}selected{% endif %}>America/São Paulo</option>
+                                <option value="America/New_York" {% if settings_data.general.timezone == 'America/New_York' %}selected{% endif %}>America/New York</option>
                             </select>
                         </div>
-
-                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                        <div class="d-flex gap-2">
+                          <button type="button" class="btn btn-primary" id="save-settings">Save Changes</button>
+                          <button type="button" class="btn btn-outline-secondary" id="reset-settings">Reset</button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -83,11 +86,12 @@
                 <div class="settings-section">
                     <h3>Security Settings</h3>
                     <form method="POST" action="{{ url_for('main.settings') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="section" value="security">
                         
                         <div class="form-group">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="two_factor" name="two_factor">
+                                <input class="form-check-input" type="checkbox" id="two_factor" name="two_factor" {% if settings_data.security.two_factor %}checked{% endif %}>
                                 <label class="form-check-label" for="two_factor">
                                     Enable Two-Factor Authentication
                                 </label>
@@ -96,7 +100,7 @@
 
                         <div class="form-group">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="login_notifications" name="login_notifications">
+                                <input class="form-check-input" type="checkbox" id="login_notifications" name="login_notifications" {% if settings_data.security.login_notifications %}checked{% endif %}>
                                 <label class="form-check-label" for="login_notifications">
                                     Email notifications for new logins
                                 </label>
@@ -105,7 +109,7 @@
 
                         <div class="form-group">
                             <label for="session_timeout">Session Timeout (minutes)</label>
-                            <input type="number" class="form-control" id="session_timeout" name="session_timeout" value="30" min="5" max="480">
+                            <input type="number" class="form-control" id="session_timeout" name="session_timeout" value="{{ settings_data.security.session_timeout }}" min="5" max="480">
                         </div>
 
                         <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -118,11 +122,12 @@
                 <div class="settings-section">
                     <h3>Notification Preferences</h3>
                     <form method="POST" action="{{ url_for('main.settings') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="section" value="notifications">
                         
                         <div class="form-group">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="email_notifications" name="email_notifications">
+                                <input class="form-check-input notification-toggle" type="checkbox" id="email_notifications" name="email_notifications" data-setting="email_notifications" {% if settings_data.notifications.email_notifications %}checked{% endif %}>
                                 <label class="form-check-label" for="email_notifications">
                                     Email notifications
                                 </label>
@@ -131,7 +136,7 @@
 
                         <div class="form-group">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="vulnerability_alerts" name="vulnerability_alerts">
+                                <input class="form-check-input notification-toggle" type="checkbox" id="vulnerability_alerts" name="vulnerability_alerts" data-setting="vulnerability_alerts" {% if settings_data.notifications.vulnerability_alerts %}checked{% endif %}>
                                 <label class="form-check-label" for="vulnerability_alerts">
                                     Vulnerability alerts
                                 </label>
@@ -140,7 +145,7 @@
 
                         <div class="form-group">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="report_notifications" name="report_notifications">
+                                <input class="form-check-input notification-toggle" type="checkbox" id="report_notifications" name="report_notifications" data-setting="report_notifications" {% if settings_data.notifications.report_notifications %}checked{% endif %}>
                                 <label class="form-check-label" for="report_notifications">
                                     Report generation notifications
                                 </label>
@@ -157,20 +162,21 @@
                 <div class="settings-section">
                     <h3>Report Settings</h3>
                     <form method="POST" action="{{ url_for('main.settings') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="section" value="reports">
                         
                         <div class="form-group">
                             <label for="default_format">Default Report Format</label>
                             <select class="form-control" id="default_format" name="default_format">
-                                <option value="pdf">PDF</option>
-                                <option value="html">HTML</option>
-                                <option value="docx">DOCX</option>
+                                <option value="pdf" {% if settings_data.reports.default_format == 'pdf' %}selected{% endif %}>PDF</option>
+                                <option value="html" {% if settings_data.reports.default_format == 'html' %}selected{% endif %}>HTML</option>
+                                <option value="docx" {% if settings_data.reports.default_format == 'docx' %}selected{% endif %}>DOCX</option>
                             </select>
                         </div>
 
                         <div class="form-group">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="auto_export" name="auto_export">
+                                <input class="form-check-input" type="checkbox" id="auto_export" name="auto_export" {% if settings_data.reports.auto_export %}checked{% endif %}>
                                 <label class="form-check-label" for="auto_export">
                                     Auto-export reports
                                 </label>
@@ -179,7 +185,7 @@
 
                         <div class="form-group">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="include_charts" name="include_charts">
+                                <input class="form-check-input" type="checkbox" id="include_charts" name="include_charts" {% if settings_data.reports.include_charts %}checked{% endif %}>
                                 <label class="form-check-label" for="include_charts">
                                     Include charts in reports
                                 </label>

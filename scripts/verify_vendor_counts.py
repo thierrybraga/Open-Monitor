@@ -1,90 +1,104 @@
-import sqlite3, json, os
-from collections import defaultdict
+"""
+Quick verification script to compare product counts by different join strategies.
 
-DB = os.path.join('app','instance','vulnerabilities.db')
-print('Using DB:', DB)
+Usage: python scripts/verify_vendor_counts.py <vendor_id>
+Defaults to Cisco vendor_id=18 when not provided.
+"""
 
-conn = sqlite3.connect(DB)
-cur = conn.cursor()
+import sys
+import os
+from sqlalchemy import text
 
-# Helper to normalize vendor names extracted from JSON
 
-def extract_vendor_names(vjson):
-    names = []
-    data = vjson
-    if isinstance(vjson, str):
+def main():
+    # Ensure project root is on sys.path
+    root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    # Import after fixing sys.path
+    try:
+        from app import create_app
+    except Exception:
+        from app.app import create_app
+    from app.extensions import db
+    vid = 18
+    if len(sys.argv) > 1:
         try:
-            data = json.loads(vjson)
+            vid = int(sys.argv[1])
         except Exception:
-            data = vjson
+            pass
 
-    if isinstance(data, list):
-        for item in data:
-            if isinstance(item, str):
-                names.append(item)
-            elif isinstance(item, dict):
-                val = item.get('name') or item.get('vendor') or item.get('vendor_name')
-                if val:
-                    names.append(val)
-    elif isinstance(data, dict):
-        if 'vendors' in data and isinstance(data['vendors'], list):
-            for itm in data['vendors']:
-                if isinstance(itm, str):
-                    names.append(itm)
-                elif isinstance(itm, dict):
-                    val = itm.get('name') or itm.get('vendor') or itm.get('vendor_name')
-                    if val:
-                        names.append(val)
-        elif 'name' in data:
-            names.append(data['name'])
-        else:
-            for key in list(data.keys()):
-                if isinstance(key, str):
-                    names.append(key)
-    elif isinstance(data, str):
-        if data.strip():
-            names.append(data.strip())
+    app = create_app('development')
+    with app.app_context():
+        s = db.session
+        q1 = text(
+            """
+            SELECT COUNT(DISTINCT cp.product_id)
+            FROM cve_products cp
+            JOIN cve_vendors cv ON cv.cve_id = cp.cve_id
+            WHERE cv.vendor_id = :vid
+            """
+        )
+        q2 = text(
+            """
+            SELECT COUNT(DISTINCT p.id)
+            FROM product p
+            WHERE p.vendor_id = :vid
+            """
+        )
+        q3 = text(
+            """
+            SELECT COUNT(DISTINCT cp.product_id)
+            FROM cve_products cp
+            JOIN product p ON p.id = cp.product_id
+            WHERE p.vendor_id = :vid
+            """
+        )
+        q4 = text(
+            """
+            SELECT COUNT(DISTINCT cp.product_id)
+            FROM cve_products cp
+            JOIN cve_vendors cv ON cv.cve_id = cp.cve_id
+            JOIN product p ON p.id = cp.product_id
+            WHERE cv.vendor_id = :vid AND (p.vendor_id != :vid)
+            """
+        )
+        q5 = text(
+            """
+            SELECT COUNT(DISTINCT ap.product_id)
+            FROM affected_product ap
+            JOIN product p ON p.id = ap.product_id
+            WHERE p.vendor_id = :vid
+            """
+        )
+        q6 = text(
+            """
+            SELECT COUNT(DISTINCT vr.product_id)
+            FROM version_ref vr
+            JOIN product p ON p.id = vr.product_id
+            WHERE p.vendor_id = :vid
+            """
+        )
 
-    # Normalize
-    normed = []
-    for n in names:
-        if isinstance(n, str):
-            s = n.strip().lower()
-            if s:
-                normed.append(s)
-    return list(dict.fromkeys(normed))
+        res1 = s.execute(q1, {"vid": vid}).scalar() or 0
+        res2 = s.execute(q2, {"vid": vid}).scalar() or 0
+        res3 = s.execute(q3, {"vid": vid}).scalar() or 0
+        res4 = s.execute(q4, {"vid": vid}).scalar() or 0
+        try:
+            res5 = s.execute(q5, {"vid": vid}).scalar() or 0
+        except Exception:
+            res5 = None
+        res6 = s.execute(q6, {"vid": vid}).scalar() or 0
 
-# Build JSON counts per vendor
-json_counts = defaultdict(int)
-rows = cur.execute("SELECT cve_id, nvd_vendors_data FROM vulnerabilities WHERE nvd_vendors_data IS NOT NULL").fetchall()
-for cve_id, vjson in rows:
-    for n in extract_vendor_names(vjson):
-        json_counts[n] += 1
+        print(f"Vendor {vid} verification:")
+        print(f"- Distinct products via CVEProduct∩CVEVendor (cv.vendor_id={vid}): {res1}")
+        print(f"- Distinct products with Product.vendor_id={vid}: {res2}")
+        print(f"- Distinct CVEProduct where Product.vendor_id={vid}: {res3}")
+        print(f"- Mismatched products (cv.vendor_id={vid} but Product.vendor_id!={vid}): {res4}")
+        if res5 is not None:
+            print(f"- Distinct AffectedProduct where Product.vendor_id={vid}: {res5}")
+        print(f"- Distinct VersionReference where Product.vendor_id={vid}: {res6}")
 
-# Build table counts per vendor
-sql_counts = {}
-for vid, vname in cur.execute("SELECT id, name FROM vendor").fetchall():
-    name_key = (vname or '').strip().lower()
-    if not name_key:
-        continue
-    count = cur.execute("SELECT COUNT(DISTINCT cve_id) FROM cve_vendors WHERE vendor_id=?", (vid,)).fetchone()[0]
-    sql_counts[name_key] = count
 
-# Compare and report mismatches
-mismatches = []
-for name, jcount in json_counts.items():
-    tcount = sql_counts.get(name, 0)
-    if jcount != tcount:
-        mismatches.append((name, jcount, tcount))
-
-mismatches.sort(key=lambda x: (x[1] - x[2]), reverse=True)
-print('Total vendors with mismatched counts:', len(mismatches))
-for name, jcount, tcount in mismatches[:50]:
-    print(f"{name}: json={jcount} table={tcount} delta={jcount - tcount}")
-
-# Quick summary
-total_vendors = len(sql_counts)
-complete = sum(1 for name, jcount in json_counts.items() if sql_counts.get(name, 0) == jcount)
-print(f"Summary: vendors={total_vendors}, complete={complete}, coverage={complete}/{len(json_counts)}")
-
-conn.close()
+if __name__ == "__main__":
+    main()

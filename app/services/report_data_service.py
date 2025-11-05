@@ -81,6 +81,7 @@ class ReportDataService:
             assets_by_status = {}
             assets_with_vulnerabilities = 0
             total_vulnerabilities = 0
+            asset_details: List[Dict[str, Any]] = []
             
             for asset in assets:
                 # Contar por status
@@ -92,6 +93,43 @@ class ReportDataService:
                 if vuln_count > 0:
                     assets_with_vulnerabilities += 1
                     total_vulnerabilities += vuln_count
+
+                # Severidade agregada por ativo
+                sev_counts = {'Critical': 0, 'High': 0, 'Medium': 0, 'Low': 0, 'Unknown': 0}
+                for av in asset.vulnerabilities:
+                    try:
+                        sev = (av.vulnerability.base_severity or 'Unknown').capitalize()
+                    except Exception:
+                        sev = 'Unknown'
+                    if sev not in sev_counts:
+                        sev = 'Unknown'
+                    sev_counts[sev] += 1
+
+                # Heurística simples de criticidade
+                criticality = 'LOW'
+                if sev_counts['Critical'] > 0:
+                    criticality = 'HIGH'
+                elif sev_counts['High'] >= 3:
+                    criticality = 'HIGH'
+                elif (sev_counts['High'] + sev_counts['Medium']) > 0:
+                    criticality = 'MEDIUM'
+
+                # Montar detalhes do ativo usados na BIA
+                asset_details.append({
+                    'id': asset.id,
+                    'name': asset.name,
+                    'ip_address': asset.ip_address,
+                    'status': asset.status,
+                    'vendor_name': getattr(asset.vendor, 'name', None),
+                    'criticality': criticality,
+                    'severity_breakdown': sev_counts,
+                    'type': 'asset',
+                    # BIA Fields
+                    'rto_hours': asset.rto_hours,
+                    'rpo_hours': asset.rpo_hours,
+                    'uptime_text': asset.uptime_text,
+                    'operational_cost_per_hour': asset.operational_cost_per_hour,
+                })
             
             return {
                 'assets': assets,
@@ -99,7 +137,8 @@ class ReportDataService:
                 'assets_by_status': assets_by_status,
                 'assets_with_vulnerabilities': assets_with_vulnerabilities,
                 'total_vulnerabilities': total_vulnerabilities,
-                'vulnerability_coverage': (assets_with_vulnerabilities / total_assets * 100) if total_assets > 0 else 0
+                'vulnerability_coverage': (assets_with_vulnerabilities / total_assets * 100) if total_assets > 0 else 0,
+                'asset_details': asset_details
             }
 
         except Exception as e:
@@ -151,6 +190,10 @@ class ReportDataService:
                 query = query.filter(Vulnerability.published_date <= end_date)
             
             vulnerabilities = query.all()
+
+            # Listas de detalhes para exibição e IA
+            details: List[Dict[str, Any]] = []
+            cve_details: List[Dict[str, Any]] = []
             
             # Compilar estatísticas básicas
             total_vulnerabilities = len(vulnerabilities)
@@ -164,7 +207,92 @@ class ReportDataService:
             epss_data = {'scores': [], 'high_probability': 0, 'percentiles': []}
             vendor_product_data = {'vendors': set(), 'products': set(), 'top_vendors': {}, 'top_products': {}}
             cvss_detailed = {'v2': 0, 'v3_0': 0, 'v3_1': 0, 'v4_0': 0, 'metrics_distribution': {}}
-            
+
+            # KPIs de Remediação/SLA
+            remediation_kpis = {
+                'mttr_days': 0.0,
+                'remediation_rate_pct': 0.0,
+                'sla_compliance_pct': 0.0,
+                'backlog_over_sla': 0,
+                'sla_thresholds_days': {
+                    'CRITICAL': 15,
+                    'HIGH': 30,
+                    'MEDIUM': 60,
+                    'LOW': 90
+                },
+                'status_counts': {
+                    'OPEN': 0,
+                    'MITIGATED': 0,
+                    'CLOSED': 0
+                }
+            }
+
+            # Coletar dados de AssetVulnerability para calcular MTTR e SLA
+            try:
+                av_query = self.session.query(AssetVulnerability).join(Vulnerability)
+                if asset_ids:
+                    av_query = av_query.filter(AssetVulnerability.asset_id.in_(asset_ids))
+                if severity_levels:
+                    av_query = av_query.filter(Vulnerability.base_severity.in_(severity_levels))
+                if start_date:
+                    av_query = av_query.filter(AssetVulnerability.created_at >= start_date)
+                if end_date:
+                    av_query = av_query.filter(AssetVulnerability.created_at <= end_date)
+
+                asset_vulns = av_query.options(joinedload(AssetVulnerability.vulnerability)).all()
+
+                total_av = len(asset_vulns)
+                if total_av > 0:
+                    resolved_statuses = {'MITIGATED', 'CLOSED'}
+                    resolved_count = 0
+                    sla_compliant_count = 0
+                    backlog_over_sla = 0
+                    mttr_accum_days = 0.0
+
+                    now_dt = datetime.utcnow()
+                    thresholds = remediation_kpis['sla_thresholds_days']
+
+                    for av in asset_vulns:
+                        # Contagem por status
+                        status_val = (av.status or 'OPEN')
+                        remediation_kpis['status_counts'][status_val] = remediation_kpis['status_counts'].get(status_val, 0) + 1
+
+                        sev = None
+                        try:
+                            sev = (getattr(av.vulnerability, 'base_severity', None) or 'UNKNOWN').upper()
+                        except Exception:
+                            sev = 'UNKNOWN'
+
+                        created = av.created_at or av.updated_at
+                        mitigated = av.mitigation_date
+
+                        if status_val in resolved_statuses and mitigated and created:
+                            # MTTR
+                            delta_days = max((mitigated - created).total_seconds() / 86400.0, 0)
+                            mttr_accum_days += delta_days
+                            resolved_count += 1
+
+                            # SLA compliance (por severidade)
+                            thr = thresholds.get(sev)
+                            if thr is not None and (delta_days <= float(thr)):
+                                sla_compliant_count += 1
+
+                        elif status_val == 'OPEN' and created:
+                            # Backlog fora do SLA
+                            age_days = max((now_dt - created).total_seconds() / 86400.0, 0)
+                            thr = thresholds.get(sev)
+                            if thr is not None and (age_days > float(thr)):
+                                backlog_over_sla += 1
+
+                    # Finalizar KPIs
+                    remediation_kpis['backlog_over_sla'] = backlog_over_sla
+                    if resolved_count > 0:
+                        remediation_kpis['mttr_days'] = round(mttr_accum_days / resolved_count, 1)
+                        remediation_kpis['sla_compliance_pct'] = round((sla_compliant_count / resolved_count) * 100.0, 1)
+                    remediation_kpis['remediation_rate_pct'] = round((resolved_count / total_av) * 100.0, 1)
+            except Exception as e:
+                logger.warning(f"Falha ao calcular KPIs de remediação/SLA: {e}")
+
             for vuln in vulnerabilities:
                 # Severidade
                 severity = vuln.base_severity or 'UNKNOWN'
@@ -251,6 +379,38 @@ class ReportDataService:
                     if metric.base_score:
                         score_range = self._get_score_range(metric.base_score)
                         cvss_detailed['metrics_distribution'][score_range] = cvss_detailed['metrics_distribution'].get(score_range, 0) + 1
+
+                # Construir detalhes para visualização
+                try:
+                    affected_assets: List[Dict[str, Any]] = []
+                    for av in getattr(vuln, 'asset_vulnerabilities', []) or []:
+                        asset = getattr(av, 'asset', None)
+                        if asset:
+                            affected_assets.append({
+                                'name': getattr(asset, 'name', None),
+                                'ip_address': getattr(asset, 'ip_address', None),
+                                # O template espera status.value; fornecer objeto-like com 'value'
+                                'status': ({'value': getattr(av, 'status', None)} if getattr(av, 'status', None) is not None else None)
+                            })
+
+                    details.append({
+                        'cve_id': getattr(vuln, 'cve_id', None),
+                        'title': getattr(vuln, 'title', None),
+                        'description': getattr(vuln, 'description', ''),
+                        'severity': (getattr(vuln, 'base_severity', 'UNKNOWN') or 'UNKNOWN').lower(),
+                        'cvss_score': getattr(vuln, 'cvss_score', None),
+                        'published_date': getattr(vuln, 'published_date', None),
+                        'last_modified': getattr(vuln, 'last_update', None),
+                        'affected_assets': affected_assets
+                    })
+
+                    cve_details.append({
+                        'cve_id': getattr(vuln, 'cve_id', None),
+                        'description': getattr(vuln, 'description', '')
+                    })
+                except Exception:
+                    # Em caso de qualquer falha ao compor detalhes individuais, seguir processamento geral
+                    pass
             
             # Calcular estatísticas CVSS
             cvss_stats = {}
@@ -290,7 +450,11 @@ class ReportDataService:
                 'cisa_kev_data': cisa_kev_data,
                 'epss_data': epss_data,
                 'epss_stats': epss_stats,
-                'vendor_product_data': vendor_product_data
+                'vendor_product_data': vendor_product_data,
+                'remediation_kpis': remediation_kpis,
+                # Estruturas esperadas pelos templates e serviços de IA
+                'details': details,
+                'cve_details': cve_details
             }
             
         except Exception as e:

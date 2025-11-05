@@ -1,315 +1,13 @@
 {% extends "core/base.html" %}
+{% from 'core/macros.html' import render_pagination %}
 
 {% block title %}Relatórios de Segurança - {{ super() }}{% endblock %}
 
 {% block meta_description %}Gerencie e visualize relatórios de cybersegurança, análises de vulnerabilidades e estudos de ambiente. Crie relatórios executivos, técnicos e de auditoria com dados em tempo real.{% endblock %}
 
 {% block extra_css %}
-<style>
-.report-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 15px;
-    color: white;
-    padding: 2rem;
-    margin-bottom: 2rem;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-}
-
-.stats-card {
-    border: none;
-    border-radius: 15px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-    transition: all 0.3s ease;
-    overflow: hidden;
-    position: relative;
-}
-
-.stats-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 35px rgba(0,0,0,0.15);
-}
-
-.stats-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, var(--card-color), var(--card-color-light));
-}
-
-.stats-card.primary { --card-color: #007bff; --card-color-light: #66b3ff; }
-.stats-card.warning { --card-color: #ffc107; --card-color-light: #ffdb4d; }
-.stats-card.success { --card-color: #28a745; --card-color-light: #71dd8a; }
-.stats-card.danger { --card-color: #dc3545; --card-color-light: #ff6b7a; }
-
-.filter-card {
-    border: none;
-    border-radius: 15px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-    background: #f8f9fa;
-}
-
-.reports-table-card {
-    border: none;
-    border-radius: 15px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-    overflow: hidden;
-}
-
-.table-responsive {
-    border-radius: 10px;
-}
-
-.table th {
-    background: #f8f9fa;
-    border: none;
-    font-weight: 600;
-    color: #495057;
-    padding: 1rem;
-}
-
-.table td {
-    border: none;
-    padding: 1rem;
-    vertical-align: middle;
-}
-
-.table tbody tr {
-    border-bottom: 1px solid #e9ecef;
-    transition: background-color 0.2s ease;
-}
-
-.table tbody tr:hover {
-    background-color: #f8f9fa;
-}
-
-.btn-modern {
-    border-radius: 10px;
-    padding: 0.5rem 1.5rem;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    border: none;
-}
-
-.btn-modern:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-}
-
-.badge-modern {
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    font-weight: 500;
-    font-size: 0.85rem;
-}
-
-.empty-state {
-    text-align: center;
-    padding: 4rem 2rem;
-    color: #6c757d;
-}
-
-.empty-state i {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-    opacity: 0.5;
-}
-
-.quick-actions {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-}
-
-/* Loading Skeleton Styles */
-.skeleton {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-    border-radius: 4px;
-}
-
-@keyframes loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-}
-
-.skeleton-row {
-    height: 60px;
-    margin-bottom: 1rem;
-}
-
-.skeleton-text {
-    height: 16px;
-    margin-bottom: 8px;
-}
-
-.skeleton-text.short {
-    width: 60%;
-}
-
-.skeleton-text.medium {
-    width: 80%;
-}
-
-.skeleton-badge {
-    height: 24px;
-    width: 80px;
-    border-radius: 12px;
-}
-
-.skeleton-button {
-    height: 32px;
-    width: 100px;
-    border-radius: 6px;
-}
-
-.loading-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(255, 255, 255, 0.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-    border-radius: 15px;
-}
-
-.progress-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: rgba(0, 123, 255, 0.1);
-    border: 1px solid rgba(0, 123, 255, 0.2);
-    border-radius: 20px;
-    color: #007bff;
-    font-size: 0.875rem;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-}
-
-.progress-bar-container {
-    width: 100%;
-    height: 4px;
-    background: #e9ecef;
-    border-radius: 2px;
-    overflow: hidden;
-    margin-top: 0.5rem;
-}
-
-.progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #007bff, #0056b3);
-    border-radius: 2px;
-    transition: width 0.3s ease;
-    animation: progress-shine 2s infinite;
-}
-
-@keyframes progress-shine {
-    0% { background-position: -100% 0; }
-    100% { background-position: 100% 0; }
-}
-
-@media (max-width: 768px) {
-    .report-header {
-        text-align: center;
-        padding: 1.5rem;
-    }
-    
-    .quick-actions {
-        justify-content: center;
-        margin-top: 1rem;
-    }
-    
-    .skeleton-text {
-        height: 14px;
-    }
-    
-    .skeleton-row {
-        height: 50px;
-    }
-    
-    /* Otimizações para mobile */
-    .reports-table-card {
-        margin: 0.5rem;
-        border-radius: 8px;
-    }
-    
-    .table-responsive {
-        font-size: 0.875rem;
-    }
-    
-    .btn-sm {
-        padding: 0.25rem 0.5rem;
-        font-size: 0.75rem;
-    }
-    
-    /* Esconder colunas menos importantes em mobile */
-    .table th:nth-child(3),
-    .table td:nth-child(3),
-    .table th:nth-child(5),
-    .table td:nth-child(5) {
-        display: none;
-    }
-    
-    /* Compactar ações em mobile */
-    .btn-group-vertical .btn {
-        margin-bottom: 2px;
-    }
-    
-    /* Melhorar touch targets */
-    .btn, .page-link {
-        min-height: 44px;
-        min-width: 44px;
-    }
-    
-    /* Reduzir animações em dispositivos com pouca bateria */
-    @media (prefers-reduced-motion: reduce) {
-        .skeleton::before,
-        .progress-indicator,
-        .btn-modern {
-            animation: none;
-        }
-    }
-}
-
-@media (max-width: 576px) {
-    /* Extra small devices */
-    .stats-card {
-        margin-bottom: 1rem;
-    }
-    
-    .filter-card {
-        padding: 1rem;
-    }
-    
-    .table th:nth-child(6),
-    .table td:nth-child(6) {
-        display: none;
-    }
-    
-    /* Stack action buttons vertically */
-    .btn-group {
-        flex-direction: column;
-        width: 100%;
-    }
-    
-    .btn-group .btn {
-        border-radius: 4px !important;
-        margin-bottom: 2px;
-    }
-}
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/report_list.css') }}?v=2">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/table.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -318,11 +16,11 @@
     <div class="report-header">
         <div class="row align-items-center">
             <div class="col-lg-8">
-                <h1 class="h2 mb-2">
+                <h1 class="h2 mb-2 text-strong">
                     <i class="bi bi-shield-check me-3"></i>
                     Central de Relatórios de Segurança
                 </h1>
-                <p class="mb-0 opacity-90">
+                <p class="mb-0 text-medium">
                     Gerencie, analise e visualize relatórios de cybersegurança com inteligência artificial
                 </p>
             </div>
@@ -347,7 +45,7 @@
             <div class="card stats-card primary">
                 <div class="card-body text-center">
                     <div class="mb-3">
-                        <i class="bi bi-file-earmark-text text-primary" style="font-size: 2.5rem;"></i>
+                        <i class="bi bi-file-earmark-text text-primary icon icon-xxl"></i>
                     </div>
                     <h3 class="fw-bold text-primary mb-1">{{ stats.total_reports or 0 }}</h3>
                     <p class="text-muted mb-0">Total de Relatórios</p>
@@ -362,7 +60,7 @@
             <div class="card stats-card warning">
                 <div class="card-body text-center">
                     <div class="mb-3">
-                        <i class="bi bi-clock-history text-warning" style="font-size: 2.5rem;"></i>
+                        <i class="bi bi-clock-history text-warning icon icon-xxl"></i>
                     </div>
                     <h3 class="fw-bold text-warning mb-1">{{ stats.pending_reports or 0 }}</h3>
                     <p class="text-muted mb-0">Pendentes</p>
@@ -377,7 +75,7 @@
             <div class="card stats-card success">
                 <div class="card-body text-center">
                     <div class="mb-3">
-                        <i class="bi bi-check-circle-fill text-success" style="font-size: 2.5rem;"></i>
+                        <i class="bi bi-check-circle-fill text-success icon icon-xxl"></i>
                     </div>
                     <h3 class="fw-bold text-success mb-1">{{ stats.completed_reports or 0 }}</h3>
                     <p class="text-muted mb-0">Concluídos</p>
@@ -392,7 +90,7 @@
             <div class="card stats-card danger">
                 <div class="card-body text-center">
                     <div class="mb-3">
-                        <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 2.5rem;"></i>
+                        <i class="bi bi-exclamation-triangle-fill text-danger icon icon-xxl"></i>
                     </div>
                     <h3 class="fw-bold text-danger mb-1">{{ stats.failed_reports or 0 }}</h3>
                     <p class="text-muted mb-0">Com Erro</p>
@@ -503,7 +201,7 @@
                     <!-- Loading Skeleton -->
                     <div id="reportsLoadingSkeleton" class="d-none">
                         <div class="table-responsive">
-                            <table class="table table-hover">
+                            <table class="table table-hover table-modern align-middle">
                                 <thead>
                                     <tr>
                                         <th>Título</th>
@@ -546,10 +244,10 @@
                     </div>
 
                     <!-- Conteúdo Real -->
-                    <div id="reportsContent">
+                    <div id="reportsContent" data-has-processing="{{ 'true' if reports and reports.items and (reports.items | selectattr('status.value', 'in', ['pendente', 'gerando']) | list | length > 0) else 'false' }}">
                         {% if reports and reports.items %}
                             <div class="table-responsive">
-                                <table class="table table-hover">
+                                <table class="table table-hover table-modern align-middle">
                                     <thead>
                                         <tr>
                                             <th>Título</th>
@@ -681,61 +379,7 @@
 
                         <!-- Paginação -->
                         {% if reports.pages > 1 %}
-                        <nav aria-label="Navegação de páginas" class="mt-4">
-                            <ul class="pagination justify-content-center pagination-modern">
-                                {% if reports.has_prev %}
-                                    <li class="page-item">
-                                        <a class="page-link" href="{{ url_for('report.list_reports') }}?page={{ reports.prev_num }}{% if filter_qs %}&{{ filter_qs }}{% endif %}">
-                                            <i class="bi bi-chevron-left"></i>
-                                            <span class="d-none d-sm-inline ms-1">Anterior</span>
-                                        </a>
-                                    </li>
-                                {% else %}
-                                    <li class="page-item disabled">
-                                        <span class="page-link">
-                                            <i class="bi bi-chevron-left"></i>
-                                            <span class="d-none d-sm-inline ms-1">Anterior</span>
-                                        </span>
-                                    </li>
-                                {% endif %}
-
-                                {% for page_num in reports.iter_pages() %}
-                                    {% if page_num %}
-                                        {% if page_num != reports.page %}
-                                            <li class="page-item">
-                                                <a class="page-link" href="{{ url_for('report.list_reports') }}?page={{ page_num }}{% if filter_qs %}&{{ filter_qs }}{% endif %}">
-                                                    {{ page_num }}
-                                                </a>
-                                            </li>
-                                        {% else %}
-                                            <li class="page-item active">
-                                                <span class="page-link">{{ page_num }}</span>
-                                            </li>
-                                        {% endif %}
-                                    {% else %}
-                                        <li class="page-item disabled">
-                                            <span class="page-link">…</span>
-                                        </li>
-                                    {% endif %}
-                                {% endfor %}
-
-                                {% if reports.has_next %}
-                                    <li class="page-item">
-                                        <a class="page-link" href="{{ url_for('report.list_reports') }}?page={{ reports.next_num }}{% if filter_qs %}&{{ filter_qs }}{% endif %}">
-                                            <span class="d-none d-sm-inline me-1">Próximo</span>
-                                            <i class="bi bi-chevron-right"></i>
-                                        </a>
-                                    </li>
-                                {% else %}
-                                    <li class="page-item disabled">
-                                        <span class="page-link">
-                                            <span class="d-none d-sm-inline me-1">Próximo</span>
-                                            <i class="bi bi-chevron-right"></i>
-                                        </span>
-                                    </li>
-                                {% endif %}
-                            </ul>
-                        </nav>
+                          {{ render_pagination(reports, 'report.list_reports') }}
                         {% endif %}
                     {% else %}
                         <div class="empty-state">
@@ -761,380 +405,8 @@
     </div>
 </div>
 
-<!-- Auto-refresh para relatórios em processamento -->
-{% if reports and reports.items %}
-    {% set has_processing = reports.items | selectattr('status.value', 'in', ['pendente', 'gerando']) | list | length > 0 %}
-    {% if has_processing %}
-    <script>
-        // Auto-refresh a cada 30 segundos se houver relatórios em processamento
-        setTimeout(function() {
-            location.reload();
-        }, 30000);
-    </script>
-    {% endif %}
-{% endif %}
 {% endblock %}
 
 {% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Elementos do loading
-    const loadingSkeleton = document.getElementById('reportsLoadingSkeleton');
-    const reportsContent = document.getElementById('reportsContent');
-    
-    // Função para mostrar loading
-    function showLoading() {
-        if (loadingSkeleton && reportsContent) {
-            loadingSkeleton.classList.remove('d-none');
-            reportsContent.classList.add('d-none');
-        }
-    }
-    
-    // Função para esconder loading
-    function hideLoading() {
-        if (loadingSkeleton && reportsContent) {
-            loadingSkeleton.classList.add('d-none');
-            reportsContent.classList.remove('d-none');
-        }
-    }
-    
-    // Interceptar cliques em links de paginação para loading assíncrono
-    document.querySelectorAll('.pagination a').forEach(function(link) {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            showLoading();
-            
-            // Simular delay mínimo para mostrar o skeleton
-            setTimeout(function() {
-                window.location.href = link.href;
-            }, 300);
-        });
-    });
-    
-    // Interceptar submissão de formulários de filtro
-    const filterForm = document.querySelector('form[method="GET"]');
-    if (filterForm) {
-        filterForm.addEventListener('submit', function(e) {
-            showLoading();
-            // Permitir que o formulário seja submetido normalmente
-        });
-    }
-    
-    
-    // Confirmação para ações destrutivas
-    document.querySelectorAll('form[action*="delete"]').forEach(function(form) {
-        form.addEventListener('submit', function(e) {
-            if (!confirm('Tem certeza que deseja deletar este relatório?')) {
-                e.preventDefault();
-            } else {
-                showLoading();
-            }
-        });
-    });
-    
-    document.querySelectorAll('form[action*="regenerate"]').forEach(function(form) {
-        form.addEventListener('submit', function(e) {
-            if (!confirm('Tem certeza que deseja regenerar este relatório?')) {
-                e.preventDefault();
-            } else {
-                showLoading();
-            }
-        });
-    });
-    
-    // Lazy loading para imagens e conteúdo pesado
-    if ('IntersectionObserver' in window) {
-        const lazyElements = document.querySelectorAll('[data-lazy]');
-        const lazyObserver = new IntersectionObserver(function(entries) {
-            entries.forEach(function(entry) {
-                if (entry.isIntersecting) {
-                    const element = entry.target;
-                    if (element.dataset.lazy === 'chart') {
-                        // Carregar gráficos sob demanda
-                        loadChart(element);
-                    }
-                    lazyObserver.unobserve(element);
-                }
-            });
-        });
-        
-        lazyElements.forEach(function(element) {
-            lazyObserver.observe(element);
-        });
-    }
-    
-    // Cache simples para relatórios
-    const reportCache = new Map();
-    
-    // Função para cache de relatórios
-    function cacheReport(reportId, data) {
-        reportCache.set(reportId, {
-            data: data,
-            timestamp: Date.now()
-        });
-    }
-    
-    // Função para recuperar do cache (válido por 5 minutos)
-    function getCachedReport(reportId) {
-        const cached = reportCache.get(reportId);
-        if (cached && (Date.now() - cached.timestamp) < 300000) {
-            return cached.data;
-        }
-        return null;
-    }
-    
-    // Indicador de progresso para relatórios em processamento
-    const processingReports = document.querySelectorAll('.badge-warning');
-    if (processingReports.length > 0) {
-        // Adicionar indicador visual de progresso
-        processingReports.forEach(function(badge) {
-            if (badge.textContent.includes('Processando')) {
-                badge.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Processando...';
-                badge.classList.add('progress-indicator');
-            }
-        });
-    }
-});
-
-// Função para carregar gráficos sob demanda
-function loadChart(element) {
-    // Implementar carregamento de gráficos quando necessário
-    console.log('Carregando gráfico para:', element);
-}
-
-// Melhorias de UX dos filtros: Auto aplicar, chips ativos e intervalo rápido
-document.addEventListener('DOMContentLoaded', function() {
-    const filterForm = document.querySelector('form[method="GET"]');
-    const autoToggle = document.getElementById('autoApplyToggle');
-    const quickRange = document.getElementById('quickRange');
-    const chips = document.getElementById('activeFiltersChips');
-
-    if (!filterForm) return;
-
-    const inputs = filterForm.querySelectorAll('input[type="text"], select, input[type="date"]');
-
-    function submitForm() { filterForm.submit(); }
-
-    function bindDebounce(wait) {
-        inputs.forEach(function(input) {
-            const key = `reports-filter-${input.name || input.id || 'field'}`;
-            const handler = Utils.debounce(submitForm, wait, key);
-            if (input._debouncedSubmitHandler) {
-                input.removeEventListener('input', input._debouncedSubmitHandler);
-            }
-            input.addEventListener('input', handler);
-            input._debouncedSubmitHandler = handler;
-        });
-    }
-
-    function unbindDebounce() {
-        inputs.forEach(function(input) {
-            if (input._debouncedSubmitHandler) {
-                input.removeEventListener('input', input._debouncedSubmitHandler);
-                input._debouncedSubmitHandler = null;
-            }
-        });
-    }
-
-    function updateChips() {
-        if (!chips) return;
-        chips.innerHTML = '';
-        function addChip(label, value, clearCallback) {
-            if (!value) return;
-            const chip = document.createElement('span');
-            chip.className = 'badge bg-info text-dark d-flex align-items-center gap-1';
-            chip.setAttribute('role', 'listitem');
-            chip.setAttribute('aria-label', `Filtro ativo: ${label} - ${value}`);
-            chip.innerHTML = `<i class=\"bi bi-filter\"></i>${label}: ${value} <button type=\"button\" class=\"btn btn-sm btn-link text-dark p-0 ms-1\"><i class=\"bi bi-x\"></i></button>`;
-            const btn = chip.querySelector('button');
-            btn.setAttribute('aria-label', `Remover filtro ${label} (${value})`);
-            btn.addEventListener('click', function() {
-                if (clearCallback) clearCallback();
-                if (autoToggle?.checked) submitForm();
-                updateChips();
-            });
-            chips.appendChild(chip);
-        }
-
-        const typeSelect = filterForm.querySelector('[name="report_type"]');
-        if (typeSelect && typeSelect.value) {
-            addChip('Tipo', typeSelect.selectedOptions[0]?.text || typeSelect.value, function() { typeSelect.value = ''; });
-        }
-
-        const statusSelect = filterForm.querySelector('[name="status"]');
-        if (statusSelect && statusSelect.value) {
-            addChip('Status', statusSelect.selectedOptions[0]?.text || statusSelect.value, function() { statusSelect.value = ''; });
-        }
-
-        const fromInput = filterForm.querySelector('[name="date_from"]');
-        const toInput = filterForm.querySelector('[name="date_to"]');
-        function formatDate(val) { return val ? new Date(val).toLocaleDateString() : ''; }
-        if ((fromInput && fromInput.value) || (toInput && toInput.value)) {
-            const label = 'Período';
-            const val = `${formatDate(fromInput?.value)}${toInput?.value ? ' → ' + formatDate(toInput.value) : ''}`.trim();
-            addChip(label, val, function() { if (fromInput) fromInput.value = ''; if (toInput) toInput.value = ''; });
-        }
-    }
-
-    // Persistência do estado de Auto aplicar no localStorage
-    const savedAuto = localStorage.getItem('reports:autoApply');
-    if (autoToggle && savedAuto !== null) {
-        autoToggle.checked = (savedAuto === 'true');
-    }
-
-    // Inicialização conforme alternador Auto aplicar
-    if (autoToggle?.checked) { bindDebounce(500); } else { unbindDebounce(); }
-
-    autoToggle?.addEventListener('change', function() {
-        localStorage.setItem('reports:autoApply', String(autoToggle.checked));
-        if (autoToggle.checked) {
-            bindDebounce(500);
-            submitForm();
-        } else {
-            unbindDebounce();
-        }
-    });
-
-    // Intervalo rápido
-    quickRange?.addEventListener('change', function() {
-        const fromInput = filterForm.querySelector('[name="date_from"]');
-        const toInput = filterForm.querySelector('[name="date_to"]');
-        const now = new Date();
-        let start = null, end = null;
-        function toISODate(d) { return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-'); }
-        switch (quickRange.value) {
-            case 'today':
-                start = new Date(now); end = new Date(now); break;
-            case 'last7':
-                start = new Date(now); start.setDate(start.getDate()-7); end = new Date(now); break;
-            case 'last30':
-                start = new Date(now); start.setDate(start.getDate()-30); end = new Date(now); break;
-            case 'thisMonth':
-                start = new Date(now.getFullYear(), now.getMonth(), 1);
-                end = new Date(now.getFullYear(), now.getMonth()+1, 0);
-                break;
-            case 'last90':
-                start = new Date(now); start.setDate(start.getDate()-90); end = new Date(now); break;
-            default:
-                start = null; end = null;
-        }
-        if (fromInput) fromInput.value = start ? toISODate(start) : '';
-        if (toInput) toInput.value = end ? toISODate(end) : '';
-        updateChips();
-        if (autoToggle?.checked) submitForm();
-    });
-
-    inputs.forEach(function(input) { input.addEventListener('change', updateChips); });
-    updateChips();
-
-    // Atualizar ícone de collapse no cabeçalho
-    const collapseBtn = document.querySelector('[data-bs-target="#advancedFiltersBody"]');
-    const collapseArea = document.getElementById('advancedFiltersBody');
-    if (collapseBtn && collapseArea) {
-        collapseArea.addEventListener('shown.bs.collapse', function() {
-            const icon = collapseBtn.querySelector('i');
-            if (icon) icon.classList.replace('bi-chevron-down','bi-chevron-up');
-            // Foco adequado ao expandir: primeiro campo do formulário
-            const firstInput = filterForm.querySelector('select, input');
-            if (firstInput) firstInput.focus();
-        });
-        collapseArea.addEventListener('hidden.bs.collapse', function() {
-            const icon = collapseBtn.querySelector('i');
-            if (icon) icon.classList.replace('bi-chevron-up','bi-chevron-down');
-            // Foco retorna para o botão de colapsar
-            collapseBtn.focus();
-        });
-    }
-
-    // Botão: Limpar apenas datas
-    const clearDateBtn = document.getElementById('clearDateBtn');
-    clearDateBtn?.addEventListener('click', function() {
-        const fromInput = filterForm.querySelector('[name="date_from"]');
-        const toInput = filterForm.querySelector('[name="date_to"]');
-        if (fromInput) fromInput.value = '';
-        if (toInput) toInput.value = '';
-        if (quickRange) quickRange.value = '';
-        updateChips();
-        if (autoToggle?.checked) submitForm();
-    });
-});
-
-// Performance: Debounce para filtros consolidado em Utils.debounce
-
-// Aplicação automática de filtros gerenciada pelo alternador "Auto aplicar"
-// (Inicialização feita no bloco de melhorias UX dos filtros)
-
-// Otimizações para mobile e performance
-function initMobileOptimizations() {
-    // Detectar se é dispositivo móvel
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    if (isMobile) {
-        // Otimizar touch events
-        document.addEventListener('touchstart', function() {}, { passive: true });
-        document.addEventListener('touchmove', function() {}, { passive: true });
-        
-        // Reduzir frequência de auto-refresh em mobile (verificação segura)
-        try {
-            const scripts = Array.from(document.querySelectorAll('script'));
-            const autoRefreshScript = scripts.find(s => {
-                const txt = s.textContent || '';
-                return txt.includes('setTimeout') && txt.includes('location.reload');
-            });
-            if (autoRefreshScript && autoRefreshScript.textContent.includes('30000')) {
-                // Nota: alterar o conteúdo do script após execução não reprograma o timer já agendado,
-                // mas evita erro de seletor e mantém compatibilidade.
-                autoRefreshScript.textContent = autoRefreshScript.textContent.replace(/30000/g, '60000');
-            }
-        } catch (err) {
-            // Ignorar silenciosamente para evitar erros em navegadores sem suporte
-            console.debug('Mobile optimizations: fallback sem ajuste de auto-refresh', err);
-        }
-    }
-    
-    // Detectar conexão lenta
-    if ('connection' in navigator) {
-        const connection = navigator.connection;
-        if (connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g') {
-            // Desabilitar animações em conexões lentas
-            document.documentElement.style.setProperty('--animation-duration', '0s');
-            
-            // Aumentar debounce para filtros (apenas quando Auto aplicar estiver ativo)
-            const autoToggle = document.getElementById('autoApplyToggle');
-            const filterForm = document.querySelector('form[method="GET"]');
-            if (autoToggle?.checked && filterForm) {
-                const inputs = filterForm.querySelectorAll('input[type="text"], select, input[type="date"]');
-                inputs.forEach(function(input) {
-                    const slowKey = `reports-filter-slow-${input.name || input.id || 'field'}`;
-                    const slowHandler = Utils.debounce(function() {
-                        filterForm.submit();
-                    }, 1000, slowKey);
-                    if (input._debouncedSubmitHandler) {
-                        input.removeEventListener('input', input._debouncedSubmitHandler);
-                    }
-                    input.addEventListener('input', slowHandler);
-                    input._debouncedSubmitHandler = slowHandler;
-                });
-            }
-        }
-    }
-    
-    // Otimizar scroll performance
-    let ticking = false;
-    function updateScrollPosition() {
-        // Implementar virtual scrolling se necessário
-        ticking = false;
-    }
-    
-    document.addEventListener('scroll', function() {
-        if (!ticking) {
-            requestAnimationFrame(updateScrollPosition);
-            ticking = true;
-        }
-    }, { passive: true });
-}
-
-// Inicializar otimizações mobile
-initMobileOptimizations();
-</script>
+<script src="{{ url_for('static', filename='js/pages/report_list.v2.js') }}?v=1" nonce="{{ nonce }}"></script>
 {% endblock %}

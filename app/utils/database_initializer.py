@@ -22,6 +22,7 @@ from app.jobs.enhanced_nvd_fetcher import EnhancedNVDFetcher
 from app.config.parallel_nvd_config import ParallelNVDConfig
 from flask import Flask
 from sqlalchemy import text
+from app.utils.sync_metadata_orm import upsert_sync_metadata
 
 class DatabaseInitializer:
     """
@@ -282,27 +283,64 @@ class DatabaseInitializer:
         Verifica quando foi a última sincronização.
         """
         try:
-            query = "SELECT last_sync_time FROM sync_metadata ORDER BY created_at DESC LIMIT 1"
-            result = await self.database.execute_query(query)
-            
-            if result and len(result) > 0:
-                last_sync = result[0]['last_sync_time']
-                if isinstance(last_sync, str):
-                    last_sync = datetime.fromisoformat(last_sync)
-                
-                # Se a última sincronização foi há mais de 7 dias, fazer sincronização completa
-                days_since_sync = (datetime.now() - last_sync).days
-                
-                if days_since_sync > 7:
-                    self.app_logger.warning(f"Última sincronização há {days_since_sync} dias, sincronização completa necessária")
-                    return True
-                else:
-                    self.app_logger.info(f"Última sincronização há {days_since_sync} dias, apenas atualizações incrementais")
-                    return False
-            else:
-                self.app_logger.info("Nenhum registro de sincronização encontrado")
+            # Garantir que a tabela exista
+            table_check = await self.database.execute_query(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='sync_metadata'"
+            )
+            if not table_check:
+                self.app_logger.info("Tabela 'sync_metadata' não encontrada; assumindo necessidade de sincronização inicial")
                 return True
-                
+
+            # Usar colunas válidas: value (ISO string) e last_modified
+            query = "SELECT value, last_modified FROM sync_metadata WHERE key = ? ORDER BY last_modified DESC LIMIT 1"
+            result = await self.database.execute_query(query, ("nvd_last_sync",))
+
+            last_sync_dt = None
+            if result and len(result) > 0:
+                row = result[0]
+                value_str = row.get('value')
+                lm = row.get('last_modified')
+                # Parse value ISO first; fallback to last_modified
+                if isinstance(value_str, str) and value_str:
+                    try:
+                        last_sync_dt = datetime.fromisoformat(value_str.replace('Z', '+00:00'))
+                    except Exception:
+                        last_sync_dt = None
+                if last_sync_dt is None and isinstance(lm, str) and lm:
+                    try:
+                        last_sync_dt = datetime.fromisoformat(lm.replace('Z', '+00:00'))
+                    except Exception:
+                        last_sync_dt = None
+
+            if last_sync_dt is None:
+                # Fallback: usar data da última CVE cadastrada
+                try:
+                    vuln_query = "SELECT MAX(last_update) as max_update FROM vulnerabilities"
+                    vres = await self.database.execute_query(vuln_query)
+                    if vres and len(vres) > 0 and vres[0].get('max_update'):
+                        mu = vres[0]['max_update']
+                        if isinstance(mu, str):
+                            try:
+                                last_sync_dt = datetime.fromisoformat(mu.replace('Z', '+00:00'))
+                            except Exception:
+                                last_sync_dt = None
+                except Exception:
+                    last_sync_dt = None
+
+            if last_sync_dt is None:
+                self.app_logger.info("Nenhum registro de sincronização válido encontrado")
+                return True
+
+            # Se a última sincronização foi há mais de 7 dias, fazer sincronização completa
+            days_since_sync = (datetime.now() - last_sync_dt).days
+
+            if days_since_sync > 7:
+                self.app_logger.warning(f"Última sincronização há {days_since_sync} dias, sincronização completa necessária")
+                return True
+            else:
+                self.app_logger.info(f"Última sincronização há {days_since_sync} dias, apenas atualizações incrementais")
+                return False
+            
         except Exception as e:
             self.app_logger.warning(f"Erro ao verificar última sincronização: {str(e)}")
             return True
@@ -410,18 +448,23 @@ class DatabaseInitializer:
         Registra metadados da sincronização.
         """
         try:
-            query = """
-                INSERT INTO sync_metadata (last_sync_time, sync_type, vulnerabilities_count)
-                VALUES (?, ?, ?)
-            """
-            
-            await self.database.execute_query(
-                query,
-                (datetime.now().isoformat(), sync_type, count)
-            )
-            
-            self.db_logger.insert("sync_metadata", 1)
-            
+            # Usa ORM com app context (self.app é fornecido ao initializer)
+            if self.app is None:
+                self.app_logger.warning("Aplicação Flask não definida; não foi possível registrar metadados via ORM")
+                return
+            with self.app.app_context():
+                ok, _ = upsert_sync_metadata(
+                    session=None,
+                    key="nvd_last_sync",
+                    value=datetime.now().isoformat(timespec='milliseconds'),
+                    status="completed",
+                    sync_type=sync_type,
+                )
+                if ok:
+                    self.db_logger.insert("sync_metadata", 1)
+                else:
+                    self.app_logger.warning("Falha ao registrar metadados de sincronização via ORM")
+
         except Exception as e:
             self.app_logger.warning(f"Erro ao registrar metadados de sincronização: {str(e)}")
     

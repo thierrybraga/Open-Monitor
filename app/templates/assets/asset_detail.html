@@ -189,7 +189,7 @@
               <i class="bi bi-shield-exclamation me-2"></i>
               Vulnerabilidades
             </h3>
-            <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}" class="btn btn-sm btn-outline-secondary">
+            <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}{% if asset.vendor %}?vendor_ids={{ asset.vendor.id }}{% else %}?search={{ asset.name }}{% endif %}" class="btn btn-sm btn-outline-secondary" title="Abrir lista com contexto do ativo">
               <i class="bi bi-box-arrow-up-right me-1"></i>Ver Todas
             </a>
           </div>
@@ -209,9 +209,9 @@
               </div>
             </div>
             {% set ns = namespace(critical=0, high=0, medium=0, low=0) %}
-            {% if asset.vulnerabilities and asset.vulnerabilities|length > 0 %}
-              {% for av in asset.vulnerabilities %}
-                {% set sev = (av.vulnerability.base_severity if av.vulnerability else None) %}
+            {% if vuln_pagination and vuln_pagination.total > 0 %}
+              {% for av in vuln_pagination.items %}
+                {% set sev = (av.vulnerability.base_severity|upper|trim if av.vulnerability else None) %}
                 {% if sev %}
                   {% if sev == 'CRITICAL' %}{% set ns.critical = ns.critical + 1 %}{% endif %}
                   {% if sev == 'HIGH' %}{% set ns.high = ns.high + 1 %}{% endif %}
@@ -248,12 +248,12 @@
               </div>
             </div>
 
-            {% if asset.vulnerabilities and asset.vulnerabilities|length > 0 %}
+            {% if vuln_pagination and vuln_pagination.total > 0 %}
             <div id="vuln-cards-container" class="row g-3">
-              {% for av in asset.vulnerabilities[:12] %}
-              {% set vuln = av.vulnerability %}
-              {% set sev = (vuln.base_severity if vuln else 'UNKNOWN') %}
-              <div class="col-12 col-md-6 col-lg-4" data-severity="{{ sev }}">
+              {% for av in vuln_pagination.items %}
+                {% set vuln = av.vulnerability %}
+                {% set sev = (vuln.base_severity|upper|trim if vuln else 'UNKNOWN') %}
+                <div class="col-12 col-md-6 col-lg-4" data-severity="{{ sev|upper|trim }}">
                 <div class="vuln-card p-3 h-100 bg-light rounded-3 border">
                   <div class="d-flex justify-content-between align-items-start mb-2">
                     {% if vuln %}
@@ -293,10 +293,10 @@
                   </tr>
                 </thead>
                 <tbody>
-                  {% for av in asset.vulnerabilities[:10] %}
-                  {% set vuln = av.vulnerability %}
-                  {% set sev = (vuln.base_severity if vuln else 'UNKNOWN') %}
-                  <tr data-severity="{{ sev }}">
+                  {% for av in vuln_pagination.items %}
+                    {% set vuln = av.vulnerability %}
+                    {% set sev = (vuln.base_severity|upper|trim if vuln else 'UNKNOWN') %}
+                    <tr data-severity="{{ sev|upper|trim }}">
                     <td>
                       {% if vuln %}
                         <a href="{{ url_for('vulnerability_ui.vulnerability_details', cve_id=vuln.cve_id) }}" class="text-decoration-none">{{ vuln.cve_id }}</a>
@@ -326,6 +326,23 @@
                 </tbody>
               </table>
             </div>
+            {% if vuln_pagination %}
+            <nav aria-label="Paginação de CVEs" class="mt-3">
+              <ul class="pagination justify-content-center">
+                <li class="page-item {% if not vuln_pagination.has_prev %}disabled{% endif %}">
+                  <a class="page-link" href="{% if vuln_pagination.has_prev %}{% if per_page %}{{ url_for('asset.asset_detail', asset_id=asset.id, page=vuln_pagination.page - 1, per_page=per_page) }}{% else %}{{ url_for('asset.asset_detail', asset_id=asset.id, page=vuln_pagination.page - 1) }}{% endif %}{% else %}#{% endif %}" tabindex="-1">Anterior</a>
+                </li>
+                {% for p in range(1, vuln_pagination.pages + 1) %}
+                  <li class="page-item {% if p == vuln_pagination.page %}active{% endif %}">
+                    <a class="page-link" href="{% if per_page %}{{ url_for('asset.asset_detail', asset_id=asset.id, page=p, per_page=per_page) }}{% else %}{{ url_for('asset.asset_detail', asset_id=asset.id, page=p) }}{% endif %}">{{ p }}</a>
+                  </li>
+                {% endfor %}
+                <li class="page-item {% if not vuln_pagination.has_next %}disabled{% endif %}">
+                  <a class="page-link" href="{% if vuln_pagination.has_next %}{% if per_page %}{{ url_for('asset.asset_detail', asset_id=asset.id, page=vuln_pagination.page + 1, per_page=per_page) }}{% else %}{{ url_for('asset.asset_detail', asset_id=asset.id, page=vuln_pagination.page + 1) }}{% endif %}{% else %}#{% endif %}">Próxima</a>
+                </li>
+              </ul>
+            </nav>
+            {% endif %}
             {% else %}
               <div class="p-4 bg-light rounded-3 border d-flex align-items-center justify-content-between">
                 <div class="d-flex align-items-center">
@@ -335,7 +352,7 @@
                     <small class="text-muted">Você pode sincronizar vulnerabilidades conforme o fornecedor do ativo.</small>
                   </div>
                 </div>
-                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#syncAssetVulnerabilitiesModal">
+                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#syncAssetVulnerabilitiesModal" data-vendor-id="{{ asset.vendor.id if asset.vendor else '' }}" {% if not asset.vendor %}disabled title="Selecione um fornecedor para sincronizar"{% endif %}>
                   <i class="bi bi-arrow-repeat me-1"></i>Sincronizar
                 </button>
               </div>
@@ -378,7 +395,7 @@
                 </span>
               </button>
 
-              <button type="button" class="btn btn-outline-success" id="sync-btn" onclick="syncVulnerabilities({{ asset.id }})">
+              <button type="button" class="btn btn-outline-success" id="sync-btn" onclick="syncVulnerabilities({{ asset.id }})" data-vendor-id="{{ asset.vendor.id if asset.vendor else '' }}" {% if not asset.vendor %}disabled data-bs-toggle="tooltip" title="Selecione um fornecedor para sincronizar"{% endif %}>
                 <i class="bi bi-arrow-repeat me-2"></i>
                 <span class="btn-text">Sincronizar Vulnerabilidades</span>
                 <span class="btn-loading d-none">
@@ -406,19 +423,19 @@
             <div class="row g-3">
               <div class="col-md-4">
                 <div class="stat-tile">
-                  <div class="stat-value">{{ asset.vulnerabilities|length }}</div>
+                  <div class="stat-value">{{ vuln_count }}</div>
                   <div class="stat-label">Vulnerabilidades</div>
                 </div>
               </div>
               <div class="col-md-4">
                 <div class="stat-tile">
-                  <div class="stat-value">{{ (asset.ip_address and 1) or 0 }}</div>
+                  <div class="stat-value">{{ 'Sim' if asset.ip_address else 'Não' }}</div>
                   <div class="stat-label">IP configurado</div>
                 </div>
               </div>
               <div class="col-md-4">
                 <div class="stat-tile">
-                  <div class="stat-value">{{ 'Ativo' }}</div>
+                  <div class="stat-value">{{ asset.status|capitalize if asset.status else 'N/A' }}</div>
                   <div class="stat-label">Status</div>
                 </div>
               </div>
@@ -506,7 +523,7 @@
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
           <i class="bi bi-x-circle me-1"></i>Cancelar
         </button>
-        <button type="button" class="btn btn-success" onclick="confirmSyncAssetVulnerabilities({{ asset.id }})">
+        <button type="button" class="btn btn-success" onclick="confirmSyncAssetVulnerabilities({{ asset.id }}, {{ asset.vendor.id if asset.vendor else 'null' }})" {% if not asset.vendor %}disabled data-bs-toggle="tooltip" title="Selecione um fornecedor primeiro"{% endif %}>
           <i class="bi bi-arrow-repeat me-1"></i>
           Sincronizar
         </button>
@@ -541,9 +558,9 @@
 
   // Exclusão via AJAX com toast e redirecionamento
   (function setupAjaxDelete() {
-    const deleteForm = document.getElementById('delete-asset-form-detail');
-    const deleteModalEl = document.getElementById('deleteAssetModal');
-    const getModalSafely = (typeof window.getModalInstance === 'function')
+    var deleteForm = document.getElementById('delete-asset-form-detail');
+    var deleteModalEl = document.getElementById('deleteAssetModal');
+    var getModalSafely = (typeof window.getModalInstance === 'function')
       ? window.getModalInstance
       : function(el, options) {
           if (!el) return null;
@@ -552,94 +569,105 @@
               return bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el, options);
             }
           } catch (e) {
-            console.warn('Bootstrap Modal init failed:', e);
+            try { console.warn('Bootstrap Modal init failed:', e); } catch(_){}
           }
           return {
-            show() {
+            show: function() {
               el.classList.add('show');
               el.style.display = 'block';
               document.body.classList.add('modal-open');
             },
-            hide() {
+            hide: function() {
               el.classList.remove('show');
               el.style.display = 'none';
               document.body.classList.remove('modal-open');
-              document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+              var backs = document.querySelectorAll('.modal-backdrop');
+              Array.prototype.forEach.call(backs, function(b){ if (b && b.parentNode) b.parentNode.removeChild(b); });
             }
           };
         };
-    const deleteModal = getModalSafely(deleteModalEl);
-    const assetsListUrl = "{{ url_for('asset.list_assets') }}";
+    var deleteModal = getModalSafely(deleteModalEl);
+    var assetsListUrl = "{{ url_for('asset.list_assets') }}";
 
     if (!deleteForm) return;
 
     deleteForm.addEventListener('submit', async function(e) {
       e.preventDefault();
-      const submitBtn = document.getElementById('delete-asset-btn');
-      submitBtn.disabled = true;
-      submitBtn.querySelector('.btn-text').classList.add('d-none');
-      submitBtn.querySelector('.btn-loading').classList.remove('d-none');
+      var submitBtn = document.getElementById('delete-asset-btn');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        var btnTextEl = submitBtn.querySelector('.btn-text');
+        var btnLoadEl = submitBtn.querySelector('.btn-loading');
+        if (btnTextEl) btnTextEl.classList.add('d-none');
+        if (btnLoadEl) btnLoadEl.classList.remove('d-none');
+      }
 
       try {
-        const formData = new FormData(deleteForm);
-        const res = await fetch(deleteForm.action, {
+        var formData = new FormData(deleteForm);
+        var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        var csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
+        var res = await fetch(deleteForm.action, {
           method: 'POST',
           credentials: 'same-origin',
           headers: {
             'Accept': 'application/json',
             'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            'X-CSRF-Token': csrfToken,
+            'X-CSRFToken': csrfToken
           },
           body: formData
         });
 
-        const contentType = (res.headers.get('content-type') || '').toLowerCase();
-        const isJson = contentType.includes('application/json');
-        const data = isJson ? (await res.json().catch(() => ({}))) : {};
+        var contentType = (res.headers.get('content-type') || '').toLowerCase();
+        var isJson = contentType.indexOf('application/json') !== -1;
+        var data = isJson ? (await res.json().catch(function(){ return {}; })) : {};
         if (!res.ok) {
-          throw new Error(data.message || `Falha ao excluir ativo (status ${res.status})`);
+          throw new Error(data.message || ('Falha ao excluir ativo (status ' + res.status + ')'));
         }
 
         // Fechar modal
-        deleteModal && deleteModal.hide();
+        if (deleteModal && deleteModal.hide) { deleteModal.hide(); }
 
         // Mostrar toast de sucesso
         if (typeof window.safeNotify === 'function') {
           window.safeNotify('success', null, 'Ativo removido com sucesso.', 2000);
         } else {
-          const toastEl = document.getElementById('feedback-toast');
-          const toast = window.getToastInstance(toastEl, { delay: 2000 });
-          const toastIcon = document.querySelector('#feedback-toast .toast-header i');
-          const toastTitle = document.querySelector('#feedback-toast .toast-header strong');
-          const toastBody = document.querySelector('#feedback-toast .toast-body');
-          toastIcon.className = 'bi bi-check-circle-fill text-success me-2';
-          toastTitle.textContent = 'Excluído';
-          toastBody.textContent = 'Ativo removido com sucesso.';
-          toast.show();
+          var toastEl = document.getElementById('feedback-toast');
+          var toastInst = (typeof window.getToastInstance === 'function') ? window.getToastInstance(toastEl, { delay: 2000 }) : null;
+          var toastIcon = document.querySelector('#feedback-toast .toast-header i');
+          var toastTitle = document.querySelector('#feedback-toast .toast-header strong');
+          var toastBody = document.querySelector('#feedback-toast .toast-body');
+          if (toastIcon) toastIcon.className = 'bi bi-check-circle-fill text-success me-2';
+          if (toastTitle) toastTitle.textContent = 'Excluído';
+          if (toastBody) toastBody.textContent = 'Ativo removido com sucesso.';
+          if (toastInst && toastInst.show) toastInst.show();
         }
 
         // Redirecionar para a lista após breve atraso
-        setTimeout(() => { window.location.href = assetsListUrl; }, 1200);
+        setTimeout(function() { window.location.href = assetsListUrl; }, 1200);
 
       } catch (err) {
         if (typeof window.safeNotify === 'function') {
           window.safeNotify('error', null, (err && err.message) ? err.message : 'Erro ao excluir ativo.', 5000);
         } else {
-          const toastEl = document.getElementById('feedback-toast');
-          const toast = window.getToastInstance(toastEl, { delay: 5000 });
-          const toastIcon = document.querySelector('#feedback-toast .toast-header i');
-          const toastTitle = document.querySelector('#feedback-toast .toast-header strong');
-          const toastBody = document.querySelector('#feedback-toast .toast-body');
-          toastIcon.className = 'bi bi-exclamation-triangle text-warning me-2';
-          toastTitle.textContent = 'Erro';
-          toastBody.textContent = err.message || 'Erro ao excluir ativo.';
-          toast.show();
+          var toastEl2 = document.getElementById('feedback-toast');
+          var toast2 = (typeof window.getToastInstance === 'function') ? window.getToastInstance(toastEl2, { delay: 5000 }) : null;
+          var toastIcon2 = document.querySelector('#feedback-toast .toast-header i');
+          var toastTitle2 = document.querySelector('#feedback-toast .toast-header strong');
+          var toastBody2 = document.querySelector('#feedback-toast .toast-body');
+          if (toastIcon2) toastIcon2.className = 'bi bi-exclamation-triangle text-warning me-2';
+          if (toastTitle2) toastTitle2.textContent = 'Erro';
+          if (toastBody2) toastBody2.textContent = (err && err.message) ? err.message : 'Erro ao excluir ativo.';
+          if (toast2 && toast2.show) toast2.show();
         }
       } finally {
-        submitBtn.querySelector('.btn-loading').classList.add('d-none');
-        submitBtn.querySelector('.btn-text').classList.remove('d-none');
-        submitBtn.disabled = false;
+        if (submitBtn) {
+          var btnLoadEl2 = submitBtn.querySelector('.btn-loading');
+          var btnTextEl2 = submitBtn.querySelector('.btn-text');
+          if (btnLoadEl2) btnLoadEl2.classList.add('d-none');
+          if (btnTextEl2) btnTextEl2.classList.remove('d-none');
+          submitBtn.disabled = false;
+        }
       }
     });
   })();
@@ -756,15 +784,41 @@
   
   // Sync vulnerabilities functionality
   window.syncVulnerabilities = function(assetId) {
-    const btn = document.getElementById('sync-btn');
-    const toast = window.getToastInstance(document.getElementById('feedback-toast'));
-    const toastBody = document.querySelector('#feedback-toast .toast-body');
-    const toastIcon = document.querySelector('#feedback-toast .toast-header i');
-    const toastTitle = document.querySelector('#feedback-toast .toast-header strong');
+    var btn = document.getElementById('sync-btn');
+    var toastInst = (typeof window.getToastInstance === 'function') ? window.getToastInstance(document.getElementById('feedback-toast')) : null;
+    var toastBody = document.querySelector('#feedback-toast .toast-body');
+    var toastIcon = document.querySelector('#feedback-toast .toast-header i');
+    var toastTitle = document.querySelector('#feedback-toast .toast-header strong');
 
     // Toggle loading state
-    btn.querySelector('.btn-text').classList.add('d-none');
-    btn.querySelector('.btn-loading').classList.remove('d-none');
+    if (btn) {
+      var t = btn.querySelector('.btn-text');
+      var l = btn.querySelector('.btn-loading');
+      if (t) t.classList.add('d-none');
+      if (l) l.classList.remove('d-none');
+    }
+
+    // Verificar fornecedor antes de sincronizar
+    var vendorIdAttr = btn ? (btn.getAttribute('data-vendor-id') || '') : '';
+    var hasVendor = vendorIdAttr && vendorIdAttr.trim().length > 0;
+    if (!hasVendor) {
+      if (typeof window.safeNotify === 'function') {
+        window.safeNotify('warning', 'Fornecedor ausente', 'Este ativo não possui fornecedor selecionado. Selecione um fornecedor para sincronizar vulnerabilidades.', 5000);
+      } else {
+        if (toastIcon) toastIcon.className = 'bi bi-exclamation-triangle text-warning me-2';
+        if (toastTitle) toastTitle.textContent = 'Fornecedor ausente';
+        if (toastBody) toastBody.textContent = 'Este ativo não possui fornecedor selecionado. Selecione um fornecedor para sincronizar vulnerabilidades.';
+        if (toastInst && toastInst.show) toastInst.show();
+      }
+      // Reverter estado de loading
+      if (btn) {
+        var l2 = btn.querySelector('.btn-loading');
+        var t2 = btn.querySelector('.btn-text');
+        if (l2) l2.classList.add('d-none');
+        if (t2) t2.classList.remove('d-none');
+      }
+      return;
+    }
 
     fetch(`${window.location.origin}/assets/${assetId}/sync_vulnerabilities`, {
       method: 'POST',
@@ -778,20 +832,31 @@
       body: JSON.stringify({})
     })
     .then(async (res) => {
-      const isJson = (res.headers.get('content-type') || '').includes('application/json');
+      const isJson = ((res.headers.get('content-type') || '').indexOf('application/json') !== -1);
       const data = isJson ? await res.json() : {};
       if (res.ok && isJson) {
+        var createdCount = (typeof data.created === 'number') ? data.created : (data.created || 0);
         if (typeof window.safeNotify === 'function') {
-          window.safeNotify('success', 'Sincronizado', `Foram criadas ${data.created || 0} associações.`, 4000);
+          if (createdCount > 0) {
+            window.safeNotify('success', 'Sincronizado', `Foram criadas ${createdCount} associações.`, 4000);
+          } else {
+            window.safeNotify('info', 'Sem novas associações', 'Nenhuma nova associação foi criada para o fornecedor selecionado.', 4500);
+          }
         } else {
-          const toast = window.getToastInstance(document.getElementById('feedback-toast'));
-          const toastBody = document.querySelector('#feedback-toast .toast-body');
-          const toastIcon = document.querySelector('#feedback-toast .toast-header i');
-          const toastTitle = document.querySelector('#feedback-toast .toast-header strong');
-          toastIcon.className = 'bi bi-check-circle-fill text-success me-2';
-          toastTitle.textContent = 'Sincronizado';
-          toastBody.textContent = `Foram criadas ${data.created || 0} associações.`;
-          toast.show();
+          var t2 = (typeof window.getToastInstance === 'function') ? window.getToastInstance(document.getElementById('feedback-toast')) : null;
+          var tb2 = document.querySelector('#feedback-toast .toast-body');
+          var ti2 = document.querySelector('#feedback-toast .toast-header i');
+          var tt2 = document.querySelector('#feedback-toast .toast-header strong');
+          if (createdCount > 0) {
+            if (ti2) ti2.className = 'bi bi-check-circle-fill text-success me-2';
+            if (tt2) tt2.textContent = 'Sincronizado';
+            if (tb2) tb2.textContent = 'Foram criadas ' + createdCount + ' associações.';
+          } else {
+            if (ti2) ti2.className = 'bi bi-info-circle-fill text-info me-2';
+            if (tt2) tt2.textContent = 'Sem novas associações';
+            if (tb2) tb2.textContent = 'Nenhuma nova associação foi criada para o fornecedor selecionado.';
+          }
+          if (t2 && t2.show) t2.show();
         }
       } else {
         throw new Error(data.message || 'Falha ao sincronizar vulnerabilidades.');
@@ -801,24 +866,45 @@
       if (typeof window.safeNotify === 'function') {
         window.safeNotify('error', 'Erro', err.message || 'Falha ao sincronizar vulnerabilidades.', 5000);
       } else {
-        const toast = window.getToastInstance(document.getElementById('feedback-toast'));
-        const toastBody = document.querySelector('#feedback-toast .toast-body');
-        const toastIcon = document.querySelector('#feedback-toast .toast-header i');
-        const toastTitle = document.querySelector('#feedback-toast .toast-header strong');
-        toastIcon.className = 'bi bi-exclamation-triangle text-warning me-2';
-        toastTitle.textContent = 'Erro';
-        toastBody.textContent = err.message;
-        toast.show();
+        var t3 = (typeof window.getToastInstance === 'function') ? window.getToastInstance(document.getElementById('feedback-toast')) : null;
+        var tb3 = document.querySelector('#feedback-toast .toast-body');
+        var ti3 = document.querySelector('#feedback-toast .toast-header i');
+        var tt3 = document.querySelector('#feedback-toast .toast-header strong');
+        if (ti3) ti3.className = 'bi bi-exclamation-triangle text-warning me-2';
+        if (tt3) tt3.textContent = 'Erro';
+        if (tb3) tb3.textContent = err && err.message ? err.message : 'Falha ao sincronizar vulnerabilidades.';
+        if (t3 && t3.show) t3.show();
       }
     })
     .finally(() => {
-      btn.querySelector('.btn-loading').classList.add('d-none');
-      btn.querySelector('.btn-text').classList.remove('d-none');
+      if (btn) {
+        var l2 = btn.querySelector('.btn-loading');
+        var t2 = btn.querySelector('.btn-text');
+        if (l2) l2.classList.add('d-none');
+        if (t2) t2.classList.remove('d-none');
+      }
     });
   };
 
   // Confirm from modal and hide it before starting sync
-  window.confirmSyncAssetVulnerabilities = function(assetId) {
+  window.confirmSyncAssetVulnerabilities = function(assetId, vendorId) {
+    if (!vendorId) {
+      // Feedback amigável quando não há fornecedor
+      if (typeof window.safeNotify === 'function') {
+        window.safeNotify('warning', 'Fornecedor ausente', 'Este ativo não possui fornecedor selecionado. Selecione um fornecedor para sincronizar vulnerabilidades.', 5000);
+      } else {
+        var toastEl = document.getElementById('feedback-toast');
+        var toastInst = (typeof window.getToastInstance === 'function') ? window.getToastInstance(toastEl) : null;
+        var toastIcon = document.querySelector('#feedback-toast .toast-header i');
+        var toastTitle = document.querySelector('#feedback-toast .toast-header strong');
+        var toastBody = document.querySelector('#feedback-toast .toast-body');
+        if (toastIcon) toastIcon.className = 'bi bi-exclamation-triangle text-warning me-2';
+        if (toastTitle) toastTitle.textContent = 'Fornecedor ausente';
+        if (toastBody) toastBody.textContent = 'Este ativo não possui fornecedor selecionado. Selecione um fornecedor para sincronizar vulnerabilidades.';
+        if (toastInst && toastInst.show) toastInst.show();
+      }
+      return;
+    }
     const modalEl = document.getElementById('syncAssetVulnerabilitiesModal');
     if (modalEl) {
       const modal = (typeof window.getModalInstance === 'function' ? window.getModalInstance : function(el, options) {
@@ -851,46 +937,46 @@
   };
   // Filtros e alternância de visualização de vulnerabilidades
   (function setupVulnFilters() {
-    const filterButtons = document.querySelectorAll('[aria-label="Filtro Severidade"] button');
-    const viewButtons = document.querySelectorAll('[aria-label="Visualização"] button');
-    const cardsContainer = document.getElementById('vuln-cards-container');
-    const tableContainer = document.getElementById('vuln-table-container');
+    var filterButtons = document.querySelectorAll('[aria-label="Filtro Severidade"] button');
+    var viewButtons = document.querySelectorAll('[aria-label="Visualização"] button');
+    var cardsContainer = document.getElementById('vuln-cards-container');
+    var tableContainer = document.getElementById('vuln-table-container');
 
     if (!cardsContainer || !tableContainer) return;
 
-    let currentFilter = 'ALL';
-    let currentView = 'cards';
+    var currentFilter = 'ALL';
+    var currentView = 'cards';
 
     function applyFilter() {
-      const applyTo = currentView === 'cards' ? cardsContainer.querySelectorAll('[data-severity]')
-                                             : tableContainer.querySelectorAll('tr[data-severity]');
-      applyTo.forEach(el => {
-        const sev = (el.getAttribute('data-severity') || 'UNKNOWN').toUpperCase();
-        const show = currentFilter === 'ALL' || sev === currentFilter;
-        el.classList.toggle('d-none', !show);
+      var applyTo = currentView === 'cards' ? cardsContainer.querySelectorAll('[data-severity]')
+                                            : tableContainer.querySelectorAll('tr[data-severity]');
+      Array.prototype.forEach.call(applyTo, function(el){
+        var sev = (el.getAttribute('data-severity') || 'UNKNOWN').toUpperCase();
+        var show = currentFilter === 'ALL' || sev === currentFilter;
+        if (el && el.classList) { el.classList.toggle('d-none', !show); }
       });
     }
 
-    filterButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        filterButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentFilter = btn.dataset.filter || 'ALL';
+    Array.prototype.forEach.call(filterButtons, function(btn){
+      btn.addEventListener('click', function() {
+        Array.prototype.forEach.call(filterButtons, function(b){ if (b && b.classList) b.classList.remove('active'); });
+        if (btn && btn.classList) btn.classList.add('active');
+        currentFilter = (btn && btn.dataset && btn.dataset.filter) ? btn.dataset.filter : 'ALL';
         applyFilter();
       });
     });
 
-    viewButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        viewButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentView = btn.dataset.view || 'cards';
+    Array.prototype.forEach.call(viewButtons, function(btn){
+      btn.addEventListener('click', function() {
+        Array.prototype.forEach.call(viewButtons, function(b){ if (b && b.classList) b.classList.remove('active'); });
+        if (btn && btn.classList) btn.classList.add('active');
+        currentView = (btn && btn.dataset && btn.dataset.view) ? btn.dataset.view : 'cards';
         if (currentView === 'cards') {
-          tableContainer.classList.add('d-none');
-          cardsContainer.classList.remove('d-none');
+          if (tableContainer && tableContainer.classList) tableContainer.classList.add('d-none');
+          if (cardsContainer && cardsContainer.classList) cardsContainer.classList.remove('d-none');
         } else {
-          cardsContainer.classList.add('d-none');
-          tableContainer.classList.remove('d-none');
+          if (cardsContainer && cardsContainer.classList) cardsContainer.classList.add('d-none');
+          if (tableContainer && tableContainer.classList) tableContainer.classList.remove('d-none');
         }
         applyFilter();
       });

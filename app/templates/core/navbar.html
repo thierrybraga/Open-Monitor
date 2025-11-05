@@ -54,37 +54,72 @@
 
       {# Avatar da conta e link/dropdown #}
       {# Mantido no nível superior do flexbox da direita #}
-      {% if 'account' in nav_items|map(attribute='endpoint')|list %}
+      {% if nav_items and ('account' in nav_items|map(attribute='endpoint')|list) %}
         <div class="account-avatar-container dropdown">
+          {# Quando não autenticado, o ícone deve levar à página de login #}
           <a class="btn btn-outline-secondary avatar-button"
-             href="{{ url_for('main.account') }}"
+             {% if current_user.is_authenticated %}
+             href="#"
              role="button"
              id="accountDropdown"
              data-bs-toggle="dropdown"
+             data-bs-auto-close="outside"
              aria-expanded="false"
-             aria-label="User account menu"
-             title="User account">
+             aria-label="Menu da conta do usuário"
+             title="Conta do usuário"
+             {% else %}
+             href="{{ url_for('auth.login') }}"
+             aria-label="Entrar"
+             title="Entrar"
+             {% endif %}>
             <i class="bi bi-person-circle text-muted" aria-hidden="true"></i>
             <span class="username d-none d-md-inline ms-1">
-              Visitante
+              {% if current_user.is_authenticated %}
+                {{ current_user.first_name or current_user.username }}
+              {% else %}
+                Visitante
+              {% endif %}
             </span>
           </a>
+           {% if current_user.is_authenticated %}
            <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="accountDropdown">
-             <li><h6 class="dropdown-header">Visitante</h6></li>
+             <li>
+               <h6 class="dropdown-header">
+                 {% if current_user.is_authenticated %}
+                   {{ current_user.first_name or current_user.username }}
+                 {% else %}
+                   Visitante
+                 {% endif %}
+               </h6>
+             </li>
              <li><hr class="dropdown-divider"></li>
              
              {# Links para acesso público #}
-             {% if 'account' in nav_items|map(attribute='endpoint')|list %}
+             {% if nav_items and ('account' in nav_items|map(attribute='endpoint')|list) %}
              <li><a class="dropdown-item" href="{{ url_for('main.account') }}">
                <i class="bi bi-person me-2" aria-hidden="true"></i>Minha Conta
              </a></li>
              {% endif %}
-             {% if 'settings' in nav_items|map(attribute='endpoint')|list %}
+             {% if nav_items and ('settings' in nav_items|map(attribute='endpoint')|list) %}
              <li><a class="dropdown-item" href="{{ url_for('main.settings') }}">
                <i class="bi bi-gear me-2" aria-hidden="true"></i>Configurações
              </a></li>
              {% endif %}
+
+             {# Botão de Logout (POST + CSRF) #}
+             <li><hr class="dropdown-divider"></li>
+             <li class="px-3">
+               <form action="{{ url_for('auth.logout') }}" method="post" class="d-grid">
+                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                 <button type="submit" class="btn btn-outline-danger btn-sm w-100" aria-label="Sair">
+                   <i class="bi bi-box-arrow-right me-1"></i>Sair
+                 </button>
+               </form>
+             </li>
            </ul>
+            {% else %}
+            {# Quando não autenticado, mostramos um link direto para login em vez do dropdown #}
+            {% endif %}
         </div>
       {% endif %}
 

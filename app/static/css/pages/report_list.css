@@ -1,0 +1,308 @@
+.report-header {
+    background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-700) 100%);
+    border-radius: 15px;
+    color: var(--neutral-0);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow-soft-xl, 0 10px 30px rgba(0,0,0,0.1));
+}
+
+.stats-card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: var(--shadow-md, 0 5px 15px rgba(0,0,0,0.08));
+    transition: all 0.3s ease;
+    overflow: hidden;
+    position: relative;
+}
+
+.stats-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg, 0 15px 35px rgba(0,0,0,0.15));
+}
+
+.stats-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--card-color), var(--card-color-light));
+}
+
+.stats-card.primary { --card-color: var(--color-primary); --card-color-light: var(--color-primary-hover); }
+.stats-card.warning { --card-color: var(--color-alert); --card-color-light: var(--alert-400, var(--color-alert)); }
+.stats-card.success { --card-color: var(--color-success); --card-color-light: var(--success-400, var(--color-success)); }
+.stats-card.danger { --card-color: var(--color-error); --card-color-light: var(--error-400, var(--color-error)); }
+
+.filter-card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: var(--shadow-soft-md, 0 5px 15px rgba(0,0,0,0.08));
+    background: var(--surface-50);
+}
+
+.reports-table-card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+.table-responsive {
+    border-radius: 10px;
+}
+
+.table th {
+    background: var(--surface-50);
+    border: none;
+    font-weight: 600;
+    color: var(--content-strong);
+    padding: 1rem;
+}
+
+.table td {
+    border: none;
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+.table tbody tr {
+    border-bottom: 1px solid var(--border-light, #e9ecef);
+    transition: background-color 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: var(--surface-50, #f8f9fa);
+}
+
+.btn-modern {
+    border-radius: 10px;
+    padding: 0.5rem 1.5rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.btn-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg, 0 5px 15px rgba(0,0,0,0.2));
+}
+
+.badge-modern {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--content-medium, #6c757d);
+}
+
+.empty-state i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.quick-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Loading Skeleton Styles */
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--surface-100, #f0f0f0) 25%,
+        var(--surface-50, #e0e0e0) 50%,
+        var(--surface-100, #f0f0f0) 75%
+    );
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 4px;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-row {
+    height: 60px;
+    margin-bottom: 1rem;
+}
+
+.skeleton-text {
+    height: 16px;
+    margin-bottom: 8px;
+}
+
+.skeleton-text.short {
+    width: 60%;
+}
+
+.skeleton-text.medium {
+    width: 80%;
+}
+
+.skeleton-badge {
+    height: 24px;
+    width: 80px;
+    border-radius: 12px;
+}
+
+.skeleton-button {
+    height: 32px;
+    width: 100px;
+    border-radius: 6px;
+}
+
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(var(--neutral-0-rgb, 255, 255, 255), 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: 15px;
+}
+
+.progress-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: rgba(var(--primary-500-rgb), 0.1);
+    border: 1px solid rgba(var(--primary-500-rgb), 0.2);
+    border-radius: 20px;
+    color: var(--color-primary);
+    font-size: 0.875rem;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 4px;
+    background: var(--surface-100);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-primary), var(--color-primary-active));
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    animation: progress-shine 2s infinite;
+}
+
+@keyframes progress-shine {
+    0% { background-position: -100% 0; }
+    100% { background-position: 100% 0; }
+}
+
+@media (max-width: 768px) {
+    .report-header {
+        text-align: center;
+        padding: 1.5rem;
+    }
+    
+    .quick-actions {
+        justify-content: center;
+        margin-top: 1rem;
+    }
+    
+    .skeleton-text {
+        height: 14px;
+    }
+    
+    .skeleton-row {
+        height: 50px;
+    }
+    
+    /* Otimizações para mobile */
+    .reports-table-card {
+        margin: 0.5rem;
+        border-radius: 8px;
+    }
+    
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+    
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+    
+    /* Esconder colunas menos importantes em mobile */
+    .table th:nth-child(3),
+    .table td:nth-child(3),
+    .table th:nth-child(5),
+    .table td:nth-child(5) {
+        display: none;
+    }
+    
+    /* Compactar ações em mobile */
+    .btn-group-vertical .btn {
+        margin-bottom: 2px;
+    }
+    
+    /* Melhorar touch targets */
+    .btn, .page-link {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    /* Reduzir animações em dispositivos com pouca bateria */
+    @media (prefers-reduced-motion: reduce) {
+        .skeleton::before,
+        .progress-indicator,
+        .btn-modern {
+            animation: none;
+        }
+    }
+}
+
+@media (max-width: 576px) {
+    /* Extra small devices */
+    .stats-card {
+        margin-bottom: 1rem;
+    }
+    
+    .filter-card {
+        padding: 1rem;
+    }
+    
+    .table th:nth-child(6),
+    .table td:nth-child(6) {
+        display: none;
+    }
+    
+    /* Stack action buttons vertically */
+    .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .btn-group .btn {
+        border-radius: 4px !important;
+        margin-bottom: 2px;
+    }
+}

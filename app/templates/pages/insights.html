@@ -23,9 +23,9 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Vulnerabilidades Críticas
+                                Vulnerabilidades Críticas (em ativos)
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ insights_data.critical_count or 0 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800"><span id="critical-count">{{ insights_data.critical_count or 0 }}</span></div>
                         </div>
                         <div class="col-auto">
                             <i class="bi bi-exclamation-triangle-fill fa-2x text-gray-300"></i>
@@ -43,7 +43,7 @@
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Assets Monitorados
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ insights_data.assets_count or 0 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800"><span id="assets-count">{{ insights_data.assets_count or 0 }}</span></div>
                         </div>
                         <div class="col-auto">
                             <i class="bi bi-server fa-2x text-gray-300"></i>
@@ -63,10 +63,85 @@
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                 Regras de Monitoramento
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ insights_data.monitoring_rules_count or 0 }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800"><span id="monitoring-rules-count">{{ insights_data.monitoring_rules_count or 0 }}</span></div>
                         </div>
                         <div class="col-auto">
                             <i class="bi bi-activity fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards adicionais baseados em ativos -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Ativos com Vulnerabilidades
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800"><span id="assets-with-vulns-count">{{ insights_data.assets_with_vulns_count or 0 }}</span></div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-shield-exclamation fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Ativos com Críticas
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800"><span id="assets-with-critical-count">{{ insights_data.assets_with_critical_count or 0 }}</span></div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-exclamation-diamond fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-secondary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">
+                                Ativos sem Fornecedor
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800"><span id="assets-without-vendor-count">{{ insights_data.assets_without_vendor_count or 0 }}</span></div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-building-slash fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-dark shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-dark text-uppercase mb-1">
+                                Ativos sem Proprietário
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800"><span id="assets-without-owner-count">{{ insights_data.assets_without_owner_count or 0 }}</span></div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-person-x fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
@@ -82,8 +157,9 @@
                     <h6 class="m-0 font-weight-bold text-primary">Tendências de Vulnerabilidades</h6>
                 </div>
                 <div class="card-body">
-                    <div class="chart-area">
+                    <div class="chart-area" style="height: 300px;">
                         <canvas id="vulnerabilityTrendChart"></canvas>
+                        <div id="trend-chart-empty" class="text-muted small text-center mt-3" style="display:none;">Sem dados de tendência disponíveis</div>
                     </div>
                 </div>
             </div>
@@ -95,8 +171,9 @@
                     <h6 class="m-0 font-weight-bold text-primary">Distribuição por Severidade</h6>
                 </div>
                 <div class="card-body">
-                    <div class="chart-pie pt-4 pb-2">
+                    <div class="chart-pie pt-4 pb-2" style="height: 300px;">
                         <canvas id="severityChart"></canvas>
+                        <div id="severity-chart-empty" class="text-muted small text-center mt-3" style="display:none;">Sem dados de severidade disponíveis</div>
                     </div>
                 </div>
             </div>
@@ -111,8 +188,33 @@
                     <h6 class="m-0 font-weight-bold text-primary">Insights Recentes</h6>
                 </div>
                 <div class="card-body">
+                    <div id="insights-controls" class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                        <div class="input-group input-group-sm" style="max-width: 260px;">
+                            <span class="input-group-text">Pesquisar</span>
+                            <input type="text" id="insight-search" class="form-control" placeholder="Texto..." aria-label="Pesquisar insights">
+                        </div>
+                        <div class="input-group input-group-sm" style="max-width: 220px;">
+                            <span class="input-group-text">Severidade</span>
+                            <select id="insight-filter-severity" class="form-select" aria-label="Filtrar por severidade">
+                                <option value="all" selected>Todos</option>
+                                <option value="CRITICAL">Critical</option>
+                                <option value="HIGH">High</option>
+                                <option value="MEDIUM">Medium</option>
+                                <option value="LOW">Low</option>
+                            </select>
+                        </div>
+                        <div class="input-group input-group-sm" style="max-width: 180px;">
+                            <span class="input-group-text">Por página</span>
+                            <select id="insight-per-page" class="form-select" aria-label="Itens por página">
+                                <option value="5">5</option>
+                                <option value="10" selected>10</option>
+                                <option value="20">20</option>
+                            </select>
+                        </div>
+                        <div id="insights-pagination" class="ms-auto"></div>
+                    </div>
                     <div class="table-responsive">
-                        <table class="table table-bordered" width="100%" cellspacing="0">
+                        <table id="insights-table" class="table table-bordered" width="100%" cellspacing="0">
                             <thead>
                                 <tr>
                                     <th>Data</th>
@@ -122,7 +224,7 @@
                                     <th>Status</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="insights-tbody">
                                 {% if insights_data.recent_insights %}
                                     {% for insight in insights_data.recent_insights %}
                                     <tr>
@@ -153,8 +255,11 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ nonce }}">
 // Placeholder para gráficos - pode ser implementado com Chart.js
 console.log('Insights page loaded');
 </script>
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/insights.js') }}" defer nonce="{{ nonce }}"></script>
+{% endblock %}
 {% endblock %}

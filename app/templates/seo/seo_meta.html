@@ -22,7 +22,7 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="{{ config.get('SITE_NAME', 'Open Monitor') }} - Security Monitoring Platform">
-<meta property="og:locale" content="{{ config.get('LOCALE', 'pt_BR') }}">
+<meta property="og:locale" content="{{ (ui_settings.language | default('pt-BR')) | replace('-', '_') }}">
 
 <!-- Twitter Card Meta Tags -->
 <meta name="twitter:card" content="summary_large_image">
@@ -55,12 +55,12 @@
 <!-- Alternate language versions -->
 {% if config.get('MULTILINGUAL', False) and request %}
 <link rel="alternate" hreflang="pt-br" href="{{ url_for(request.endpoint, _external=True, **request.view_args) }}">
-<link rel="alternate" hreflang="en" href="{{ url_for(request.endpoint, _external=True, lang='en', **request.view_args) }}">
+<link rel="alternate" hreflang="en-us" href="{{ url_for(request.endpoint, _external=True, lang='en-us', **request.view_args) }}">
 <link rel="alternate" hreflang="x-default" href="{{ url_for(request.endpoint, _external=True, **request.view_args) }}">
 {% endif %}
 
 <!-- Structured Data - Organization Schema -->
-<script type="application/ld+json">
+<script type="application/ld+json" nonce="{{ nonce }}">
 {
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -82,14 +82,14 @@
 </script>
 
 <!-- Structured Data - WebSite Schema -->
-<script type="application/ld+json">
+<script type="application/ld+json" nonce="{{ nonce }}">
 {
   "@context": "https://schema.org",
   "@type": "WebSite",
   "name": "{{ config.get('SITE_NAME', 'Open Monitor') }}",
   "url": "{{ url_for('main.index', _external=True) }}",
   "description": "{{ config.get('SITE_DESCRIPTION', 'Plataforma de monitoramento de segurança e análise de vulnerabilidades') }}",
-  "inLanguage": "{{ config.get('LANGUAGE', 'pt-BR') }}",
+  "inLanguage": "{{ ui_settings.language | default('pt-BR') }}",
   "potentialAction": {
     "@type": "SearchAction",
     "target": {

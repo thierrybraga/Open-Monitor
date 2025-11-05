@@ -26,7 +26,45 @@ def list_assets():
 def asset_detail(asset_id):
     """Renderiza a página de detalhes do ativo (apenas do proprietário ou admin)."""
     asset = Asset.query.get_or_404(asset_id)
-    return render_template('assets/asset_detail.html', asset=asset)
+
+    # Parâmetros de paginação
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', None, type=int)
+
+    # Contagem eficiente de vulnerabilidades associadas sem carregar toda a relação
+    try:
+        from app.models.asset_vulnerability import AssetVulnerability
+        from app.models.vulnerability import Vulnerability
+        from sqlalchemy.orm import joinedload
+        from app.utils.pagination import paginate_query
+
+        base_query = (
+            db.session.query(AssetVulnerability)
+            .options(joinedload(AssetVulnerability.vulnerability))
+            .join(Vulnerability, AssetVulnerability.vulnerability_id == Vulnerability.cve_id)
+            .filter(AssetVulnerability.asset_id == asset.id)
+            .order_by(Vulnerability.published_date.desc())
+        )
+
+        pag = paginate_query(base_query, page=page, per_page=per_page, error_out=False)
+        vuln_count = pag.total
+    except Exception:
+        # Fallback seguro: tenta usar len() da relação se houver falha na consulta
+        try:
+            vuln_count = len(asset.vulnerabilities)
+            pag = None
+        except Exception:
+            vuln_count = 0
+            pag = None
+
+    return render_template(
+        'assets/asset_detail.html',
+        asset=asset,
+        vuln_count=vuln_count,
+        vuln_pagination=pag,
+        page=page,
+        per_page=(per_page if per_page else None)
+    )
 
 
 @asset_bp.route('/create', methods=['GET', 'POST'])
@@ -45,22 +83,34 @@ def create_asset():
         vendor = None
         vendor_id_raw = (form.vendor_id.data.strip() if hasattr(form, 'vendor_id') and form.vendor_id.data else '')
         vendor_name = (form.vendor_name.data.strip() if hasattr(form, 'vendor_name') and form.vendor_name.data else '')
+        from sqlalchemy import func
+        from app.models.vendor import Vendor
         if vendor_id_raw:
             try:
                 vendor_id_int = int(vendor_id_raw)
             except ValueError:
                 vendor_id_int = None
             if vendor_id_int:
-                from app.models.vendor import Vendor
                 vendor = Vendor.query.get(vendor_id_int)
                 if not vendor:
                     form.vendor_name.errors.append('Fornecedor inválido. Selecione um fornecedor existente.')
                     flash('Fornecedor inválido. Selecione um fornecedor existente.', 'error')
                     return render_template('assets/asset_form.html', form=form, action='adicionar')
         elif vendor_name:
-            form.vendor_name.errors.append('Selecione um fornecedor existente da lista.')
-            flash('Selecione um fornecedor existente da lista.', 'error')
-            return render_template('assets/asset_form.html', form=form, action='adicionar')
+            # Tentar resolver por nome (case-insensitive); se não existir, criar
+            existing = Vendor.query.filter(func.lower(Vendor.name) == vendor_name.lower()).first()
+            if existing:
+                vendor = existing
+            else:
+                try:
+                    vendor = Vendor(name=vendor_name)
+                    db.session.add(vendor)
+                    db.session.flush()
+                except Exception:
+                    vendor = None
+                    form.vendor_name.errors.append('Não foi possível criar o fornecedor informado.')
+                    flash('Não foi possível criar o fornecedor informado.', 'error')
+                    return render_template('assets/asset_form.html', form=form, action='adicionar')
 
         asset = Asset(
             name=form.name.data,
@@ -127,22 +177,34 @@ def edit_asset(asset_id):
         vendor = None
         vendor_id_raw = (form.vendor_id.data.strip() if hasattr(form, 'vendor_id') and form.vendor_id.data else '')
         vendor_name = (form.vendor_name.data.strip() if hasattr(form, 'vendor_name') and form.vendor_name.data else '')
+        from sqlalchemy import func
+        from app.models.vendor import Vendor
         if vendor_id_raw:
             try:
                 vendor_id_int = int(vendor_id_raw)
             except ValueError:
                 vendor_id_int = None
             if vendor_id_int:
-                from app.models.vendor import Vendor
                 vendor = Vendor.query.get(vendor_id_int)
                 if not vendor:
                     form.vendor_name.errors.append('Fornecedor inválido. Selecione um fornecedor existente.')
                     flash('Fornecedor inválido. Selecione um fornecedor existente.', 'error')
                     return render_template('assets/asset_form.html', form=form, asset=asset, action='editar')
         elif vendor_name:
-            form.vendor_name.errors.append('Selecione um fornecedor existente da lista.')
-            flash('Selecione um fornecedor existente da lista.', 'error')
-            return render_template('assets/asset_form.html', form=form, asset=asset, action='editar')
+            # Tentar resolver por nome (case-insensitive); se não existir, criar
+            existing = Vendor.query.filter(func.lower(Vendor.name) == vendor_name.lower()).first()
+            if existing:
+                vendor = existing
+            else:
+                try:
+                    vendor = Vendor(name=vendor_name)
+                    db.session.add(vendor)
+                    db.session.flush()
+                except Exception:
+                    vendor = None
+                    form.vendor_name.errors.append('Não foi possível criar o fornecedor informado.')
+                    flash('Não foi possível criar o fornecedor informado.', 'error')
+                    return render_template('assets/asset_form.html', form=form, asset=asset, action='editar')
         asset.vendor_id = vendor.id if vendor else None
         try:
             db.session.commit()

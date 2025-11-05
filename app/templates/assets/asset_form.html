@@ -188,8 +188,20 @@
                 <div class="position-relative">
                   {{ form.vendor_name(class="form-control" + (" is-invalid" if form.vendor_name.errors else ""), id="vendor_name", placeholder="Ex: Microsoft, Cisco, Oracle, etc.", autocomplete="off") }}
                   {{ form.vendor_id(id="vendor_id") }}
-                  <div id="vendor_suggestions" class="list-group position-absolute w-100 d-none" style="z-index:1060; top:100%; left:0;"></div>
-                  <small class="form-text text-muted">Digite para buscar e selecione um fornecedor existente.</small>
+                  <!-- Clear vendor selection button -->
+                  <button type="button" class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 mt-2 me-2" id="vendor_clear" aria-label="Limpar fornecedor">
+                    <i class="bi bi-x-circle"></i>
+                  </button>
+
+                  <!-- Suggestions listbox -->
+                  <div id="vendor_suggestions" class="list-group position-absolute w-100 d-none" style="z-index:1060; top:100%; left:0;" role="listbox" aria-label="Sugestões de fornecedor">
+                    <div id="vendor_loading" class="list-group-item d-flex align-items-center" hidden>
+                      <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Buscando fornecedores...
+                    </div>
+                  </div>
+                  <small class="form-text text-muted">Digite para buscar; selecione uma sugestão ou informe um novo nome. Se não existir, será criado automaticamente ao salvar.</small>
+                  <div id="vendor_status" class="visually-hidden" aria-live="polite"></div>
                   {% if form.vendor_name.errors %}
                     <div class="invalid-feedback">
                       {{ form.vendor_name.errors[0] }}
@@ -244,60 +256,78 @@
 <script>
 // Form validation and submission
 document.addEventListener('DOMContentLoaded', function() {
-  const form = document.getElementById('asset-form');
-  const submitBtn = document.getElementById('submit-btn');
-  const btnText = submitBtn.querySelector('.btn-text');
-  const btnLoading = submitBtn.querySelector('.btn-loading');
+  var form = document.getElementById('asset-form');
+  var submitBtn = document.getElementById('submit-btn');
+  var btnText = submitBtn ? submitBtn.querySelector('.btn-text') : null;
+  var btnLoading = submitBtn ? submitBtn.querySelector('.btn-loading') : null;
 
   // Form submission with loading state
-  form.addEventListener('submit', function(e) {
-    if (form.checkValidity()) {
-      submitBtn.disabled = true;
-      btnText.classList.add('d-none');
-      btnLoading.classList.remove('d-none');
-    }
-  });
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      if (typeof form.checkValidity === 'function' ? form.checkValidity() : true) {
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          if (btnText) btnText.classList.add('d-none');
+          if (btnLoading) btnLoading.classList.remove('d-none');
+        }
+      }
+    });
+  }
 
-  // IP address validation
-  const ipInput = document.getElementById('ip_address');
-  ipInput.addEventListener('blur', function() {
-    const ipPattern = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-    const value = this.value.trim();
-    
-    if (value && !ipPattern.test(value)) {
-      this.classList.add('is-invalid');
-      this.classList.remove('is-valid');
-      
-      let feedback = this.parentNode.querySelector('.invalid-feedback');
+  // IP address validation (IPv4 e IPv6)
+  var ipInput = document.getElementById('ip_address');
+  function isValidIPv4(ip) {
+    const ipv4 = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    return ipv4.test(ip);
+  }
+  function isValidIPv6(ip) {
+    // Suporte para formatos comuns, incluindo abreviações (::) e hextets
+    const ipv6 = /^(?:([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|:((:[0-9a-fA-F]{1,4}){1,7})|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7})|::)$/;
+    return ipv6.test(ip);
+  }
+  function updateIpValidation() {
+    const value = ipInput.value.trim();
+    if (!value) { ipInput.classList.remove('is-invalid','is-valid'); return; }
+    const valid = isValidIPv4(value) || isValidIPv6(value);
+    if (!valid) {
+      ipInput.classList.add('is-invalid');
+      ipInput.classList.remove('is-valid');
+      let feedback = ipInput.parentNode.querySelector('.invalid-feedback');
       if (!feedback) {
         feedback = document.createElement('div');
         feedback.className = 'invalid-feedback';
-        this.parentNode.appendChild(feedback);
+        ipInput.parentNode.appendChild(feedback);
       }
-      feedback.textContent = 'Por favor, insira um endereço IP válido';
-    } else if (value) {
-      this.classList.remove('is-invalid');
-      this.classList.add('is-valid');
+      feedback.textContent = 'Por favor, insira um endereço IPv4 ou IPv6 válido';
+    } else {
+      ipInput.classList.remove('is-invalid');
+      ipInput.classList.add('is-valid');
     }
-  });
+  }
+  if (ipInput) {
+    ipInput.addEventListener('blur', updateIpValidation);
+    ipInput.addEventListener('input', function() { if (ipInput.classList.contains('is-invalid')) updateIpValidation(); });
+  }
 
   // Real-time validation feedback
-  const inputs = form.querySelectorAll('input, select, textarea');
-  inputs.forEach(input => {
-    input.addEventListener('blur', function() {
-      validateField(this);
-    });
-
-    input.addEventListener('input', function() {
-      if (this.classList.contains('is-invalid')) {
+  if (form) {
+    var inputs = form.querySelectorAll('input, select, textarea');
+    Array.prototype.forEach.call(inputs, function(input){
+      input.addEventListener('blur', function() {
         validateField(this);
-      }
+      });
+
+      input.addEventListener('input', function() {
+        if (this.classList.contains('is-invalid')) {
+          validateField(this);
+        }
+      });
     });
-  });
+  }
 
   function validateField(field) {
-    const value = field.value.trim();
-    const isRequired = field.hasAttribute('required') || field.labels[0]?.classList.contains('required');
+    var value = (field.value || '').trim();
+    var isRequired = field.hasAttribute('required') || (field.labels && field.labels[0] && field.labels[0].classList && field.labels[0].classList.contains('required'));
     
     if (isRequired && !value) {
       field.classList.add('is-invalid');
@@ -306,52 +336,128 @@ document.addEventListener('DOMContentLoaded', function() {
       field.classList.remove('is-invalid');
       field.classList.add('is-valid');
     } else {
-      field.classList.remove('is-invalid', 'is-valid');
+      field.classList.remove('is-invalid');
+      field.classList.remove('is-valid');
     }
   }
 
   // Vendor remote suggestions and selection
-  const vendorInput = document.getElementById('vendor_name');
-  const vendorIdInput = document.getElementById('vendor_id');
-  const suggestionsEl = document.getElementById('vendor_suggestions');
+  var vendorInput = document.getElementById('vendor_name');
+  var vendorIdInput = document.getElementById('vendor_id');
+  var suggestionsEl = document.getElementById('vendor_suggestions');
+  var vendorClearBtn = document.getElementById('vendor_clear');
+  var vendorLoadingEl = document.getElementById('vendor_loading');
+  var vendorStatusEl = document.getElementById('vendor_status');
 
   if (vendorInput && suggestionsEl && vendorIdInput) {
-    let controller = null;
-    const hideSuggestions = () => { suggestionsEl.classList.add('d-none'); suggestionsEl.innerHTML = ''; };
-    const showSuggestions = () => { suggestionsEl.classList.remove('d-none'); };
+    var controller = null;
+    var debounceTimer = null;
+    var isFetching = false;
+    var activeIndex = -1;
+    var hideSuggestions = function() {
+      suggestionsEl.classList.add('d-none');
+      var toRemove = suggestionsEl.querySelectorAll('.list-group-item');
+      Array.prototype.forEach.call(toRemove, function(el){ if (el && el.parentNode) el.parentNode.removeChild(el); });
+      activeIndex = -1;
+    };
+    var showSuggestions = function() { suggestionsEl.classList.remove('d-none'); };
+    var setFetching = function(fetching) {
+      isFetching = fetching;
+      if (vendorLoadingEl) vendorLoadingEl.hidden = !fetching;
+      if (submitBtn) submitBtn.disabled = fetching;
+    };
+    var updateStatus = function(text) { if (vendorStatusEl) vendorStatusEl.textContent = text; };
 
-    vendorInput.addEventListener('input', async function() {
+    // Clear vendor selection
+    if (vendorClearBtn) {
+      vendorClearBtn.addEventListener('click', function() {
+        vendorInput.value = '';
+        vendorIdInput.value = '';
+        hideSuggestions();
+        updateStatus('Fornecedor limpo');
+      });
+    }
+
+    vendorInput.addEventListener('input', function() {
       const q = vendorInput.value.trim();
       vendorIdInput.value = '';
+      if (debounceTimer) { clearTimeout(debounceTimer); }
       if (!q || q.length < 2) { hideSuggestions(); return; }
-      if (controller) controller.abort();
-      controller = new AbortController();
-      try {
-        const res = await fetch(`/api/v1/vendors?q=${encodeURIComponent(q)}&limit=8`, { signal: controller.signal });
-        const json = await res.json();
-        const items = (json && json.data) ? json.data : [];
-        suggestionsEl.innerHTML = '';
-        items.forEach(v => {
-          const a = document.createElement('a');
-          a.href = '#';
-          a.className = 'list-group-item list-group-item-action';
-          a.textContent = v.name;
-          a.addEventListener('click', (ev) => {
-            ev.preventDefault();
-            vendorInput.value = v.name;
-            vendorIdInput.value = v.id;
-            hideSuggestions();
+      debounceTimer = setTimeout(async function() {
+        if (controller && typeof controller.abort === 'function') controller.abort();
+        controller = (typeof window.AbortController !== 'undefined') ? new AbortController() : null;
+        try {
+          setFetching(true);
+          var url = '/api/v1/vendors?q=' + encodeURIComponent(q) + '&limit=8';
+          var res = await fetch(url, controller ? { signal: controller.signal } : {});
+          var json = await res.json();
+          var items = (json && json.data) ? json.data : [];
+          hideSuggestions();
+          Array.prototype.forEach.call(items, function(v){
+            var a = document.createElement('a');
+            a.href = '#';
+            a.className = 'list-group-item list-group-item-action';
+            a.textContent = v.name;
+            a.setAttribute('role', 'option');
+            a.addEventListener('click', function(ev) {
+              ev.preventDefault();
+              vendorInput.value = v.name;
+              vendorIdInput.value = v.id;
+              hideSuggestions();
+              updateStatus('Fornecedor selecionado: ' + v.name);
+            });
+            suggestionsEl.appendChild(a);
           });
-          suggestionsEl.appendChild(a);
-        });
-        if (items.length) showSuggestions(); else hideSuggestions();
-      } catch (err) {
-        hideSuggestions();
-      }
+          if (items.length) {
+            showSuggestions();
+            activeIndex = 0;
+            var options = suggestionsEl.querySelectorAll('.list-group-item');
+            var first = options[activeIndex];
+            if (first && first.classList) first.classList.add('active');
+            updateStatus(items.length + ' fornecedor(es) encontrados');
+          } else {
+            hideSuggestions();
+            updateStatus('Nenhum fornecedor encontrado');
+          }
+        } catch (err) {
+          hideSuggestions();
+          updateStatus('Falha ao carregar fornecedores');
+        } finally {
+          setFetching(false);
+        }
+      }, 250);
     });
 
-    vendorInput.addEventListener('blur', () => {
+    vendorInput.addEventListener('blur', function() {
       setTimeout(hideSuggestions, 150);
+    });
+
+    // Keyboard navigation for suggestions
+    vendorInput.addEventListener('keydown', function(ev) {
+      var optionsNode = suggestionsEl.querySelectorAll('.list-group-item');
+      var options = Array.prototype.slice.call(optionsNode);
+      if (!options.length || suggestionsEl.classList.contains('d-none')) return;
+      if (ev.key === 'ArrowDown') {
+        ev.preventDefault();
+        var cur = options[activeIndex];
+        if (cur && cur.classList) cur.classList.remove('active');
+        activeIndex = (activeIndex + 1) % options.length;
+        var next = options[activeIndex];
+        if (next && next.classList) next.classList.add('active');
+      } else if (ev.key === 'ArrowUp') {
+        ev.preventDefault();
+        var cur2 = options[activeIndex];
+        if (cur2 && cur2.classList) cur2.classList.remove('active');
+        activeIndex = (activeIndex - 1 + options.length) % options.length;
+        var prev = options[activeIndex];
+        if (prev && prev.classList) prev.classList.add('active');
+      } else if (ev.key === 'Enter') {
+        ev.preventDefault();
+        var el = options[activeIndex];
+        if (el) el.click();
+      } else if (ev.key === 'Escape') {
+        hideSuggestions();
+      }
     });
   }
 
@@ -362,27 +468,31 @@ document.addEventListener('DOMContentLoaded', function() {
       window.safeNotify(type, titleMap[type] || 'Informação', message, 5000);
       return;
     }
-    const toastContainer = document.querySelector('.toast-container');
-    const toastId = 'toast-' + Date.now();
-    const toastHTML = `
-        <div class="toast align-items-center text-bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true" id="${toastId}">
-          <div class="d-flex">
-            <div class="toast-body">
-              <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
-              ${message}
-            </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-          </div>
-        </div>
-      `;
+    var toastContainer = document.querySelector('.toast-container');
+    if (!toastContainer) return;
+    var toastId = 'toast-' + Date.now();
+    var iconName = (type === 'success') ? 'check-circle' : 'exclamation-triangle';
+    var toastHTML = (
+      '<div class="toast align-items-center text-bg-' + type + ' border-0" role="alert" aria-live="assertive" aria-atomic="true" id="' + toastId + '">' +
+      '<div class="d-flex">' +
+      '<div class="toast-body">' +
+      '<i class="bi bi-' + iconName + ' me-2"></i>' +
+      String(message) +
+      '</div>' +
+      '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>' +
+      '</div>' +
+      '</div>'
+    );
     toastContainer.insertAdjacentHTML('beforeend', toastHTML);
-    const toastElement = document.getElementById(toastId);
-  const toast = window.getToastInstance(toastElement, { delay: 5000 });
-    toast.show();
+    var toastElement = document.getElementById(toastId);
+    var toastInst = (typeof window.getToastInstance === 'function') ? window.getToastInstance(toastElement, { delay: 5000 }) : null;
+    if (toastInst && toastInst.show) toastInst.show();
     
-    toastElement.addEventListener('hidden.bs.toast', function() {
-      this.remove();
-    });
+    if (toastElement) {
+      toastElement.addEventListener('hidden.bs.toast', function() {
+        if (this && this.parentNode) { this.parentNode.removeChild(this); }
+      });
+    }
   }
 });
 </script>

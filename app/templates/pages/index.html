@@ -34,11 +34,11 @@
                 </div>
             </div>
             <div class="metric-card-value">{{ critical_count | default(0) }}</div>
-            <p class="metric-card-description">Requerem atenção imediata</p>
+            <p class="metric-card-description">Requerem atenção imediata{% if selected_vendor_map and selected_vendor_map|length > 0 %} nos vendors selecionados{% endif %}</p>
             <div class="metric-card-weekly">
                 <span class="weekly-badge critical">
                     <i class="bi bi-calendar-week"></i>
-                    +{{ weekly_critical | default(0) }} esta semana
+                    +{{ weekly_critical | default(0) }} esta semana{% if selected_vendor_map and selected_vendor_map|length > 0 %} (vendors selecionados){% endif %}
                 </span>
             </div>
             <div class="metric-card-footer">
@@ -56,11 +56,11 @@
                 </div>
             </div>
             <div class="metric-card-value">{{ high_count | default(0) }}</div>
-            <p class="metric-card-description">Prioridade alta para correção</p>
+            <p class="metric-card-description">Prioridade alta para correção{% if selected_vendor_map and selected_vendor_map|length > 0 %} nos vendors selecionados{% endif %}</p>
             <div class="metric-card-weekly">
                 <span class="weekly-badge high">
                     <i class="bi bi-calendar-week"></i>
-                    +{{ weekly_high | default(0) }} esta semana
+                    +{{ weekly_high | default(0) }} esta semana{% if selected_vendor_map and selected_vendor_map|length > 0 %} (vendors selecionados){% endif %}
                 </span>
             </div>
             <div class="metric-card-footer">
@@ -78,11 +78,11 @@
                 </div>
             </div>
             <div class="metric-card-value">{{ medium_count | default(0) }}</div>
-            <p class="metric-card-description">Monitoramento contínuo</p>
+            <p class="metric-card-description">Monitoramento contínuo{% if selected_vendor_map and selected_vendor_map|length > 0 %} nos vendors selecionados{% endif %}</p>
             <div class="metric-card-weekly">
                 <span class="weekly-badge medium">
                     <i class="bi bi-calendar-week"></i>
-                    +{{ weekly_medium | default(0) }} esta semana
+                    +{{ weekly_medium | default(0) }} esta semana{% if selected_vendor_map and selected_vendor_map|length > 0 %} (vendors selecionados){% endif %}
                 </span>
             </div>
             <div class="metric-card-footer">
@@ -100,11 +100,11 @@
                 </div>
             </div>
             <div class="metric-card-value">{{ total_count | default(0) }}</div>
-            <p class="metric-card-description">Todas as vulnerabilidades</p>
+            <p class="metric-card-description">Todas as vulnerabilidades{% if selected_vendor_map and selected_vendor_map|length > 0 %} nos vendors selecionados{% endif %}</p>
             <div class="metric-card-weekly">
                 <span class="weekly-badge total">
                     <i class="bi bi-calendar-week"></i>
-                    +{{ weekly_total | default(0) }} esta semana
+                    +{{ weekly_total | default(0) }} esta semana{% if selected_vendor_map and selected_vendor_map|length > 0 %} (vendors selecionados){% endif %}
                 </span>
             </div>
             <div class="metric-card-footer">
@@ -218,6 +218,14 @@
             <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}" class="section-action">
                 Ver todas <i class="bi bi-arrow-right"></i>
             </a>
+            {% if selected_vendor_map and selected_vendor_map|length > 0 %}
+            <div class="mt-2" aria-label="Vendors selecionados">
+                <span class="text-muted me-2">Escopo:</span>
+                {% for v in selected_vendor_map %}
+                    <span class="badge bg-secondary me-1" title="Vendor selecionado">{{ (v.name or 'Vendor')|title }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
         </div>
         
         <div class="vulnerabilities-table-container">
@@ -234,6 +242,7 @@
                                     <th scope="col" class="sortable text-nowrap" data-sort="severity" tabindex="0" role="columnheader" aria-sort="none" aria-label="Severidade - Clique para ordenar">
                                         Severidade <i class="fas fa-sort sort-icon text-muted" aria-hidden="true"></i>
                                     </th>
+                                    <th scope="col" class="d-none d-md-table-cell text-nowrap">Vendor</th>
                                     <th scope="col" class="d-none d-md-table-cell" style="min-width: 250px;">Descrição</th>
                                     <th scope="col" class="sortable text-nowrap" data-sort="published_date" tabindex="0" role="columnheader" aria-sort="none" aria-label="Publicado - Clique para ordenar">
                                         Publicado <i class="fas fa-sort sort-icon text-muted" aria-hidden="true"></i>
@@ -261,6 +270,18 @@
                                             <i class="bi bi-{{ 'exclamation-triangle-fill' if vuln.base_severity == 'CRITICAL' else 'exclamation-circle-fill' if vuln.base_severity == 'HIGH' else 'info-circle-fill' if vuln.base_severity == 'MEDIUM' else 'check-circle-fill' if vuln.base_severity == 'LOW' else 'question-circle-fill' }}"></i>
                                             {{ vuln.base_severity if vuln.base_severity != 'N/A' else 'Não Avaliado' }}
                                         </span>
+                                    </td>
+                                    <td class="d-none d-md-table-cell">
+                                        {% set vendor_name = 'N/A' %}
+                                        {% if vuln.nvd_vendors_data and vuln.nvd_vendors_data|length > 0 %}
+                                            {% set first_vendor = vuln.nvd_vendors_data[0] %}
+                                            {% if first_vendor is string %}
+                                                {% set vendor_name = first_vendor %}
+                                            {% elif first_vendor is mapping %}
+                                                {% set vendor_name = first_vendor.get('name') or first_vendor.get('vendor') or first_vendor.get('vendor_name') or 'N/A' %}
+                                            {% endif %}
+                                        {% endif %}
+                                        <span class="text-truncate d-inline-block" title="Vendor">{{ vendor_name or 'N/A' }}</span>
                                     </td>
                                     <td class="d-none d-md-table-cell">
                                         <p class="vulnerability-description mb-0" title="{{ vuln.description | default('Sem descrição disponível') }}">{{ vuln.description | default('Sem descrição disponível') | truncate(120) }}</p>

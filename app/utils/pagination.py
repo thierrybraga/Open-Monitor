@@ -3,10 +3,11 @@
 from sqlalchemy.orm import Query
 from flask_sqlalchemy.pagination import Pagination
 from flask import current_app
-from typing import Optional
+from typing import Optional, Any
+from app.extensions import db
 
 def paginate_query(
-    query: Query,
+    query: Any,
     page: Optional[int] = None,
     per_page: Optional[int] = None,
     error_out: bool = False
@@ -51,4 +52,10 @@ def paginate_query(
         f"paginate_query: page={page_val}, per_page={per_val}, error_out={error_out}"
     )
 
-    return query.paginate(page=page_val, per_page=per_val, error_out=error_out)
+    # Flask-SQLAlchemy>=3 remove Query.paginate em favor de db.paginate
+    # Usamos db.paginate e fazemos fallback para query.paginate para compatibilidade
+    try:
+        return db.paginate(query, page=page_val, per_page=per_val, error_out=error_out)
+    except AttributeError:
+        # Fallback para versões antigas onde Query.paginate ainda existe
+        return query.paginate(page=page_val, per_page=per_val, error_out=error_out)

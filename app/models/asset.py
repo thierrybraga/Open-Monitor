@@ -17,13 +17,12 @@ class Asset(BaseModel):
     status = db.Column(db.String(50), nullable=False, default='active')
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     vendor_id = db.Column(db.Integer, db.ForeignKey('vendor.id'), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(
-        db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
-        nullable=False
-    )
+    # BIA-related fields collected at registration
+    rto_hours = db.Column(db.Integer, nullable=True)
+    rpo_hours = db.Column(db.Integer, nullable=True)
+    uptime_text = db.Column(db.String(100), nullable=True)
+    operational_cost_per_hour = db.Column(db.Float, nullable=True)
+    # created_at/updated_at são fornecidos por BaseModel
 
     # Relacionamento com AssetVulnerability
 # Relacionamentos
@@ -54,4 +53,9 @@ class Asset(BaseModel):
         else:
             data['vendor'] = None
             data['vendor_name'] = None
+        # Include BIA-related fields
+        data['rto_hours'] = self.rto_hours
+        data['rpo_hours'] = self.rpo_hours
+        data['uptime_text'] = self.uptime_text
+        data['operational_cost_per_hour'] = self.operational_cost_per_hour
         return data

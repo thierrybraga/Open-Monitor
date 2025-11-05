@@ -576,7 +576,21 @@ Sistema de Monitoramento de Segurança
             msg = MIMEMultipart('alternative')
             msg['Subject'] = notification.subject
             msg['From'] = f"{config.get('from_name', 'Sistema')} <{config['from_email']}>"
-            msg['To'] = ", ".join(config["recipients"])
+            # Determinar destinatários: permitir override por notificação
+            recipients_override = []
+            try:
+                data = notification.data or {}
+                if data.get('recipient_email'):
+                    recipients_override = [data.get('recipient_email')]
+                elif isinstance(data.get('recipients'), list) and data.get('recipients'):
+                    recipients_override = data.get('recipients')
+            except Exception:
+                recipients_override = []
+
+            recipients = recipients_override or config.get("recipients", [])
+            if not recipients:
+                raise ValueError("Nenhum destinatário configurado para envio de e-mail")
+            msg['To'] = ", ".join(recipients)
             
             # Adicionar texto simples
             text_part = MIMEText(notification.message, 'plain', 'utf-8')
@@ -593,7 +607,7 @@ Sistema de Monitoramento de Segurança
             
             notification.status = "sent"
             notification.sent_at = datetime.now()
-            logger.info(f"Email enviado com sucesso para {len(config['recipients'])} destinatários")
+            logger.info(f"Email enviado com sucesso para {len(recipients)} destinatários")
             
         except Exception as e:
             notification.status = "failed"

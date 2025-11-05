@@ -65,7 +65,8 @@ class AssetForm(FlaskForm):
         """Validação robusta de IPv4 usando o módulo ipaddress."""
         try:
             ip_obj = ipaddress.ip_address(field.data)
-            if ip_obj.version != 4:
-                raise ValidationError("Informe um IPv4 válido.")
+            # Aceitar IPv4 e IPv6
+            if ip_obj.version not in (4, 6):
+                raise ValidationError("Informe um IP válido.")
         except ValueError:
-            raise ValidationError("Informe um IPv4 válido (ex: 192.168.0.1).")
+            raise ValidationError("Informe um IP válido (IPv4 ou IPv6).")

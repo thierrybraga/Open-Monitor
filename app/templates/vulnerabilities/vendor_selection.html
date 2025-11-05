@@ -8,11 +8,14 @@
 {% endblock %}
 
 {% block content %}
+{% set is_embed = (request.args.get('embed', '')|string).lower() in ['1','true'] %}
 <div class="container py-4 table-vendors-wrapper">
+  {% if not is_embed %}
   <div class="d-flex align-items-center justify-content-between mb-3">
     <h1 class="h4 mb-0"><i class="bi bi-building me-2"></i>Seleção de Vendors</h1>
     <a href="{{ url_for('monitoring.monitoring_home') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Voltar</a>
   </div>
+  {% endif %}
   <p class="text-muted">Selecione os fornecedores (vendors) que deseja monitorar. Use a busca e a paginação para navegar.</p>
 
   <form id="vendorSelectionForm" method="GET" action="{{ url_for('vulnerability_ui.vendor_selection_ui') }}">
@@ -23,12 +26,12 @@
          <button type="button" class="btn btn-outline-secondary" id="clearSearchBtn" title="Limpar busca"><i class="bi bi-x-circle"></i></button>
        </div>
        <div class="d-flex align-items-center gap-2">
-         <label for="categoryTag" class="form-label mb-0">Tipo:</label>
-         <select id="categoryTag" name="category_tag" class="form-select" aria-label="Filtrar por tipo" style="width: auto;">
-           {% set current_category = (current_category if current_category is defined else request.args.get('category_tag','')) %}
+         <label for="catalogTag" class="form-label mb-0">Tipo:</label>
+         <select id="catalogTag" name="catalog_tag" class="form-select" aria-label="Filtrar por tipo (NVD Catalog Tag)" style="width: auto;">
+           {% set current_category = (current_category if current_category is defined else (request.args.get('catalog_tag','') or request.args.get('category_tag',''))) %}
            <option value="" {{ 'selected' if current_category == '' else '' }}>Todos</option>
-           <option value="software" {{ 'selected' if current_category == 'software' else '' }}>Software</option>
-           <option value="os" {{ 'selected' if current_category == 'os' else '' }}>Sistema Operacional</option>
+           <option value="application" {{ 'selected' if current_category == 'application' else '' }}>Aplicação (Application)</option>
+           <option value="operating_system" {{ 'selected' if current_category == 'operating_system' else '' }}>Sistema Operacional</option>
            <option value="hardware" {{ 'selected' if current_category == 'hardware' else '' }}>Hardware</option>
          </select>
        </div>
@@ -36,6 +39,7 @@
        <button type="button" class="btn btn-outline-secondary" id="clearFiltersBtn">Limpar</button>
        <button type="button" class="btn btn-success" id="applyVendorSelectionBtn" title="Aplicar seleção de vendors"><i class="bi bi-check2-circle"></i> Aplicar Seleção</button>
        <button type="button" class="btn btn-outline-danger" id="clearVendorSelectionBtn" title="Limpar seleção de vendors"><i class="bi bi-x-circle"></i> Limpar Seleção</button>
+       <button type="button" class="btn btn-outline-primary" id="selectAllGlobalBtn" title="Selecionar todos os vendors (todas as páginas)"><i class="bi bi-check-all"></i> Selecionar Todos (Global)</button>
        <span id="selectedCountTopInfo" class="selected-count-top" aria-live="polite">Selecionados: 0</span>
        {# Removida paginação duplicada do topo #}
      </div>
@@ -93,8 +97,13 @@
     </div>
     {% else %}
       {% set search_q = request.args.get('q','') %}
-      {% if search_q %}
+      {% set category = (request.args.get('catalog_tag','') or request.args.get('category_tag','')) %}
+      {% if search_q and category %}
+        <div class="alert alert-warning" role="alert"><i class="bi bi-search me-1"></i> Nenhum vendor encontrado para "{{ search_q }}" na categoria "{{ category }}". <button type="button" class="btn btn-sm btn-outline-secondary ms-2" id="clearFiltersEmptyBtn">Limpar filtros</button></div>
+      {% elif search_q %}
         <div class="alert alert-warning" role="alert"><i class="bi bi-search me-1"></i> Nenhum vendor encontrado para "{{ search_q }}". <button type="button" class="btn btn-sm btn-outline-secondary ms-2" id="clearFiltersEmptyBtn">Limpar filtros</button></div>
+      {% elif category %}
+        <div class="alert alert-warning" role="alert"><i class="bi bi-filter me-1"></i> Nenhum vendor encontrado na categoria "{{ category }}". <button type="button" class="btn btn-sm btn-outline-secondary ms-2" id="clearFiltersEmptyBtn">Limpar filtros</button></div>
       {% else %}
         <div class="alert alert-info" role="alert">Nenhum vendor cadastrado no momento. <button type="button" class="btn btn-sm btn-outline-secondary ms-2" id="clearFiltersEmptyBtn">Limpar filtros</button></div>
       {% endif %}
@@ -106,6 +115,10 @@
 {% block extra_js %}
 <script nonce="{{ nonce }}">
 (function() {
+  // Lista completa de IDs de vendors disponíveis considerando filtros atuais (para seleção global)
+  try {
+    window.ALL_VENDOR_IDS = {{ (all_vendor_ids if all_vendor_ids is defined else []) | tojson }};
+  } catch (e) { window.ALL_VENDOR_IDS = []; }
   function matchesSelector(el, selector) {
     if (!el || !selector) return false;
     var p = Element.prototype;
@@ -210,6 +223,50 @@
         selectAll.checked = false;
       }
       setAllSelected(false);
+      // Persistir preferências vazias (sem filtro) no backend
+      try {
+        var prefUrl1 = "{{ url_for('api_v1.set_vendor_preferences') }}";
+        fetch(prefUrl1, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ vendor_ids: [] }),
+          keepalive: true
+        }).catch(function(_){})
+      } catch(_){ }
+      if (typeof window.safeNotify === 'function') {
+        window.safeNotify('info', 'Preferências', 'Filtro de vendors limpo.', 2500);
+      }
+    });
+  }
+  // Seleção global: inclui todos os vendors de todas as páginas de acordo com filtros atuais
+  var selectAllGlobalBtn = document.getElementById('selectAllGlobalBtn');
+  if (selectAllGlobalBtn) {
+    selectAllGlobalBtn.addEventListener('click', function() {
+      try {
+        var ids = Array.isArray(window.ALL_VENDOR_IDS) ? window.ALL_VENDOR_IDS.slice() : [];
+        // Persistir no localStorage como strings
+        setSavedSelection(ids.map(function(x){ return String(x); }));
+        // Marcar todos os visíveis nesta página
+        setAllSelected(true);
+        updateSelectedCounter();
+        // Persistir no backend com todos os IDs selecionados (manter escopo explícito)
+        try {
+          var prefUrl2 = "{{ url_for('api_v1.set_vendor_preferences') }}";
+          fetch(prefUrl2, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ vendor_ids: ids.map(function(x){ var n = parseInt(x, 10); return isNaN(n) ? null : n; }).filter(function (x) { return x !== null; }) }),
+            keepalive: true
+          }).catch(function(_){})
+        } catch(_){ }
+        if (typeof window.safeNotify === 'function') {
+          window.safeNotify('success', 'Selecionar Todos', 'Todos os vendors foram selecionados (global).', 2500);
+        }
+      } catch (e) {
+        console && console.warn && console.warn('Falha na seleção global de vendors', e);
+      }
     });
   }
   var clearSearchBtn = document.getElementById('clearSearchBtn');
@@ -234,45 +291,32 @@
       }
     });
   }
-  // Envio automático ao mudar o filtro de tipo
-  var categorySelectEl = document.getElementById('categoryTag');
-  if (categorySelectEl) {
-    categorySelectEl.addEventListener('change', function() {
-      var form = document.getElementById('vendorSelectionForm');
-      if (form) { if (typeof form.requestSubmit === 'function') form.requestSubmit(); else form.submit(); }
-    });
-  }
+  // Envio automático ao mudar o filtro de tipo (catalog_tag)
+  // Removido auto-submit ao mudar o filtro para evitar navegações em sequência
+  // O usuário deve clicar em "Aplicar" para enviar os filtros
   var clearFiltersBtn = document.getElementById('clearFiltersBtn');
   if (clearFiltersBtn) {
     clearFiltersBtn.addEventListener('click', function() {
       try { setSavedSelection([]); } catch (_) {}
       var s = document.getElementById('vendor-search'); if (s) s.value = '';
-      var categorySelectEl = document.getElementById('categoryTag'); if (categorySelectEl) categorySelectEl.value = '';
+      var catalogSelectEl = document.getElementById('catalogTag'); if (catalogSelectEl) catalogSelectEl.value = '';
       if (selectAll) {
         try { selectAll.indeterminate = false; } catch (e) {}
         selectAll.checked = false;
       }
       setAllSelected(false);
-      var base = "{{ url_for('vulnerability_ui.vendor_selection_ui') }}";
-      try {
-        var url = new URL(base, window.location.origin);
-        window.location.href = url.toString();
-      } catch (e) {
-        window.location.href = base;
-      }
+      var form = document.getElementById('vendorSelectionForm');
+      if (form) { if (typeof form.requestSubmit === 'function') form.requestSubmit(); else form.submit(); }
     });
   }
   var clearFiltersEmptyBtn = document.getElementById('clearFiltersEmptyBtn');
   if (clearFiltersEmptyBtn) {
     clearFiltersEmptyBtn.addEventListener('click', function() {
       try { setSavedSelection([]); } catch (_) {}
-      var base2 = "{{ url_for('vulnerability_ui.vendor_selection_ui') }}";
-      try {
-        var url2 = new URL(base2, window.location.origin);
-        window.location.href = url2.toString();
-      } catch (e) {
-        window.location.href = base2;
-      }
+      var s2 = document.getElementById('vendor-search'); if (s2) s2.value = '';
+      var catalogSelectEl2 = document.getElementById('catalogTag'); if (catalogSelectEl2) catalogSelectEl2.value = '';
+      var form2 = document.getElementById('vendorSelectionForm');
+      if (form2) { if (typeof form2.requestSubmit === 'function') form2.requestSubmit(); else form2.submit(); }
     });
   }
   var tbody = document.getElementById('vendors-tbody');
@@ -360,11 +404,21 @@
   });
   document.addEventListener('paginationUpdated', updateStickyState);
   window.addEventListener('resize', updateStickyState);
+  var navigationLock = false;
   var applyBtn = document.getElementById('applyVendorSelectionBtn');
   if (applyBtn) {
     applyBtn.addEventListener('click', function () {
+      if (navigationLock) return;
+      navigationLock = true;
+      try { applyBtn.disabled = true; } catch (_) {}
       // Preferir seleção persistida (toda a seleção ao longo da navegação)
       var selected = getSavedSelection();
+      // Deduplicar seleção
+      try {
+        var seenSel = {}; var dedup = [];
+        for (var si = 0; si < selected.length; si++) { var sv = String(selected[si]); if (!seenSel[sv]) { seenSel[sv] = true; dedup.push(sv); } }
+        selected = dedup;
+      } catch(_){ }
       if (!selected || selected.length === 0) {
         // Fallback: seleção visível na página atual
         var selectedNodes = document.querySelectorAll('input[name="vendor_ids"]:checked');
@@ -373,37 +427,78 @@
       }
       if (!selected || selected.length === 0) {
         if (typeof window.safeNotify === 'function') { window.safeNotify('warning', 'Seleção', 'Selecione pelo menos um vendor.', 3000); } else { alert('Selecione pelo menos um vendor.'); }
+        navigationLock = false;
+        try { applyBtn.disabled = false; } catch (_) {}
         return;
       }
-      var categorySelect = document.getElementById('categoryTag');
-      var categoryTag = categorySelect ? categorySelect.value : '';
-      var base3 = "{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}";
-      var finalUrl;
-      try {
-        var url3 = new URL(base3, window.location.origin);
-        for (var j = 0; j < selected.length; j++) { url3.searchParams.append('vendor_ids', selected[j]); }
-        if (categoryTag) url3.searchParams.set('category_tag', categoryTag);
-        finalUrl = url3.toString();
-      } catch (e) {
-        var qs = '';
-        for (var k = 0; k < selected.length; k++) { qs += (qs ? '&' : '?') + 'vendor_ids=' + encodeURIComponent(selected[k]); }
-        if (categoryTag) qs += (qs ? '&' : '?') + 'category_tag=' + encodeURIComponent(categoryTag);
-        finalUrl = base3 + qs;
-      }
+      var catalogSelect = document.getElementById('catalogTag');
+      var catalogTag = catalogSelect ? catalogSelect.value : '';
+      // Redirecionar para a página de detalhes (quando houver severidade no contexto);
+      // caso contrário, página inicial. Incluir vendor_ids na URL.
+      var baseUrl = "{% if current_severity %}{{ url_for('vulnerability_ui.vulnerability_details_by_severity', severity=current_severity) }}{% else %}{{ url_for('main.index') }}{% endif %}";
+      var qs = 'vendor_ids=' + encodeURIComponent(selected.join(','));
+      var finalUrl = baseUrl + (baseUrl.indexOf('?') === -1 ? '?' : '&') + qs;
       // Persistir preferências do usuário no backend antes de redirecionar
       try {
         var payload = { vendor_ids: selected.map(function (x) { var n = parseInt(x, 10); return isNaN(n) ? null : n; }).filter(function (x) { return x !== null; }) };
-        fetch("{{ url_for('api_v1.set_vendor_preferences') }}", {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          credentials: 'same-origin',
-          body: JSON.stringify(payload),
-          keepalive: true
-        }).catch(function(_){})
+        var prefUrl = "{{ url_for('api_v1.set_vendor_preferences') }}";
+        if (navigator && typeof navigator.sendBeacon === 'function') {
+          try {
+            var blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+            navigator.sendBeacon(prefUrl, blob);
+          } catch (_e) {
+            // Fallback para fetch se sendBeacon falhar
+            fetch(prefUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+              credentials: 'same-origin',
+              body: JSON.stringify(payload),
+              keepalive: true
+            }).catch(function(_){})
+          }
+        } else {
+          fetch(prefUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload),
+            keepalive: true
+          }).catch(function(_){})
+        }
       } catch(_) {}
       window.location.href = finalUrl;
     });
   }
 })();
 </script>
+{% if is_embed %}
+<script nonce="{{ nonce }}">
+(function(){
+  try {
+    function getDocHeight(){
+      var h1 = document.documentElement ? (document.documentElement.scrollHeight || 0) : 0;
+      var h2 = document.body ? (document.body.scrollHeight || 0) : 0;
+      return Math.max(h1, h2);
+    }
+    function sendHeight(){
+      try {
+        var h = getDocHeight();
+        parent.postMessage({ type: 'vendorSelection:height', height: h }, window.location.origin);
+      } catch(_){ }
+    }
+    window.addEventListener('resize', function(){ setTimeout(sendHeight, 50); });
+    document.addEventListener('DOMContentLoaded', function(){ setTimeout(sendHeight, 50); });
+    document.addEventListener('paginationUpdated', function(){ setTimeout(sendHeight, 50); });
+    window.addEventListener('message', function(e){
+      try { if (e.origin !== window.location.origin) return; } catch(_){}
+      var data = e.data || {};
+      if (data && data.type === 'vendorSelection:requestHeight') {
+        setTimeout(sendHeight, 50);
+      }
+    });
+    setTimeout(sendHeight, 250);
+  } catch(_){ }
+})();
+</script>
+{% endif %}
 {% endblock %}

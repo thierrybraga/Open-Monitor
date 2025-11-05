@@ -43,4 +43,9 @@ class APIQueryForm(Form):
         label='Fornecedor',
         validators=[Optional()]
     )
+    catalog_tag = SelectField(
+        label='Tipo (NVD Catalog Tag)',
+        choices=[('', 'Todas'), ('application', 'Application'), ('operating_system', 'Operating System'), ('hardware', 'Hardware')],
+        validators=[Optional()]
+    )
     submit = SubmitField('Aplicar')

@@ -380,7 +380,7 @@
       </div>
     </div>
     <div class="table-responsive">
-      <table class="analytics-table" aria-label="Top products affected by CVEs">
+      <table class="analytics-table enhanced-products-table" aria-label="Top products affected by CVEs">
         <thead>
           <tr>
             <th scope="col" class="sortable" data-sort="product" data-bs-toggle="tooltip" title="Nome do produto ou software" aria-sort="none">
@@ -693,5 +693,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/pages/analytics.js') }}" defer nonce="{{ nonce }}"></script>
+<script src="{{ url_for('static', filename='js/pages/analytics.js') }}?v={{ nonce }}" defer nonce="{{ nonce }}"></script>
 {% endblock %}

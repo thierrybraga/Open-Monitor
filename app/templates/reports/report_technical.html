@@ -4,250 +4,7 @@
 
 {% block extra_css %}
 {{ super() }}
-<style>
-.technical-header {
-    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-    color: white;
-    padding: 2rem;
-    border-radius: 0.5rem;
-    margin-bottom: 2rem;
-}
 
-.code-block {
-    background-color: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 0.375rem;
-    padding: 1rem;
-    font-family: 'Courier New', monospace;
-    font-size: 0.875rem;
-    overflow-x: auto;
-    margin: 1rem 0;
-}
-
-.vulnerability-detail {
-    border: 1px solid #dee2e6;
-    border-radius: 0.5rem;
-    margin-bottom: 1.5rem;
-    overflow: hidden;
-}
-
-.vulnerability-header {
-    background-color: #f8f9fa;
-    padding: 1rem;
-    border-bottom: 1px solid #dee2e6;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-
-.vulnerability-header:hover {
-    background-color: #e9ecef;
-}
-
-.vulnerability-content {
-    padding: 1.5rem;
-    display: none;
-}
-
-.vulnerability-content.show {
-    display: block;
-}
-
-.cvss-vector {
-    background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
-    border: 1px solid #bbdefb;
-    border-radius: 0.375rem;
-    padding: 1rem;
-    font-family: monospace;
-    font-size: 0.875rem;
-    margin: 1rem 0;
-}
-
-.exploit-info {
-    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-    border: 1px solid #ffeaa7;
-    border-radius: 0.375rem;
-    padding: 1rem;
-    margin: 1rem 0;
-}
-
-.mitigation-step {
-    background-color: #d4edda;
-    border-left: 4px solid #28a745;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    border-radius: 0 0.375rem 0.375rem 0;
-}
-
-.technical-metric {
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 0.5rem;
-    padding: 1.5rem;
-    text-align: center;
-    margin-bottom: 1rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.technical-metric .metric-value {
-    font-size: 2rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-}
-
-.technical-metric .metric-label {
-    color: #6c757d;
-    font-size: 0.875rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.asset-detail {
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 0.375rem;
-    padding: 1rem;
-    margin-bottom: 1rem;
-}
-
-.network-diagram {
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 0.5rem;
-    padding: 2rem;
-    text-align: center;
-    margin: 2rem 0;
-}
-
-.attack-vector {
-    display: flex;
-    align-items: center;
-    padding: 0.75rem;
-    margin-bottom: 0.5rem;
-    border-radius: 0.375rem;
-    border-left: 4px solid #dc3545;
-    background-color: #f8d7da;
-}
-
-.remediation-timeline {
-    position: relative;
-    padding-left: 2rem;
-}
-
-.remediation-timeline::before {
-    content: '';
-    position: absolute;
-    left: 0.5rem;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background-color: #007bff;
-}
-
-.remediation-item {
-    position: relative;
-    margin-bottom: 2rem;
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 0.5rem;
-    padding: 1.5rem;
-    margin-left: 1rem;
-}
-
-.remediation-item::before {
-    content: '';
-    position: absolute;
-    left: -1.75rem;
-    top: 1.5rem;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background-color: #007bff;
-    border: 3px solid white;
-    box-shadow: 0 0 0 1px #dee2e6;
-}
-
-.technical-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 1rem 0;
-    font-size: 0.875rem;
-}
-
-.technical-table th,
-.technical-table td {
-    border: 1px solid #dee2e6;
-    padding: 0.75rem;
-    text-align: left;
-}
-
-.technical-table th {
-    background-color: #f8f9fa;
-    font-weight: 600;
-}
-
-.technical-table tr:nth-child(even) {
-    background-color: #f8f9fa;
-}
-
-.severity-critical { color: #dc3545; font-weight: 600; }
-.severity-high { color: #fd7e14; font-weight: 600; }
-.severity-medium { color: #ffc107; font-weight: 600; }
-.severity-low { color: #28a745; font-weight: 600; }
-
-.collapsible-section {
-    border: 1px solid #dee2e6;
-    border-radius: 0.5rem;
-    margin-bottom: 1rem;
-    overflow: hidden;
-}
-
-.collapsible-header {
-    background-color: #f8f9fa;
-    padding: 1rem;
-    cursor: pointer;
-    display: flex;
-    justify-content: between;
-    align-items: center;
-    transition: background-color 0.2s ease;
-}
-
-.collapsible-header:hover {
-    background-color: #e9ecef;
-}
-
-.collapsible-content {
-    padding: 1.5rem;
-    display: none;
-}
-
-.collapsible-content.show {
-    display: block;
-}
-
-.toggle-icon {
-    transition: transform 0.3s ease;
-}
-
-.toggle-icon.rotated {
-    transform: rotate(180deg);
-}
-
-@media print {
-    .collapsible-content {
-        display: block !important;
-    }
-    
-    .vulnerability-content {
-        display: block !important;
-    }
-    
-    .technical-header {
-        background: #2c3e50 !important;
-        -webkit-print-color-adjust: exact;
-        color-adjust: exact;
-    }
-}
-</style>
 {% endblock %}
 
 {% block content %}
@@ -256,7 +13,7 @@
     <div class="technical-header">
         <div class="row align-items-center">
             <div class="col-md-8">
-                <h1 class="h2 mb-2">{{ report.title }}</h1>
+                <h1 class="h2 mb-2 text-strong">{{ report.title }}</h1>
                 <p class="mb-3 opacity-75">{{ report.description or 'Análise técnica detalhada de cybersegurança' }}</p>
                 
                 <div class="row">
@@ -305,7 +62,7 @@
     <!-- Métricas Técnicas -->
     <div class="section-card">
         <div class="section-header">
-            <h3 class="mb-0">
+            <h3 class="mb-0 text-strong">
                 <i class="bi bi-speedometer2 me-2"></i>
                 Métricas Técnicas
             </h3>
@@ -355,7 +112,7 @@
     <!-- Análise de Vulnerabilidades Detalhada -->
     <div class="section-card">
         <div class="section-header">
-            <h3 class="mb-0">
+            <h3 class="mb-0 text-strong">
                 <i class="bi bi-bug me-2"></i>
                 Análise Detalhada de Vulnerabilidades
             </h3>
@@ -388,7 +145,7 @@
                             <!-- Informações Básicas -->
                             <div class="row mb-4">
                                 <div class="col-md-6">
-                                    <h6>Informações Básicas</h6>
+                                    <h6 class="text-medium">Informações Básicas</h6>
                                     <table class="technical-table">
                                         <tr>
                                             <th>CVE ID</th>
@@ -410,7 +167,7 @@
                                 </div>
                                 
                                 <div class="col-md-6">
-                                    <h6>Métricas CVSS</h6>
+                                    <h6 class="text-medium">Métricas CVSS</h6>
                                     {% if vuln.cvss_vector %}
                                         <div class="cvss-vector">
                                             <strong>Vetor CVSS:</strong><br>
@@ -441,7 +198,7 @@
                             
                             <!-- Descrição Técnica -->
                             <div class="mb-4">
-                                <h6>Descrição Técnica</h6>
+                                <h6 class="text-medium">Descrição Técnica</h6>
                                 <p>{{ vuln.description }}</p>
                                 
                                 {% if vuln.technical_details %}
@@ -454,7 +211,7 @@
                             <!-- Ativos Afetados -->
                             {% if vuln.affected_assets %}
                                 <div class="mb-4">
-                                    <h6>Ativos Afetados ({{ vuln.affected_assets | length }})</h6>
+                                    <h6 class="text-medium">Ativos Afetados ({{ vuln.affected_assets | length }})</h6>
                                     <div class="row">
                                         {% for asset in vuln.affected_assets %}
                                             <div class="col-md-6 mb-2">
@@ -474,7 +231,7 @@
                             <!-- Informações de Exploit -->
                             {% if vuln.exploit_available %}
                                 <div class="exploit-info">
-                                    <h6><i class="bi bi-exclamation-triangle me-2"></i>Exploit Disponível</h6>
+                                    <h6 class="text-medium"><i class="bi bi-exclamation-triangle me-2"></i>Exploit Disponível</h6>
                                     <p><strong>Atenção:</strong> Existem exploits públicos disponíveis para esta vulnerabilidade.</p>
                                     {% if vuln.exploit_details %}
                                         <div class="code-block">
@@ -487,7 +244,7 @@
                             <!-- Vetores de Ataque -->
                             {% if vuln.attack_vectors %}
                                 <div class="mb-4">
-                                    <h6>Vetores de Ataque</h6>
+                                    <h6 class="text-medium">Vetores de Ataque</h6>
                                     {% for vector in vuln.attack_vectors %}
                                         <div class="attack-vector">
                                             <i class="bi bi-arrow-right me-2"></i>
@@ -500,7 +257,7 @@
                             <!-- Plano de Mitigação -->
                             {% if vuln.mitigation_steps %}
                                 <div class="mb-4">
-                                    <h6>Plano de Mitigação</h6>
+                                    <h6 class="text-medium">Plano de Mitigação</h6>
                                     {% for step in vuln.mitigation_steps %}
                                         <div class="mitigation-step">
                                             <strong>{{ loop.index }}. {{ step.title }}</strong>
@@ -517,7 +274,7 @@
                             <!-- Referências -->
                             {% if vuln.references %}
                                 <div class="mb-4">
-                                    <h6>Referências</h6>
+                                    <h6 class="text-medium">Referências</h6>
                                     <ul>
                                         {% for ref in vuln.references %}
                                             <li>
@@ -555,7 +312,7 @@
             {% if report.content.network_analysis %}
                 <div class="row">
                     <div class="col-md-6">
-                        <h5>Topologia de Rede</h5>
+                        <h5 class="text-medium">Topologia de Rede</h5>
                         <div class="network-diagram">
                             <i class="bi bi-diagram-3 display-1 text-muted"></i>
                             <p class="mt-3">Diagrama de rede será renderizado aqui</p>
@@ -564,7 +321,7 @@
                     </div>
                     
                     <div class="col-md-6">
-                        <h5>Estatísticas de Rede</h5>
+                        <h5 class="text-medium">Estatísticas de Rede</h5>
                         <table class="technical-table">
                             <tr>
                                 <th>Total de Subredes</th>
@@ -585,7 +342,7 @@
                         </table>
                         
                         {% if report.content.network_analysis.critical_services %}
-                            <h6 class="mt-3">Serviços Críticos</h6>
+                            <h6 class="mt-3 text-medium">Serviços Críticos</h6>
                             <ul class="list-unstyled">
                                 {% for service in report.content.network_analysis.critical_services %}
                                     <li class="mb-2">
@@ -656,7 +413,7 @@
     <!-- Seções Colapsáveis Adicionais -->
     <div class="collapsible-section">
         <div class="collapsible-header" onclick="toggleSection('logs-section')">
-            <h5 class="mb-0">
+            <h5 class="mb-0 text-strong">
                 <i class="bi bi-file-text me-2"></i>
                 Logs de Análise
             </h5>
@@ -677,7 +434,7 @@
 
     <div class="collapsible-section">
         <div class="collapsible-header" onclick="toggleSection('raw-data-section')">
-            <h5 class="mb-0">
+            <h5 class="mb-0 text-strong">
                 <i class="bi bi-code-square me-2"></i>
                 Dados Brutos (JSON)
             </h5>

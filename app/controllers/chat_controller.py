@@ -8,6 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
 import uuid
 import json
+import re
 
 from app.models.chat_session import ChatSession
 from app.models.chat_message import ChatMessage, MessageType
@@ -24,6 +25,58 @@ logger = get_request_logger()
 # Instância do serviço de chat
 chat_service = ChatService()
 
+
+# Utilitário de parsing tolerante de JSON
+def _safe_get_json() -> dict:
+    """Tenta obter JSON do request de forma tolerante a charset/encoding.
+
+    Ordem de tentativas:
+    1) request.get_json(silent=True)
+    2) Decodificar corpo bruto considerando charset declarado e encodings comuns
+    3) Fallback para campos de formulário
+    """
+    try:
+        data = request.get_json(silent=True)
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        pass
+
+    content_type = request.headers.get('Content-Type', '')
+    charset_match = re.search(r'charset\s*=\s*([^;\s]+)', content_type, re.IGNORECASE)
+    declared_charset = charset_match.group(1).strip() if charset_match else None
+
+    raw = request.get_data(cache=False) or b''
+    encodings = []
+    if declared_charset:
+        encodings.append(declared_charset)
+    encodings.extend(['utf-8', 'utf-8-sig', 'latin-1'])
+
+    for enc in encodings:
+        try:
+            text = raw.decode(enc, errors='replace')
+            parsed = json.loads(text)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            continue
+
+    # Fallback para formulário (quando Content-Type não é application/json)
+    if request.form:
+        try:
+            payload = request.form.get('payload')
+            if payload:
+                parsed = json.loads(payload)
+                if isinstance(parsed, dict):
+                    return parsed
+            return {
+                'content': request.form.get('content'),
+                'metadata': request.form.get('metadata')
+            }
+        except Exception:
+            pass
+
+    return {}
 
 @chat_bp.route('/sessions', methods=['GET'])
 def get_user_sessions():
@@ -60,8 +113,37 @@ def create_session():
         
         # Para demo sem login, usar sessão temporária
         user_id = session.get('temp_user_id', 1)
-        if 'temp_user_id' not in session:
-            session['temp_user_id'] = 1
+        # Garantir que o usuário de demo exista para evitar falha de FK
+        try:
+            demo_user = User.query.get(user_id)
+            if not demo_user:
+                # Tentar localizar um usuário já existente adequado
+                demo_user = User.query.filter_by(username='demo').first()
+                if not demo_user:
+                    # Criar usuário demo com credenciais mínimas válidas
+                    demo_user = User(
+                        username='demo',
+                        email='demo@example.com',
+                        password='demo@teste'
+                    )
+                    db.session.add(demo_user)
+                    db.session.commit()
+                    logger.info(f"Usuário demo criado automaticamente: id={demo_user.id}")
+                # Atualizar o temp_user_id na sessão para o id real
+                session['temp_user_id'] = demo_user.id
+                user_id = demo_user.id
+            else:
+                # Se não havia temp_user_id setado, persistir
+                if 'temp_user_id' not in session:
+                    session['temp_user_id'] = demo_user.id
+        except Exception as user_err:
+            db.session.rollback()
+            logger.error(f"Falha ao garantir usuário demo: {str(user_err)}")
+            return jsonify({
+                'success': False,
+                'error': 'Falha ao preparar usuário demo',
+                'detail': str(user_err)
+            }), 500
         
         # Gerar token único para a sessão
         session_token = str(uuid.uuid4())
@@ -141,7 +223,7 @@ def update_session(session_id):
                 'error': 'Sessão não encontrada'
             }), 404
         
-        data = request.get_json()
+        data = _safe_get_json()
         
         if 'title' in data:
             chat_session.title = data['title']
@@ -224,14 +306,61 @@ def send_message(session_id):
                 'error': 'Sessão não encontrada'
             }), 404
         
-        data = request.get_json()
-        content = data.get('content', '').strip()
+        # Parsing tolerante de JSON com fallback de charset
+        def _safe_get_json() -> dict:
+            # 1) Tentativa padrão, silenciosa
+            data = request.get_json(silent=True)
+            if isinstance(data, dict):
+                return data
+
+            # 2) Inspecionar charset do Content-Type
+            content_type = request.headers.get('Content-Type', '')
+            charset_match = re.search(r'charset\s*=\s*([^;\s]+)', content_type, re.IGNORECASE)
+            declared_charset = charset_match.group(1).strip() if charset_match else None
+
+            raw = request.get_data(cache=False) or b''
+            # 3) Tentar decodificar usando ordem de encodings tolerantes
+            encodings = []
+            if declared_charset:
+                encodings.append(declared_charset)
+            encodings.extend(['utf-8', 'utf-8-sig', 'latin-1'])
+
+            for enc in encodings:
+                try:
+                    text = raw.decode(enc, errors='replace')
+                    parsed = json.loads(text)
+                    if isinstance(parsed, dict):
+                        return parsed
+                except Exception:
+                    continue
+
+            # 4) Fallback para formulário (caso Content-Type não seja JSON)
+            if request.form:
+                try:
+                    payload = request.form.get('payload')
+                    if payload:
+                        parsed = json.loads(payload)
+                        if isinstance(parsed, dict):
+                            return parsed
+                    return {
+                        'content': request.form.get('content'),
+                        'metadata': request.form.get('metadata')
+                    }
+                except Exception:
+                    pass
+
+            return {}
+
+        data = _safe_get_json()
+        content = (data.get('content') or '').strip()
         metadata = data.get('metadata')
         
         if not content:
             return jsonify({
                 'success': False,
-                'error': 'Conteúdo da mensagem é obrigatório'
+                'error': 'Conteúdo da mensagem é obrigatório',
+                'message': 'Falha ao decodificar JSON. Envie Content-Type application/json com charset=utf-8 ou utilize campos simples.',
+                'hint': 'Exemplo PowerShell: Content-Type "application/json; charset=utf-8" e ConvertTo-Json'
             }), 400
         
         # Validar tamanho da mensagem
@@ -268,7 +397,8 @@ def send_message(session_id):
         logger.error(f"Erro ao enviar mensagem para sessão {session_id}: {str(e)}")
         return jsonify({
             'success': False,
-            'error': 'Erro interno do servidor'
+            'error': 'Erro interno do servidor',
+            'detail': str(e)
         }), 500
 
 
@@ -297,7 +427,7 @@ def edit_message(message_id):
                 'error': 'Apenas mensagens do usuário podem ser editadas'
             }), 403
         
-        data = request.get_json()
+        data = _safe_get_json()
         new_content = data.get('content', '').strip()
         
         if not new_content:
@@ -694,5 +824,6 @@ def internal_error(error):
     db.session.rollback()
     return jsonify({
         'success': False,
-        'error': 'Erro interno do servidor'
+        'error': 'Erro interno do servidor',
+        'detail': str(error)
     }), 500

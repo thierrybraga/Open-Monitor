@@ -704,8 +704,8 @@
         // Announce action to screen readers
         announceToScreenReader(`Processando mitigação da vulnerabilidade ${currentCveId}`);
         
-        // Send mitigation request
-        fetch(`/api/vulnerabilities/${currentCveId}/mitigate`, {
+        // Send mitigation request (padronizado com fetchWithRetry)
+        window.fetchWithRetry(`/api/vulnerabilities/${currentCveId}/mitigate`, {
             method: 'POST',
             credentials: 'same-origin',
             headers: {
@@ -793,8 +793,8 @@
         // Announce action to screen readers
         announceToScreenReader(`Criando ticket para vulnerabilidade ${currentCveId}`);
         
-        // Send ticket creation request
-        fetch('/api/v1/tickets', {
+        // Send ticket creation request (padronizado com fetchWithRetry)
+        window.fetchWithRetry('/api/v1/tickets', {
             method: 'POST',
             credentials: 'same-origin',
             headers: {
@@ -876,7 +876,7 @@
         
         // Performance monitoring for page loading
         measureTablePerformance('page-loading', () => {
-            return fetch(url, {
+            return window.fetchWithRetry(url, {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest'
                 }

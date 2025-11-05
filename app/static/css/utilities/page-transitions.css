@@ -7,7 +7,7 @@
 
 /* ===== FADE IN DA PÁGINA ===== */
 .page-fade-in {
-    animation: fadeIn 0.4s ease-out;
+    animation: fadeIn 0.4s ease-out both;
 }
 
 @keyframes fadeIn {
@@ -114,7 +114,7 @@ html {
 }
 
 .content-fade-out {
-    opacity: 0.5;
+    opacity: 0.85;
     transform: scale(0.98);
 }
 

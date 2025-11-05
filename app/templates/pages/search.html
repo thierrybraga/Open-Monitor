@@ -1,14 +1,14 @@
 {% extends 'core/base.html' %}
 
-{% block title %}Busca - Open Monitor{% endblock %}
+{% block title %}{% if query %}Busca: {{ query }} - Open Monitor{% else %}Busca - Open Monitor{% endif %}{% endblock %}
 
-{% block meta_description %}Busque e encontre vulnerabilidades, hosts e informações de segurança rapidamente. Sistema de busca avançado com filtros e resultados em tempo real.{% endblock %}
+{% block meta_description %}{% if query %}Resultados de busca para "{{ query }}". Encontre vulnerabilidades, hosts e informações de segurança com filtros e resultados em tempo real.{% else %}Busque e encontre vulnerabilidades, hosts e informações de segurança rapidamente. Sistema de busca avançado com filtros e resultados em tempo real.{% endif %}{% endblock %}
 
 {% block meta_keywords %}busca, pesquisa, vulnerabilidades, hosts, segurança, filtros, CVE, sistema de busca{% endblock %}
 
-{% block og_title %}Busca - Sistema de Monitoramento de Segurança{% endblock %}
+{% block og_title %}{% if query %}Busca: {{ query }} - Sistema de Monitoramento de Segurança{% else %}Busca - Sistema de Monitoramento de Segurança{% endif %}{% endblock %}
 
-{% block og_description %}Ferramenta de busca avançada para encontrar vulnerabilidades, hosts e informações de segurança de forma rápida e eficiente.{% endblock %}
+{% block og_description %}{% if query %}Resultados de busca para "{{ query }}" com localização geográfica e análise.{% else %}Ferramenta de busca avançada para encontrar vulnerabilidades, hosts e informações de segurança de forma rápida e eficiente.{% endif %}{% endblock %}
 
 {% block og_type %}website{% endblock %}
 
@@ -56,21 +56,7 @@
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" nonce="{{ csp_nonce }}">
   <style nonce="{{ csp_nonce }}">
     /* Estilos específicos para elementos únicos da página search */
-    .quick-examples {
-      background: var(--glass-bg-medium);
-      border-radius: var(--radius-modern-md);
-      padding: 1rem;
-      border: 1px solid var(--glass-border-light);
-      backdrop-filter: var(--glass-blur-light);
-    }
-    
-    .quick-examples h6 {
-      color: var(--neutral-700);
-    }
-    
-    .example-btn:hover {
-      transform: translateX(4px);
-    }
+    /* Removidos estilos da seção de exemplos rápidos */
     
     .recent-searches {
       background: var(--glass-bg-medium);
@@ -227,10 +213,7 @@
   <header class="page-header mb-4">
     <div class="page-header-content">
       <div class="page-title-section">
-        <h1 class="page-title">
-          <i class="bi bi-search me-2"></i>
-          Consulta de IP
-        </h1>
+        <h1 class="page-title">Consulta de IP</h1>
         <p class="page-subtitle">Digite um endereço IP ou domínio para consultar informações detalhadas via Shodan API.</p>
       </div>
     </div>
@@ -239,31 +222,25 @@
   <!-- Search Card -->
   <section class="search-card mb-4" aria-labelledby="search-title">
     <div class="card-header">
-      <h2 id="search-title" class="card-title">
-        <i class="bi bi-globe me-2"></i>
-        Buscar Endereço IP ou Domínio
-      </h2>
+      <h2 id="search-title" class="card-title">Buscar Endereço IP ou Domínio</h2>
     </div>
     <div class="card-body p-4">
       <!-- Search Statistics -->
       <div class="row mb-4">
         <div class="col-md-4">
           <div class="stat-card text-center p-3">
-            <i class="bi bi-search fs-2 text-primary mb-2"></i>
             <div class="fw-bold fs-5" id="total-searches">0</div>
             <small class="text-muted">Consultas Realizadas</small>
           </div>
         </div>
         <div class="col-md-4">
           <div class="stat-card text-center p-3">
-            <i class="bi bi-clock-history fs-2 text-success mb-2"></i>
             <div class="fw-bold fs-5" id="avg-response-time">0ms</div>
             <small class="text-muted">Tempo Médio</small>
           </div>
         </div>
         <div class="col-md-4">
           <div class="stat-card text-center p-3">
-            <i class="bi bi-shield-check fs-2 text-info mb-2"></i>
             <div class="fw-bold fs-5" id="security-score">100%</div>
             <small class="text-muted">Score de Segurança</small>
           </div>
@@ -292,18 +269,14 @@
               aria-expanded="false"
               value="{{ request.args.get('query', '') }}"
             >
-            <div class="input-group-append">
-              <button type="submit" class="btn btn-primary" aria-label="Buscar">
-                <i class="bi bi-search me-1"></i>
-                <span class="btn-text">Buscar</span>
-                <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true">
-                </span>
-              </button>
-              <button type="button" class="btn btn-outline-secondary" aria-label="Limpar">
-                <i class="bi bi-arrow-clockwise me-1"></i>
-                Limpar
-              </button>
-            </div>
+            <button type="submit" class="btn btn-primary" id="search-btn">
+              <span class="btn-text">Buscar</span>
+              <span class="btn-loading d-none">
+                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                Buscando...
+              </span>
+            </button>
+            <button type="button" class="btn btn-outline-secondary" id="clear-form">Limpar</button>
           </div>
           
           <!-- Search Suggestions Dropdown -->
@@ -354,49 +327,30 @@
             </div>
           </div>
           
-          <div class="col-md-4">
-            <div class="form-actions">
-              <label class="form-label d-block">&nbsp;</label>
-              <div class="d-grid gap-2">
-                <button type="submit" class="btn btn-primary" id="search-btn">
-                  <i class="bi bi-search me-1"></i>
-                  <span class="btn-text">Buscar</span>
-                  <span class="btn-loading d-none">
-                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                    Buscando...
-                  </span>
-                </button>
-                <button type="button" class="btn btn-outline-secondary" id="clear-form">
-                  <i class="bi bi-arrow-clockwise me-1"></i>
-                  Limpar
-                </button>
-              </div>
-            </div>
-            
-            <!-- Quick Examples -->
-            <div class="quick-examples mt-3">
-              <h6 class="text-muted mb-2">
-                <i class="bi bi-lightbulb me-1"></i>
-                Exemplos Rápidos
-              </h6>
-              <div class="d-grid gap-1">
-                <button type="button" class="btn btn-sm btn-outline-info example-btn" data-query="8.8.8.8">
-                  <i class="bi bi-dns me-1"></i>
-                  DNS Google
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-info example-btn" data-query="1.1.1.1">
-                  <i class="bi bi-shield-check me-1"></i>
-                  Cloudflare DNS
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-info example-btn" data-query="github.com">
-                  <i class="bi bi-github me-1"></i>
-                  GitHub
-                </button>
-              </div>
-            </div>
-          </div>
+          
         </div>
       </form>
+    </div>
+  </section>
+
+  <!-- Map Section (Belo Horizonte) -->
+  <section class="card map-card mb-4" aria-labelledby="default-map-title">
+    <div class="card-header py-2">
+      <h2 id="default-map-title" class="h6 mb-0">Mapa - Belo Horizonte, MG</h2>
+    </div>
+    <div class="card-body p-3 position-relative">
+      <div id="map-loading" class="map-loading d-flex justify-content-center align-items-center d-none">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Carregando mapa...</span>
+        </div>
+      </div>
+      <div id="map"
+           class="map-container"
+           role="region"
+           aria-label="Mapa de Belo Horizonte"
+           data-lat="-19.9245"
+           data-lng="-43.9352"
+           data-label="Belo Horizonte, MG"></div>
     </div>
   </section>
 
@@ -425,7 +379,6 @@
                   <div class="small text-muted text-uppercase">{{ metric.title }}</div>
                   <div class="fs-5 fw-semibold" id="{{ metric.id }}">N/A</div>
                 </div>
-                <i class="bi bi-{{ metric.icon }} text-primary fs-3" aria-hidden="true"></i>
               </div>
             </div>
           {% endfor %}
@@ -433,36 +386,15 @@
       </div>
     </div>
 
-    <!-- Google Maps -->
-    <div class="card map-card mb-4">
-      <div class="card-header py-2">
-        <h2 class="h6 mb-0">Localização no Mapa</h2>
-      </div>
-      <div class="card-body p-3 position-relative">
-        <div id="map-loading" class="map-loading d-flex justify-content-center align-items-center d-none">
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Carregando mapa...</span>
-          </div>
-        </div>
-        <div id="map" class="map-container" role="region" aria-label="Mapa com localização do IP"></div>
-      </div>
-    </div>
+    {# Mapa já exibido acima com posição padrão #}
 
     <!-- Detailed Results Table -->
     <div class="card table-card">
       <div class="card-header py-2 d-flex justify-content-between align-items-center">
         <h2 class="h6 mb-0">Detalhes da Consulta</h2>
         <div class="d-flex gap-2">
-          <button class="btn btn-sm btn-outline-secondary"
-                  id="reset-demo"
-                  aria-label="Restaurar dados de demonstração">
-            <i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i> Restaurar Demo
-          </button>
-          <button class="btn btn-sm btn-primary"
-                  id="export-results"
-                  aria-label="Exportar resultados">
-            <i class="bi bi-download me-1" aria-hidden="true"></i> Exportar
-          </button>
+          <button class="btn btn-sm btn-outline-secondary" id="reset-demo" aria-label="Restaurar dados de demonstração">Restaurar Demo</button>
+          <button class="btn btn-sm btn-primary" id="export-results" aria-label="Exportar resultados">Exportar</button>
         </div>
       </div>
       <div class="card-body p-3">
@@ -519,12 +451,25 @@
    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js" nonce="{{ csp_nonce }}"></script>
    <script nonce="{{ csp_nonce }}">
      window.MAPBOX_ACCESS_TOKEN = {{ config.get('MAPBOX_ACCESS_TOKEN') | tojson | safe }};
-     const init = () => { if (typeof initMap === 'function') { initMap(); } };
-     if (document.readyState === 'loading') {
-       document.addEventListener('DOMContentLoaded', init);
-     } else {
-       init();
+   </script>
+   {# Structured Data para página de busca #}
+   <script type="application/ld+json" nonce="{{ csp_nonce }}">
+   {
+     "@context": "https://schema.org",
+     "@type": "SearchResultsPage",
+     "name": "Busca{% if query %}: {{ query }}{% endif %}",
+     "description": "Resultados de busca{% if query %} para '{{ query }}'{% endif %} em segurança, vulnerabilidades e hosts.",
+     "isPartOf": {
+       "@type": "WebSite",
+       "name": "{{ config.get('SITE_NAME', 'Open Monitor') }}",
+       "url": "{{ url_for('main.index', _external=True) }}"
+     },
+     "mainEntity": {
+       "@type": "SearchAction",
+       "target": "{{ url_for('main.search', _external=True) }}?q={search_term_string}",
+       "query-input": "required name=search_term_string"
      }
+   }
    </script>
   <script defer
           src="{{ url_for('static', filename='js/features/search.js') }}"

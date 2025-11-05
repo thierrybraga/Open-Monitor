@@ -1,9 +1,9 @@
 {% extends 'core/base.html' %}
 
-{% block title %}Account - Open CVE Report{% endblock %}
+{% block title %}Conta - Open Monitor{% endblock %}
 
 {% block header_brand %}
-  <span>Open CVE Report - Account</span>
+  <span>Open Monitor - Conta</span>
 {% endblock %}
 
 {% block extra_css %}
@@ -14,8 +14,8 @@
 <div class="container-fluid py-4 fade-in">
   <!-- Page Header -->
   <header class="page-header mb-5">
-    <h1 class="h3 fw-semibold mb-2">My Account</h1>
-    <p class="text-muted fs-6">Manage your profile, assets, and security insights.</p>
+    <h1 class="h3 fw-semibold mb-2">Minha Conta</h1>
+    <p class="text-muted fs-6">Gerencie seu perfil, ativos e insights de segurança.</p>
   </header>
 
   <div class="row g-4">
@@ -24,19 +24,22 @@
       <!-- Tabs -->
       <ul class="nav nav-tabs" id="account-tabs" role="tablist">
             <li class="nav-item" role="presentation">
-              <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile" type="button" role="tab" aria-controls="profile" aria-selected="true">Profile</button>
+              <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile" type="button" role="tab" aria-controls="profile" aria-selected="true">Perfil</button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="password-tab" data-bs-toggle="tab" data-bs-target="#password" type="button" role="tab" aria-controls="password" aria-selected="false">Change Password</button>
+              <button class="nav-link" id="password-tab" data-bs-toggle="tab" data-bs-target="#password" type="button" role="tab" aria-controls="password" aria-selected="false">Alterar Senha</button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="assets-tab" data-bs-toggle="tab" data-bs-target="#assets" type="button" role="tab" aria-controls="assets" aria-selected="false">Assets</button>
+              <button class="nav-link" id="assets-tab" data-bs-toggle="tab" data-bs-target="#assets" type="button" role="tab" aria-controls="assets" aria-selected="false">Ativos</button>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="vendors-tab" data-bs-toggle="tab" data-bs-target="#vendors" type="button" role="tab" aria-controls="vendors" aria-selected="false">Vendors</button>
+              <a class="nav-link" id="vendors-link" href="{{ url_for('vulnerability_ui.vendor_selection_ui') }}" aria-selected="false">Fornecedores</a>
             </li>
             <li class="nav-item" role="presentation">
-              <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#security" type="button" role="tab" aria-controls="security" aria-selected="false">Security Insights</button>
+              <button class="nav-link" id="notifications-tab" data-bs-toggle="tab" data-bs-target="#notifications" type="button" role="tab" aria-controls="notifications" aria-selected="false">Notificações</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#security" type="button" role="tab" aria-controls="security" aria-selected="false">Insights de Segurança</button>
             </li>
           </ul>
 
@@ -46,7 +49,7 @@
         <div class="tab-pane fade show active" id="profile" role="tabpanel" aria-labelledby="profile-tab">
           <article class="card shadow-md fade-in">
             <div class="card-header p-4">
-              <h2 class="h5 fw-semibold mb-0">Profile Information</h2>
+              <h2 class="h5 fw-semibold mb-0">Informações do Perfil</h2>
             </div>
             <div class="card-body p-4">
               <!-- Profile Picture -->
@@ -59,18 +62,18 @@
                   <input type="file" id="profile-pic" accept="image/*" class="d-none" />
                 </div>
                 <div>
-                  <p class="text-muted fs-6 mb-2">Upload a profile picture (max 2MB)</p>
-                  <button id="remove-pic" class="btn btn-outline-danger btn-sm ripple-effect d-none"><i class="bi bi-trash me-1"></i>Remove</button>
+                  <p class="text-muted fs-6 mb-2">Enviar uma foto de perfil (máx. 2MB)</p>
+                  <button id="remove-pic" class="btn btn-outline-danger btn-sm ripple-effect d-none"><i class="bi bi-trash me-1"></i>Remover</button>
                 </div>
               </div>
               <!-- Profile Form -->
-              <form method="POST" action="{{ url_for('main.account') }}" class="row g-4 needs-validation" novalidate>
+              <form id="profile-form" method="POST" action="{{ url_for('main.account') }}" class="row g-4 needs-validation" novalidate>
                 {{ profile_form.hidden_tag() }}
                 <input type="hidden" name="form_type" value="profile">
                 
                 <div class="col-md-6">
                   {{ profile_form.first_name.label(class="form-label") }}
-                  {{ profile_form.first_name(class="form-control", placeholder="Enter your first name") }}
+                  {{ profile_form.first_name(class="form-control", placeholder="Digite seu primeiro nome") }}
                   {% if profile_form.first_name.errors %}
                     <div class="invalid-feedback d-block">
                       {% for error in profile_form.first_name.errors %}
@@ -82,7 +85,7 @@
                 
                 <div class="col-md-6">
                   {{ profile_form.last_name.label(class="form-label") }}
-                  {{ profile_form.last_name(class="form-control", placeholder="Enter your last name") }}
+                  {{ profile_form.last_name(class="form-control", placeholder="Digite seu sobrenome") }}
                   {% if profile_form.last_name.errors %}
                     <div class="invalid-feedback d-block">
                       {% for error in profile_form.last_name.errors %}
@@ -94,7 +97,7 @@
                 
                 <div class="col-md-6">
                   {{ profile_form.email.label(class="form-label") }}
-                  {{ profile_form.email(class="form-control", placeholder="example@domain.com") }}
+                  {{ profile_form.email(class="form-control", placeholder="exemplo@dominio.com") }}
                   {% if profile_form.email.errors %}
                     <div class="invalid-feedback d-block">
                       {% for error in profile_form.email.errors %}
@@ -118,7 +121,7 @@
                 
                 <div class="col-12">
                   {{ profile_form.address.label(class="form-label") }}
-                  {{ profile_form.address(class="form-control", placeholder="Enter your address") }}
+                  {{ profile_form.address(class="form-control", placeholder="Digite seu endereço") }}
                   {% if profile_form.address.errors %}
                     <div class="invalid-feedback d-block">
                       {% for error in profile_form.address.errors %}
@@ -130,7 +133,7 @@
                 
                 <div class="col-12">
                   {{ profile_form.bio.label(class="form-label") }}
-                  {{ profile_form.bio(class="form-control", rows="3", placeholder="Tell us about yourself...") }}
+                  {{ profile_form.bio(class="form-control", rows="3", placeholder="Fale um pouco sobre você...") }}
                   {% if profile_form.bio.errors %}
                     <div class="invalid-feedback d-block">
                       {% for error in profile_form.bio.errors %}
@@ -142,7 +145,7 @@
                 
                 <div class="col-12 d-flex gap-3">
                   {{ profile_form.submit(class="btn btn-primary ripple-effect") }}
-                  <button type="button" class="btn btn-outline-secondary ripple-effect" id="reset-btn">Reset</button>
+                  <button type="button" class="btn btn-outline-secondary ripple-effect" id="reset-btn">Limpar</button>
                 </div>
               </form>
             </div>
@@ -153,17 +156,18 @@
         <div class="tab-pane fade" id="password" role="tabpanel" aria-labelledby="password-tab">
           <article class="card shadow-md fade-in">
             <div class="card-header p-4">
-              <h2 class="h5 fw-semibold mb-0">Change Password</h2>
-              <p class="text-muted mb-0 mt-1">Update your password to keep your account secure</p>
+              <h2 class="h5 fw-semibold mb-0">Alterar Senha</h2>
+              <p class="text-muted mb-0 mt-1">Atualize sua senha para manter sua conta segura</p>
             </div>
             <div class="card-body p-4">
-              <form method="POST" action="{{ url_for('main.account') }}" class="needs-validation" novalidate>
+              <form id="password-form" method="POST" action="{{ url_for('main.account') }}" class="needs-validation" novalidate>
                 {{ password_form.hidden_tag() }}
+                <input type="hidden" name="form_type" value="password">
                 
                 <div class="row g-4">
                   <div class="col-12">
                     {{ password_form.current_password.label(class="form-label") }}
-                    {{ password_form.current_password(class="form-control", placeholder="Enter your current password") }}
+                    {{ password_form.current_password(class="form-control", placeholder="Digite sua senha atual") }}
                     {% if password_form.current_password.errors %}
                       <div class="invalid-feedback d-block">
                         {% for error in password_form.current_password.errors %}
@@ -175,7 +179,7 @@
                   
                   <div class="col-md-6">
                     {{ password_form.new_password.label(class="form-label") }}
-                    {{ password_form.new_password(class="form-control", placeholder="Enter new password") }}
+                    {{ password_form.new_password(class="form-control", placeholder="Digite a nova senha") }}
                     {% if password_form.new_password.errors %}
                       <div class="invalid-feedback d-block">
                         {% for error in password_form.new_password.errors %}
@@ -184,13 +188,13 @@
                       </div>
                     {% endif %}
                     <div class="form-text">
-                      Password must be at least 8 characters long and contain uppercase, lowercase, number and special character.
+                      A senha deve ter pelo menos 8 caracteres e conter maiúsculas, minúsculas, número e caractere especial.
                     </div>
                   </div>
                   
                   <div class="col-md-6">
                     {{ password_form.confirm_password.label(class="form-label") }}
-                    {{ password_form.confirm_password(class="form-control", placeholder="Confirm new password") }}
+                    {{ password_form.confirm_password(class="form-control", placeholder="Confirme a nova senha") }}
                     {% if password_form.confirm_password.errors %}
                       <div class="invalid-feedback d-block">
                         {% for error in password_form.confirm_password.errors %}
@@ -202,7 +206,7 @@
                   
                   <div class="col-12">
                     {{ password_form.submit(class="btn btn-primary ripple-effect") }}
-                    <button type="button" class="btn btn-outline-secondary ripple-effect ms-2" onclick="this.form.reset()">Cancel</button>
+                    <button type="button" class="btn btn-outline-secondary ripple-effect ms-2" id="cancel-password-btn">Cancelar</button>
                   </div>
                 </div>
               </form>
@@ -214,45 +218,45 @@
         <div class="tab-pane fade" id="assets" role="tabpanel" aria-labelledby="assets-tab">
           <article class="card shadow-md fade-in">
             <div class="card-header p-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
-              <h2 class="h5 fw-semibold mb-0">Registered Assets</h2>
-              <button class="btn btn-primary btn-sm ripple-effect" id="add-asset-btn" data-bs-toggle="modal" data-bs-target="#asset-modal"><i class="bi bi-plus me-1"></i>Add Asset</button>
+              <h2 class="h5 fw-semibold mb-0">Ativos Registrados</h2>
+              <button class="btn btn-primary btn-sm ripple-effect" id="add-asset-btn" data-bs-toggle="modal" data-bs-target="#asset-modal"><i class="bi bi-plus me-1"></i>Adicionar Ativo</button>
             </div>
             <div class="card-body p-4">
               <div class="d-flex flex-wrap gap-3 mb-4 align-items-center">
-                <div class="position-relative flex-grow-1 min-w-200">
-                  <input type="text" id="asset-search" class="form-control ps-5" placeholder="Search by IP, Vendor, or Feature" aria-label="Search assets" />
+              <div class="position-relative flex-grow-1 min-w-200">
+                  <input type="text" id="asset-search" class="form-control ps-5" placeholder="Buscar por IP, Fornecedor ou Nome" aria-label="Buscar ativos" />
                   <i class="bi bi-search position-absolute start-0 top-50 translate-middle-y ms-3 text-muted"></i>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
-                  <button class="btn btn-outline-secondary btn-sm ripple-effect" id="select-all-btn">Select All</button>
-                  <button class="btn btn-outline-secondary btn-sm ripple-effect" id="deselect-all-btn">Deselect All</button>
-                  <button class="btn btn-outline-danger btn-sm ripple-effect d-none" id="delete-selected-btn"><i class="bi bi-trash me-1"></i>Delete Selected</button>
-                  <button class="btn btn-outline-primary btn-sm ripple-effect" id="export-csv-btn"><i class="bi bi-download me-1"></i>Export CSV</button>
+                  <button class="btn btn-outline-secondary btn-sm ripple-effect" id="select-all-btn">Selecionar Todos</button>
+                  <button class="btn btn-outline-secondary btn-sm ripple-effect" id="deselect-all-btn">Limpar Seleção</button>
+                  <button class="btn btn-outline-danger btn-sm ripple-effect d-none" id="delete-selected-btn"><i class="bi bi-trash me-1"></i>Excluir Selecionados</button>
+                  <button class="btn btn-outline-primary btn-sm ripple-effect" id="export-csv-btn"><i class="bi bi-download me-1"></i>Exportar CSV</button>
                 </div>
               </div>
               <div class="table-responsive">
                 <table class="table table-striped table-hover align-middle" role="grid" aria-describedby="asset-table-info">
                   <thead>
                     <tr>
-                      <th scope="col"><input type="checkbox" id="select-all-header" aria-label="Select all assets" /></th>
+                      <th scope="col"><input type="checkbox" id="select-all-header" aria-label="Selecionar todos os ativos" /></th>
                       <th scope="col" class="sortable" data-sort="ip">IP <i class="bi bi-arrow-down-up"></i></th>
                       <th scope="col" class="sortable" data-sort="uptime">Uptime <i class="bi bi-arrow-down-up"></i></th>
-                      <th scope="col" class="sortable" data-sort="vendor">Vendor <i class="bi bi-arrow-down-up"></i></th>
-                      <th scope="col">Feature</th>
-                      <th scope="col">Actions</th>
+                      <th scope="col" class="sortable" data-sort="vendor">Fornecedor <i class="bi bi-arrow-down-up"></i></th>
+                      <th scope="col">Nome</th>
+                      <th scope="col">Ações</th>
                     </tr>
                   </thead>
                   <tbody id="asset-table-body">
-                    <tr><td colspan="6" class="text-center p-4 text-muted">Loading assets...</td></tr>
+                    <tr><td colspan="6" class="text-center p-4 text-muted">Carregando ativos...</td></tr>
                   </tbody>
                 </table>
-                <div id="asset-table-info" class="visually-hidden">Table displaying registered assets with IP, uptime, vendor, feature, and actions.</div>
+                <div id="asset-table-info" class="visually-hidden">Tabela de ativos registrados com IP, uptime, fornecedor, recurso e ações.</div>
               </div>
               <nav class="d-flex justify-content-center align-items-center gap-3 mt-4" aria-label="Asset table pagination">
-                <button class="btn btn-outline-secondary pagination-btn ripple-effect" id="prev-page" disabled aria-label="Previous page"><i class="bi bi-chevron-left"></i></button>
-                <span id="page-info" class="text-muted fs-6">Page 1 of 1</span>
-                <button class="btn btn-outline-secondary pagination-btn ripple-effect" id="next-page" disabled aria-label="Next page"><i class="bi bi-chevron-right"></i></button>
-                <select id="page-size" class="form-select w-auto" aria-label="Rows per page">
+                <button class="btn btn-outline-secondary pagination-btn ripple-effect" id="prev-page" disabled aria-label="Página anterior"><i class="bi bi-chevron-left"></i></button>
+                <span id="page-info" class="text-muted fs-6">Página 1 de 1</span>
+                <button class="btn btn-outline-secondary pagination-btn ripple-effect" id="next-page" disabled aria-label="Próxima página"><i class="bi bi-chevron-right"></i></button>
+                <select id="page-size" class="form-select w-auto" aria-label="Linhas por página">
                   <option value="5">5</option>
                   <option value="10" selected>10</option>
                   <option value="25">25</option>
@@ -262,65 +266,53 @@
           </article>
         </div>
 
-        <!-- Vendors Tab -->
-        <div class="tab-pane fade" id="vendors" role="tabpanel" aria-labelledby="vendors-tab">
+        <!-- Notifications Tab -->
+        <div class="tab-pane fade" id="notifications" role="tabpanel" aria-labelledby="notifications-tab">
           <article class="card shadow-md fade-in">
-            <div class="card-header p-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
-              <h2 class="h5 fw-semibold mb-0">Vendor Preferences</h2>
-              <div class="text-muted small" id="vendor-selected-summary">
-                <span id="vendor-selected-count">0</span> selected
-              </div>
+            <div class="card-header p-4">
+              <h2 class="h5 fw-semibold mb-0">Preferências de Notificações</h2>
+              <p class="text-muted mb-0 mt-1">Configure como deseja receber alertas e atualizações.</p>
             </div>
             <div class="card-body p-4">
-              <div class="d-flex flex-wrap gap-3 mb-4 align-items-center">
-                <div class="position-relative flex-grow-1 min-w-200">
-                  <input type="text" id="vendor-search-input" class="form-control ps-5" placeholder="Search vendors" aria-label="Search vendors" />
-                  <i class="bi bi-search position-absolute start-0 top-50 translate-middle-y ms-3 text-muted"></i>
-                </div>
-                <div class="d-flex gap-2 flex-wrap">
-                  <button class="btn btn-outline-secondary btn-sm ripple-effect" id="clear-vendor-selection">Clear</button>
-                  <button class="btn btn-primary btn-sm ripple-effect" id="save-vendor-preferences"><i class="bi bi-save me-1"></i>Save Preferences</button>
-                </div>
-              </div>
-              <div id="vendor-list-container" class="border rounded">
-                <ul id="vendor-list" class="list-group list-group-flush">
-                  <li class="list-group-item text-muted">Loading vendors...</li>
-                </ul>
-              </div>
+              {% with form=newsletter_form, form_action=url_for('main.account'), form_type='newsletter', user_preferences=user_preferences %}
+                {% include 'newsletter/_subscription_section.html' %}
+              {% endwith %}
             </div>
           </article>
         </div>
 
-        <!-- Insights Tab -->
-        <div class="tab-pane fade" id="insights" role="tabpanel" aria-labelledby="insights-tab">
+        {# Vendors tab substituída por link direto; conteúdo removido #}
+
+        <!-- Security Insights Tab -->
+        <div class="tab-pane fade" id="security" role="tabpanel" aria-labelledby="security-tab">
           <article class="card shadow-md fade-in">
             <div class="card-header p-4 d-flex justify-content-between align-items-center">
-              <h2 class="h5 fw-semibold mb-0">Security Insights</h2>
-              <button class="btn btn-primary btn-sm ripple-effect" id="generate-report-btn"><i class="bi bi-file-earmark-text me-1"></i>Generate Report</button>
+              <h2 class="h5 fw-semibold mb-0">Insights de Segurança</h2>
+              <button class="btn btn-primary btn-sm ripple-effect" id="generate-report-btn"><i class="bi bi-file-earmark-text me-1"></i>Gerar Relatório</button>
             </div>
             <div class="card-body p-4">
-              <p class="text-muted mb-4">Overview of asset security status and top vulnerabilities.</p>
+              <p class="text-muted mb-4">Visão geral do status de segurança dos ativos e principais vulnerabilidades.</p>
               <div class="row g-4">
                 <div class="col-md-6">
-                  <h3 class="h6 fw-semibold mb-3 text-center">Security Status Distribution</h3>
+                  <h3 class="h6 fw-semibold mb-3 text-center">Distribuição do Status de Segurança</h3>
                   <div class="h-250">
-                    <canvas id="security-chart" aria-label="Chart showing security status distribution"></canvas>
+                    <canvas id="security-chart" aria-label="Gráfico mostrando distribuição do status de segurança"></canvas>
                   </div>
                 </div>
                 <div class="col-md-6">
-                  <h3 class="h6 fw-semibold mb-3">Top Vulnerabilities (Example)</h3>
+                  <h3 class="h6 fw-semibold mb-3">Principais Vulnerabilidades (Exemplo)</h3>
                   <ul class="list-group list-group-flush">
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                       CVE-2023-1234
-                      <span class="badge badge-severity-critical">Critical</span>
+                      <span class="badge badge-severity-critical">Crítica</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                       CVE-2023-5678
-                      <span class="badge badge-severity-high">High</span>
+                      <span class="badge badge-severity-high">Alta</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                       CVE-2023-9012
-                      <span class="badge badge-severity-medium">Medium</span>
+                      <span class="badge badge-severity-medium">Média</span>
                     </li>
                   </ul>
                 </div>
@@ -341,8 +333,8 @@
 
           <form action="{{ url_for('auth.logout') }}" method="post" class="d-grid">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-outline-danger w-100 ripple-effect" aria-label="Log out">
-              <i class="bi bi-box-arrow-right me-2"></i>Log Out
+            <button type="submit" class="btn btn-outline-danger w-100 ripple-effect" aria-label="Sair">
+              <i class="bi bi-box-arrow-right me-2"></i>Sair
             </button>
           </form>
         </div>
@@ -355,7 +347,7 @@
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h3 class="modal-title h5 fw-semibold" id="modal-title">Add Asset</h3>
+          <h3 class="modal-title h5 fw-semibold" id="modal-title">Adicionar Ativo</h3>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
@@ -363,26 +355,41 @@
             <div class="col-12">
               <label for="asset-ip" class="form-label">IP <span class="text-danger">*</span></label>
               <input type="text" id="asset-ip" class="form-control" placeholder="192.168.1.x" required aria-describedby="asset-ip-error" />
-              <div class="invalid-feedback" id="asset-ip-error">Please enter a valid IP.</div>
+              <div class="invalid-feedback" id="asset-ip-error">Por favor, insira um IP válido.</div>
+            </div>
+            <div class="col-12">
+              <label for="asset-name" class="form-label">Nome <span class="text-danger">*</span></label>
+              <input type="text" id="asset-name" class="form-control" placeholder="Ex: Firewall Principal" required aria-describedby="asset-name-error" />
+              <div class="invalid-feedback" id="asset-name-error">Por favor, informe o nome do ativo.</div>
             </div>
             <div class="col-12">
               <label for="asset-uptime" class="form-label">Uptime <span class="text-danger">*</span></label>
-              <input type="text" id="asset-uptime" class="form-control" placeholder="Ex: 30 days" required aria-describedby="asset-uptime-error" />
-              <div class="invalid-feedback" id="asset-uptime-error">Please enter the uptime.</div>
+              <input type="text" id="asset-uptime" class="form-control" placeholder="Ex: 30 dias" required aria-describedby="asset-uptime-error" />
+              <div class="invalid-feedback" id="asset-uptime-error">Por favor, informe o uptime.</div>
             </div>
             <div class="col-12">
-              <label for="asset-vendor" class="form-label">Vendor <span class="text-danger">*</span></label>
+              <label for="asset-vendor" class="form-label">Fornecedor <span class="text-danger">*</span></label>
               <input type="text" id="asset-vendor" class="form-control" placeholder="Ex: Fortinet" required aria-describedby="asset-vendor-error" />
-              <div class="invalid-feedback" id="asset-vendor-error">Please enter the vendor.</div>
+              <div class="invalid-feedback" id="asset-vendor-error">Por favor, informe o fornecedor.</div>
             </div>
-            <div class="col-12">
-              <label for="asset-feature" class="form-label">Feature <span class="text-danger">*</span></label>
-              <input type="text" id="asset-feature" class="form-control" placeholder="Ex: Firewall" required aria-describedby="asset-feature-error" />
-              <div class="invalid-feedback" id="asset-feature-error">Please enter the feature.</div>
+            <div class="col-md-6">
+              <label for="asset-rto" class="form-label">RTO (horas)</label>
+              <input type="number" id="asset-rto" class="form-control" min="0" step="1" placeholder="Ex: 2" aria-describedby="asset-rto-help" />
+              <div class="form-text" id="asset-rto-help">Tempo de recuperação alvo (RTO) em horas.</div>
+            </div>
+            <div class="col-md-6">
+              <label for="asset-rpo" class="form-label">RPO (horas)</label>
+              <input type="number" id="asset-rpo" class="form-control" min="0" step="1" placeholder="Ex: 1" aria-describedby="asset-rpo-help" />
+              <div class="form-text" id="asset-rpo-help">Objetivo de ponto de recuperação (RPO) em horas.</div>
+            </div>
+            <div class="col-md-6">
+              <label for="asset-cost" class="form-label">Custo operacional por hora (R$)</label>
+              <input type="number" id="asset-cost" class="form-control" min="0" step="0.01" placeholder="Ex: 150.00" aria-describedby="asset-cost-help" />
+              <div class="form-text" id="asset-cost-help">Estimativa de custo por hora do ativo.</div>
             </div>
             <div class="modal-footer pb-0">
-              <button type="button" class="btn btn-outline-secondary ripple-effect" data-bs-dismiss="modal">Cancel</button>
-              <button type="submit" class="btn btn-primary ripple-effect">Save Asset</button>
+              <button type="button" class="btn btn-outline-secondary ripple-effect" data-bs-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-primary ripple-effect">Salvar Ativo</button>
             </div>
           </form>
         </div>
@@ -396,4 +403,5 @@
   <script src="https://cdn.jsdelivr.net/npm/imask@7.6.1/dist/imask.min.js" defer nonce="{{ nonce }}"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.12.4/dist/sweetalert2.all.min.js" defer nonce="{{ nonce }}"></script>
   <script src="{{ url_for('static', filename='js/pages/account.js') }}" defer nonce="{{ nonce }}"></script>
+  <script src="{{ url_for('static', filename='js/features/newsletter.js') }}" defer nonce="{{ nonce }}"></script>
 {% endblock %}

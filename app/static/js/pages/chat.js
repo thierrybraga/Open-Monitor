@@ -6,16 +6,60 @@ class ChatManager {
             messageQueue: [],
             lastActivity: Date.now()
         };
-        this.messageInput = document.getElementById('chat-input');
-        this.sendBtn = document.getElementById('send-btn');
-        this.chatSessions = document.getElementById('chat-sessions-list');
-        this.chatMessages = document.getElementById('chat-messages');
-        this.charCount = document.getElementById('char-count');
+        // Prefer IDs from chat.html, fallback to legacy ones
+        this.messageInput = document.getElementById('messageInput') || document.getElementById('chat-input');
+        this.sendBtn = document.getElementById('sendBtn') || document.getElementById('send-btn');
+        this.chatSessions = document.getElementById('chatSessions') || document.getElementById('chat-sessions-list');
+        this.chatMessages = document.getElementById('chatMessages') || document.getElementById('chat-messages');
+        this.charCount = document.getElementById('charCount') || document.getElementById('char-count');
         this.attachmentInput = null;
         this.attachments = null;
         this.attachmentsPreview = null;
         this.editingSessionId = null;
         this.sessionToDelete = null;
+
+        // Form element
+        this.chatForm = document.getElementById('chatForm');
+
+        // Initialize textarea state
+        if (this.messageInput) {
+            this.autoResizeTextarea();
+            this.updateCharCount();
+        }
+
+        // Bind form submit to send handler
+        if (this.chatForm) {
+            this.chatForm.addEventListener('submit', (e) => this.handleSendMessage(e));
+        }
+
+        // Bind send button click
+        if (this.sendBtn) {
+            this.sendBtn.addEventListener('click', (e) => {
+                if (this.chatForm) {
+                    // Trigger form submission to reuse same flow
+                    this.chatForm.dispatchEvent(new Event('submit', { cancelable: true }));
+                } else {
+                    this.handleSendMessage(e);
+                }
+            });
+        }
+
+        // Bind input events for textarea
+        if (this.messageInput) {
+            this.messageInput.addEventListener('input', () => {
+                this.updateCharCount();
+                this.autoResizeTextarea();
+            });
+            this.messageInput.addEventListener('keydown', (e) => this.handleKeyDown(e));
+        }
+
+        // Quick action buttons delegation
+        document.addEventListener('click', (e) => {
+            const quickBtn = e.target.closest('.quick-action-btn');
+            if (quickBtn && quickBtn.dataset && quickBtn.dataset.message) {
+                this.sendQuickMessage(quickBtn.dataset.message, e);
+            }
+        });
     }
 
     showAttachmentsPreview() {
@@ -736,35 +780,27 @@ class ChatManager {
             welcomeMessage.style.display = 'none';
         }
 
-        const messageElement = document.createElement('div');
-        messageElement.className = `message-bubble ${message.message_type.toLowerCase()}`;
-        messageElement.setAttribute('data-message-id', message.id);
-        
-        const timestamp = new Date(message.created_at).toLocaleTimeString('pt-BR', {
+        const id = message.id || Date.now();
+        const type = (message.message_type || 'assistant').toString().toLowerCase();
+        const timestamp = new Date(message.created_at || Date.now()).toLocaleTimeString('pt-BR', {
             hour: '2-digit',
             minute: '2-digit'
         });
 
-        messageElement.innerHTML = `
-            <div class="message-avatar">
-                <i class="bi ${message.message_type === 'USER' ? 'bi-person-fill' : 'bi-robot'}"></i>
-            </div>
-            <div class="message-content">
-                <div class="message-text">
-                    ${this.formatMessageContent(message.content)}
+        const html = `
+            <div class="message ${type}" data-message-id="${id}">
+                <div class="message-avatar">${type === 'user' ? 'U' : 'AI'}</div>
+                <div class="message-content">
+                    <div class="message-bubble">
+                        ${this.formatMessageContent(message.content || '')}
+                    </div>
+                    <div class="message-time">${timestamp}</div>
                 </div>
-                <div class="message-time">${timestamp}</div>
             </div>
         `;
 
-        this.chatMessages.appendChild(messageElement);
+        this.chatMessages.insertAdjacentHTML('beforeend', html);
         this.scrollToBottom();
-        
-        // Animate message appearance with enhanced effects
-        requestAnimationFrame(() => {
-            messageElement.style.opacity = '1';
-            messageElement.style.transform = 'translateY(0) scale(1)';
-        });
     }
 
     animateMessageIn(element) {
@@ -799,16 +835,15 @@ class ChatManager {
         if (document.querySelector('.typing-indicator')) return;
 
         const typingHtml = `
-            <div class="typing-indicator message-bubble assistant">
-                <div class="message-avatar loading-avatar">
-                    <i class="bi bi-robot"></i>
-                    <div class="avatar-loading-spinner"></div>
-                </div>
+            <div class="message assistant typing-indicator">
+                <div class="message-avatar">AI</div>
                 <div class="message-content">
-                    <div class="typing-dots">
-                        <div class="typing-dot"></div>
-                        <div class="typing-dot"></div>
-                        <div class="typing-dot"></div>
+                    <div class="message-bubble">
+                        <div class="typing-dots">
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                        </div>
                     </div>
                 </div>
             </div>

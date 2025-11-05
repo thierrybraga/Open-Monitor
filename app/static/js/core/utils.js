@@ -56,7 +56,7 @@
       var defaultOptions = { year: 'numeric', month: 'short', day: 'numeric' };
       for (var k in options) { if (Object.prototype.hasOwnProperty.call(options, k)) { defaultOptions[k] = options[k]; } }
 
-      return date.toLocaleDateString('pt-BR', defaultOptions);
+      return date.toLocaleDateString(Utils.getLocale(), defaultOptions);
     } catch (error) {
       try { console.error('Erro ao formatar data:', error); } catch(_){}
       return 'Erro na data';
@@ -194,6 +194,98 @@
     try { console.log('Utils cleanup completed'); } catch(_){}
   };
 
+  // Fetch com retry e backoff exponencial simples (ES5 compat)
+  // Disponibiliza window.fetchWithRetry para uso em páginas diversas
+  function delay(ms) {
+    return new Promise(function(resolve) { setTimeout(resolve, ms); });
+  }
+
+  function isRetryableStatus(status) {
+    return status === 429 || (status >= 500 && status <= 599);
+  }
+
+  function fetchWithRetry(url, options, retries, backoffMs) {
+    options = options || {};
+    retries = (typeof retries === 'number') ? retries : 2;
+    backoffMs = (typeof backoffMs === 'number') ? backoffMs : 300;
+
+    var attempt = 0;
+
+    function exec() {
+      // Se fetch não existir, falha controlada
+      if (typeof window.fetch !== 'function') {
+        return Promise.reject(new Error('fetch indisponível no navegador'));
+      }
+
+      return window.fetch(url, options).then(function(response) {
+        if (!response) {
+          if (attempt < retries) {
+            attempt += 1;
+            return delay(backoffMs * attempt).then(exec);
+          }
+          return Promise.reject(new Error('Resposta indefinida no fetch'));
+        }
+
+        if (!response.ok && isRetryableStatus(response.status) && attempt < retries) {
+          attempt += 1;
+          return delay(backoffMs * attempt).then(exec);
+        }
+
+        return response;
+      }).catch(function(err) {
+        // Erros de rede/abort/timeouts: tenta novamente até o limite
+        if (attempt < retries) {
+          attempt += 1;
+          return delay(backoffMs * attempt).then(exec);
+        }
+        throw err;
+      });
+    }
+
+    return exec();
+  }
+
+  // Obtém locale do UI ou do documento
+  Utils.getLocale = function() {
+    try {
+      var lang = (typeof window !== 'undefined' && window.UI_LANGUAGE) ? window.UI_LANGUAGE : (document && document.documentElement ? document.documentElement.lang : 'pt-BR');
+      if (!lang) lang = 'pt-BR';
+      var lower = String(lang).toLowerCase();
+      if (lower === 'pt') return 'pt-BR';
+      if (lower === 'en') return 'en-US';
+      return lang;
+    } catch (e) {
+      return 'pt-BR';
+    }
+  };
+
+  // ChartLoader: garante que Chart.js esteja disponível e evita duplicação de script
+  Utils.ChartLoader = {
+    ensure: function(src) {
+      return new Promise(function(resolve, reject) {
+        if (typeof window.Chart !== 'undefined') { resolve(window.Chart); return; }
+        var existing = document.querySelector('script[src*="chart.js"]');
+        if (existing) {
+          // Se já houver script, aguarda carregamento
+          existing.addEventListener('load', function() {
+            resolve(window.Chart);
+          });
+          existing.addEventListener('error', function() {
+            reject(new Error('Falha ao carregar Chart.js'));
+          });
+          return;
+        }
+        var script = document.createElement('script');
+        script.src = src || 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js';
+        script.crossOrigin = 'anonymous';
+        script.referrerPolicy = 'no-referrer';
+        script.onload = function() { resolve(window.Chart); };
+        script.onerror = function() { reject(new Error('Falha ao carregar Chart.js')); };
+        document.head.appendChild(script);
+      });
+    }
+  };
+
   // Inicialização e cleanup automático
   document.addEventListener('DOMContentLoaded', function() {
     try { console.log('Utils loaded successfully'); } catch(_){}
@@ -205,5 +297,9 @@
 
   // Exportar para uso global
   window.Utils = Utils;
+  // Expor fetchWithRetry globalmente, sem sobrescrever se já existir
+  if (typeof window.fetchWithRetry !== 'function') {
+    window.fetchWithRetry = fetchWithRetry;
+  }
   if (typeof module !== 'undefined' && module.exports) { module.exports = Utils; }
 })();

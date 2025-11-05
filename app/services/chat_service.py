@@ -1,12 +1,19 @@
 # services/chat_service.py
 
 import logging
+import os
 import time
 from typing import Dict, List, Optional, Any
 from datetime import datetime
+from pathlib import Path
 
 from flask import current_app
 from openai import OpenAI
+from dotenv import load_dotenv, dotenv_values
+try:
+    import tiktoken  # opcional para contagem precisa de tokens
+except Exception:
+    tiktoken = None
 
 from app.models.chat_session import ChatSession
 from app.models.chat_message import ChatMessage, MessageType
@@ -28,6 +35,9 @@ class ChatService:
         self.max_tokens = None
         self.temperature = None
         self.demo_mode = False
+        self.timeout = 30
+        self.max_retries = 2
+        self.backoff_base = 1.5
         
     def _initialize_openai(self):
         """Inicializa o cliente OpenAI dentro do contexto da aplicação."""
@@ -35,10 +45,40 @@ class ChatService:
             return
             
         try:
-            self.api_key = current_app.config.get('OPENAI_API_KEY')
-            self.model = current_app.config.get('OPENAI_MODEL', 'gpt-3.5-turbo')
+            # Preferir config do Flask; se ausente, fazer fallback para variáveis de ambiente
+            self.api_key = current_app.config.get('OPENAI_API_KEY') or os.getenv('OPENAI_API_KEY')
+            self.model = current_app.config.get('OPENAI_MODEL', 'gpt-3.5-turbo') or os.getenv('OPENAI_MODEL', 'gpt-3.5-turbo')
             self.max_tokens = current_app.config.get('OPENAI_MAX_TOKENS', 1000)
             self.temperature = current_app.config.get('OPENAI_TEMPERATURE', 0.7)
+            self.timeout = current_app.config.get('OPENAI_TIMEOUT', 30)
+            self.max_retries = current_app.config.get('OPENAI_MAX_RETRIES', 2)
+            self.backoff_base = current_app.config.get('OPENAI_RETRY_BACKOFF', 1.5)
+            try:
+                logger.debug(f"OpenAI init: api_key_present={bool(self.api_key)}, model={self.model}, max_tokens={self.max_tokens}, temperature={self.temperature}")
+            except Exception:
+                pass
+            # Se a chave ainda não estiver presente, tente carregar .env explicitamente
+            if not self.api_key:
+                try:
+                    repo_root = Path(__file__).resolve().parents[2]
+                    dotenv_path = repo_root / '.env'
+                    # Primeiro, tentar carregar nas variáveis de ambiente
+                    load_dotenv(dotenv_path=dotenv_path)
+                    self.api_key = os.getenv('OPENAI_API_KEY')
+                    self.model = os.getenv('OPENAI_MODEL', self.model)
+                    if not self.api_key:
+                        # Como fallback definitivo, ler o arquivo diretamente
+                        values = dotenv_values(dotenv_path)
+                        self.api_key = values.get('OPENAI_API_KEY')
+                        self.model = values.get('OPENAI_MODEL', self.model)
+                    try:
+                        logger.info(
+                            f"ChatService dotenv loaded from {dotenv_path}, OPENAI_API_KEY present={bool(self.api_key)}, model={self.model}"
+                        )
+                    except Exception:
+                        pass
+                except Exception as e:
+                    logger.warning(f"ChatService dotenv load failed: {e}")
             
             if not self.api_key:
                 logger.warning("OPENAI_API_KEY não configurada - modo demo ativo")
@@ -51,6 +91,54 @@ class ChatService:
         except Exception as e:
             logger.error(f"Erro ao inicializar cliente OpenAI: {e}")
             self.demo_mode = True
+
+    def _estimate_tokens_text(self, text: str) -> int:
+        """Estima tokens para um texto usando tiktoken se disponível."""
+        if not text:
+            return 0
+        try:
+            if tiktoken:
+                try:
+                    enc = tiktoken.encoding_for_model(self.model)
+                except Exception:
+                    enc = tiktoken.get_encoding('cl100k_base')
+                return len(enc.encode(text))
+        except Exception:
+            pass
+        # Fallback simples: aproximar por palavras * 1.3
+        return int(len(text.split()) * 1.3)
+
+    def _estimate_tokens_messages(self, messages: List[Dict[str, str]]) -> int:
+        """Estima tokens para uma lista de mensagens."""
+        try:
+            combined = "\n".join(m.get('content', '') for m in messages)
+            return self._estimate_tokens_text(combined)
+        except Exception:
+            return 0
+
+    def _chat_completion_with_retries(self, messages: List[Dict[str, str]]):
+        """Executa chat.completions com retries e backoff."""
+        attempt = 0
+        last_err = None
+        while attempt < max(1, int(self.max_retries)):
+            try:
+                return self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature,
+                    stream=False
+                )
+            except Exception as e:
+                last_err = e
+                attempt += 1
+                if attempt >= int(self.max_retries):
+                    break
+                sleep_secs = (self.backoff_base ** attempt)
+                logger.warning(f"OpenAI falhou (tentativa {attempt}/{self.max_retries}): {e}. Retentando em {sleep_secs:.2f}s...")
+                time.sleep(sleep_secs)
+        # Se chegou aqui, todas as tentativas falharam
+        raise last_err if last_err else RuntimeError("Falha desconhecida ao chamar OpenAI")
     
     def get_system_prompt(self) -> str:
         """Retorna o prompt do sistema para o assistente."""
@@ -133,21 +221,53 @@ Se não souber algo específico, seja honesto e sugira onde o usuário pode enco
             # Adicionar mensagem atual do usuário
             conversation.append({"role": "user", "content": user_message})
             
-            # Fazer requisição à OpenAI
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=conversation,
-                max_tokens=self.max_tokens,
-                temperature=self.temperature,
-                stream=False
-            )
-            
-            # Extrair resposta
-            assistant_message = response.choices[0].message.content
+            # Verificar se streaming está habilitado nas configs
+            use_streaming = False
+            try:
+                use_streaming = bool(current_app.config.get('OPENAI_STREAMING', False))
+            except Exception:
+                use_streaming = False
+
+            assistant_message = ''
+            response = None
+            if use_streaming:
+                # Streaming: acumula os chunks e mantém contratos
+                try:
+                    raw_stream = self.client.chat.completions.create(
+                        model=self.model,
+                        messages=conversation,
+                        max_tokens=self.max_tokens,
+                        temperature=self.temperature,
+                        stream=True
+                    )
+                    chunks = []
+                    first_chunk_time = None
+                    for evt in raw_stream:
+                        delta = getattr(getattr(evt, 'choices', [{}])[0], 'delta', None)
+                        if delta and hasattr(delta, 'content') and delta.content:
+                            if first_chunk_time is None:
+                                first_chunk_time = time.time()
+                            chunks.append(delta.content)
+                    assistant_message = ''.join(chunks)
+                except Exception:
+                    # Fallback para modo não-stream com retries
+                    response = self._chat_completion_with_retries(conversation)
+                    assistant_message = response.choices[0].message.content
+            else:
+                # Fazer requisição à OpenAI com retries
+                response = self._chat_completion_with_retries(conversation)
+                assistant_message = response.choices[0].message.content
             processing_time = time.time() - start_time
             
-            # Calcular tokens (aproximação)
-            total_tokens = response.usage.total_tokens if hasattr(response, 'usage') else 0
+            # Calcular tokens
+            total_tokens = 0
+            try:
+                if response is not None and hasattr(response, 'usage') and hasattr(response.usage, 'total_tokens'):
+                    total_tokens = response.usage.total_tokens  # SDK recente
+                else:
+                    raise AttributeError('no usage')
+            except Exception:
+                total_tokens = self._estimate_tokens_messages(conversation) + self._estimate_tokens_text(assistant_message)
             
             logger.info(f"Resposta gerada com sucesso em {processing_time:.2f}s usando {total_tokens} tokens")
             
@@ -155,7 +275,7 @@ Se não souber algo específico, seja honesto e sugira onde o usuário pode enco
                 'success': True,
                 'content': assistant_message,
                 'processing_time': processing_time,
-                'token_count': len(assistant_message.split()),
+                'token_count': self._estimate_tokens_text(assistant_message),
                 'total_tokens_used': total_tokens,
                 'model_used': self.model
             }
@@ -163,7 +283,28 @@ Se não souber algo específico, seja honesto e sugira onde o usuário pode enco
         except Exception as e:
             processing_time = time.time() - start_time
             logger.error(f"Erro ao gerar resposta: {e}")
-            
+            # Fallback: se configurado, usar resposta demo para manter chat funcional
+            try:
+                fallback_enabled = True
+                try:
+                    fallback_enabled = bool(current_app.config.get('OPENAI_FALLBACK_TO_DEMO_ON_ERROR', True))
+                except Exception:
+                    fallback_enabled = True
+
+                err_str = str(e).lower()
+                should_fallback = fallback_enabled and (
+                    'insufficient_quota' in err_str or '429' in err_str or 'rate limit' in err_str or 'timeout' in err_str
+                )
+
+                if should_fallback:
+                    demo = self._generate_demo_response(user_message)
+                    # Ajustar tempo de processamento para refletir o tempo gasto
+                    demo['processing_time'] = processing_time
+                    return demo
+            except Exception:
+                # Se o fallback falhar, retornar erro amigável
+                pass
+
             return {
                 'success': False,
                 'content': self._get_error_response(str(e)),
@@ -235,12 +376,22 @@ Enquanto isso, posso ajudá-lo com informações gerais sobre o Open Monitor."""
                 except Exception:
                     metadata_str = None
 
+            # Estimar tokens de forma consistente com o modelo atual
+            token_count = 0
+            try:
+                # Inicializar config mínima para estimativa baseada no modelo
+                if self.model is None:
+                    self._initialize_openai()
+                token_count = self._estimate_tokens_text(content)
+            except Exception:
+                token_count = len(content.split())
+
             user_message = ChatMessage(
                 content=content,
                 message_type=MessageType.USER,
                 session_id=session_id,
                 user_id=user_id,
-                token_count=len(content.split()),
+                token_count=token_count,
                 processing_time=0.0,
                 message_metadata=metadata_str
             )
@@ -267,12 +418,20 @@ Enquanto isso, posso ajudá-lo com informações gerais sobre o Open Monitor."""
             Objeto ChatMessage criado
         """
         try:
+            # Garantir token_count consistente
+            assistant_token_count = response_data.get('token_count')
+            if assistant_token_count is None:
+                try:
+                    assistant_token_count = self._estimate_tokens_text(response_data.get('content', ''))
+                except Exception:
+                    assistant_token_count = len(response_data.get('content', '').split())
+
             assistant_message = ChatMessage(
                 content=response_data['content'],
                 message_type=MessageType.ASSISTANT,
                 session_id=session_id,
                 user_id=user_id,
-                token_count=response_data.get('token_count', 0),
+                token_count=assistant_token_count,
                 processing_time=response_data.get('processing_time', 0.0)
             )
             

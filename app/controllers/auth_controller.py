@@ -29,13 +29,31 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 # Função removida - agora usando AuthErrorHandler.flash_form_errors()
 
+# Utilitário local: verificar se Flask-Login está disponível (não inicializado em PUBLIC_MODE)
+def _is_login_available() -> bool:
+    try:
+        lm = getattr(current_app, 'login_manager', None)
+        return lm is not None
+    except Exception:
+        return False
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 @require_rate_limit(max_attempts=5, window_minutes=15)
 def login() -> str: # Adicionado type hinting (retorna string - HTML renderizado ou URL de redirecionamento)
     """Rota de login de usuário."""
-    # Se o usuário já estiver autenticado, redirecionar para a página principal
-    if current_user.is_authenticated:
-        return redirect(url_for('main.index'))
+    # Evitar acesso a current_user quando Flask-Login não está inicializado (PUBLIC_MODE)
+    force = request.args.get('force', '').lower()
+    if _is_login_available():
+        # Se o usuário já estiver autenticado, redirecionar para a página principal,
+        # a menos que o acesso seja forçado com ?force=true (útil para depuração/alternar contas)
+        if getattr(current_user, 'is_authenticated', False) and force != 'true':
+            return redirect(url_for('main.index'))
+    else:
+        # Em modo público, apenas renderizar a página sem tentar autenticação
+        # e informar ao usuário que login está desabilitado.
+        form = LoginForm()
+        flash('Login desabilitado no modo público.', 'info')
+        return render_template('auth/login.html', form=form)
 
     form = LoginForm()
 
@@ -51,13 +69,22 @@ def login() -> str: # Adicionado type hinting (retorna string - HTML renderizado
         rate_limiter.record_attempt(client_ip)
         
         # Buscar usuário pelo nome de usuário ou email
+        logger.debug(f"Login attempt for: {username_or_email}")
         user = User.query.filter(
             (User.username == username_or_email) | 
             (User.email == username_or_email)
         ).first()
+        logger.debug(f"User found: {bool(user)}")
 
         # Verificar usuário e senha
-        if user and user.check_password(form.password.data):
+        pwd_ok = False
+        if user:
+            try:
+                pwd_ok = user.check_password(form.password.data)
+            except Exception:
+                pwd_ok = False
+        logger.debug(f"Password match: {pwd_ok}")
+        if user and pwd_ok:
             # Login bem-sucedido (removida verificação de conta ativa)
             rate_limiter.clear_attempts(client_ip)  # Limpar tentativas após sucesso
             login_user(user, remember=form.remember_me.data)
@@ -93,12 +120,18 @@ def login() -> str: # Adicionado type hinting (retorna string - HTML renderizado
 @auth_bp.route('/logout', methods=['POST']) # A rota logout DEVE ser POST por segurança
 def logout() -> str: # Adicionado type hinting
     """Rota de logout de usuário."""
-    user_id = current_user.id if current_user.is_authenticated else None
-    username = current_user.username if current_user.is_authenticated else None
-    
-    # Flask-Login logout_user() lida com a remoção da sessão
-    logout_user()
-    AuthErrorHandler.handle_success('logout', user_id=user_id, username=username)
+    # Evitar acesso a current_user/logout_user quando Flask-Login não está disponível
+    if _is_login_available():
+        user_id = current_user.id if getattr(current_user, 'is_authenticated', False) else None
+        username = current_user.username if getattr(current_user, 'is_authenticated', False) else None
+        # Flask-Login logout_user() lida com a remoção da sessão
+        try:
+            logout_user()
+        except Exception:
+            pass
+        AuthErrorHandler.handle_success('logout', user_id=user_id, username=username)
+    else:
+        flash('Logout indisponível em modo público.', 'info')
     
     # Redirecionar para a página principal ou login
     return redirect(url_for('main.index'))
@@ -108,9 +141,11 @@ def logout() -> str: # Adicionado type hinting
 @require_rate_limit(max_attempts=3, window_minutes=10)
 def register() -> str: # Adicionado type hinting
     """Rota de registro de novo usuário."""
-    # Se o usuário já estiver autenticado, redirecionar para a página principal
-    if current_user.is_authenticated:
-        return redirect(url_for('main.index'))
+    # Evitar acesso a current_user quando Flask-Login não está inicializado (PUBLIC_MODE)
+    if _is_login_available():
+        # Se o usuário já estiver autenticado, redirecionar para a página principal
+        if getattr(current_user, 'is_authenticated', False):
+            return redirect(url_for('main.index'))
 
     form = RegisterForm()
 

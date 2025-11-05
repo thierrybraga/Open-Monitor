@@ -20,6 +20,22 @@ class SettingsManager {
             themeSelect.addEventListener('change', this.handleThemeChange.bind(this));
         }
 
+        const languageSelect = document.getElementById('language');
+        if (languageSelect) {
+            languageSelect.addEventListener('change', (e) => {
+                const lang = e.target.value;
+                this.updateSetting('general.language', lang);
+            });
+        }
+
+        const timezoneSelect = document.getElementById('timezone');
+        if (timezoneSelect) {
+            timezoneSelect.addEventListener('change', (e) => {
+                const tz = e.target.value;
+                this.updateSetting('general.timezone', tz);
+            });
+        }
+
         // Notification settings
         const notificationToggles = document.querySelectorAll('.notification-toggle');
         notificationToggles.forEach(toggle => {
@@ -29,7 +45,10 @@ class SettingsManager {
         // Save settings button
         const saveButton = document.getElementById('save-settings');
         if (saveButton) {
-            saveButton.addEventListener('click', this.saveSettings.bind(this));
+            saveButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.saveSettings();
+            });
         }
 
         // Reset settings button
@@ -39,8 +58,25 @@ class SettingsManager {
         }
     }
 
-    loadUserSettings() {
-        // Load user settings from localStorage or API
+    async loadUserSettings() {
+        // Preferir carregar do backend; fallback para localStorage
+        try {
+            const resp = await fetch('/api/v1/account/user-settings', {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' },
+                credentials: 'include',
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data && data.success && data.settings) {
+                    localStorage.setItem('userSettings', JSON.stringify(data.settings));
+                    this.applySettings(data.settings);
+                    return;
+                }
+            }
+        } catch (err) {
+            console.warn('Falha ao carregar configurações do servidor, usando localStorage.', err);
+        }
         const savedSettings = localStorage.getItem('userSettings');
         if (savedSettings) {
             const settings = JSON.parse(savedSettings);
@@ -51,7 +87,7 @@ class SettingsManager {
     handleThemeChange(event) {
         const theme = event.target.value;
         document.documentElement.setAttribute('data-theme', theme);
-        this.updateSetting('theme', theme);
+        this.updateSetting('general.theme', theme);
     }
 
     handleNotificationChange(event) {
@@ -84,13 +120,24 @@ class SettingsManager {
     }
 
     applySettings(settings) {
-        // Apply theme
-        if (settings.theme) {
-            document.documentElement.setAttribute('data-theme', settings.theme);
+        // Aplicar tema
+        const theme = settings?.general?.theme;
+        if (theme) {
+            document.documentElement.setAttribute('data-theme', theme);
             const themeSelect = document.getElementById('theme-select');
             if (themeSelect) {
-                themeSelect.value = settings.theme;
+                themeSelect.value = theme;
             }
+        }
+
+        // Aplicar idioma e fuso horário
+        const languageSelect = document.getElementById('language');
+        if (languageSelect && settings?.general?.language) {
+            languageSelect.value = settings.general.language;
+        }
+        const timezoneSelect = document.getElementById('timezone');
+        if (timezoneSelect && settings?.general?.timezone) {
+            timezoneSelect.value = settings.general.timezone;
         }
 
         // Apply notification settings
@@ -108,11 +155,12 @@ class SettingsManager {
         // Save settings to server
         const settings = this.getSettings();
         
-        fetch('/api/user/settings', {
+        fetch('/api/v1/account/user-settings', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
+            credentials: 'include',
             body: JSON.stringify(settings)
         })
         .then(response => response.json())

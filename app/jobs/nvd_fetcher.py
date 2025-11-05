@@ -7,7 +7,7 @@ import asyncio
 import logging
 import argparse
 import re
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional # Importar Optional explicitamente
 from pathlib import Path # Importar Path explicitamente
 
@@ -376,6 +376,8 @@ class NVDFetcher:
         self.cache_dir = Path(self.config.get("NVD_CACHE_DIR", "cache"))
         self.request_timeout = self.config.get("NVD_REQUEST_TIMEOUT", 30)
         self.user_agent = self.config.get("NVD_USER_AGENT", "Sec4all.co NVD Fetcher")
+        # Janela máxima permitida pela NVD para consultas por lastModified (em dias)
+        self.max_window_days = int(self.config.get("NVD_MAX_WINDOW_DAYS", 120))
 
         self.headers = {"User-Agent": self.user_agent}
         if self.api_key:
@@ -424,7 +426,7 @@ class NVDFetcher:
             return False
 
 
-    async def fetch_page(self, start_index: int, last_modified_start: Optional[str]) -> Optional[Dict]:
+    async def fetch_page(self, start_index: int, last_modified_start: Optional[str], last_modified_end: Optional[str] = None) -> Optional[Dict]:
         """
         Busca uma página de vulnerabilidades da API NVD.
 
@@ -443,7 +445,12 @@ class NVDFetcher:
         # --- Cacheamento básico em arquivo ---
         self.cache_dir.mkdir(exist_ok=True) # Usar self.cache_dir
         # Garante que o nome do cache é único para buscas full vs modificadas
-        cache_key_suffix = last_modified_start.replace(":", "").replace("+", "_") if last_modified_start else "full"
+        if last_modified_start:
+            safe_start = last_modified_start.replace(":", "").replace("+", "_")
+            safe_end = (last_modified_end or "now").replace(":", "").replace("+", "_") if last_modified_end else "now"
+            cache_key_suffix = f"{safe_start}_{safe_end}"
+        else:
+            cache_key_suffix = "full"
         cache_file = self.cache_dir / f"page_{start_index}_{cache_key_suffix}.pkl" # Usar self.cache_dir
 
         if cache_file.exists():
@@ -475,7 +482,6 @@ class NVDFetcher:
         if last_modified_start:
             # A API NVD requer AMBOS lastModStartDate E lastModEndDate
             # Formato correto: ISO com Z (Zulu time) - exemplo: 2025-09-20T14:35:44Z
-            from datetime import datetime, timezone
             current_time = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
             # Converte last_modified_start para o formato correto se necessário
             if last_modified_start.endswith('+00:00'):
@@ -484,9 +490,21 @@ class NVDFetcher:
                 # Se não tem timezone, assume UTC e adiciona Z
                 if 'T' in last_modified_start and '+' not in last_modified_start:
                     last_modified_start += 'Z'
-            url += f"&lastModStartDate={last_modified_start}&lastModEndDate={current_time}"
 
-        logger.info(f"Fetching page {start_index} from NVD API (modified since {last_modified_start or 'epoch'}). URL: {url}")
+            # Determinar o fim da janela
+            end_param = last_modified_end or current_time
+            if end_param.endswith('+00:00'):
+                end_param = end_param.replace('+00:00', 'Z')
+            elif not end_param.endswith('Z'):
+                if 'T' in end_param and '+' not in end_param:
+                    end_param += 'Z'
+
+            url += f"&lastModStartDate={last_modified_start}&lastModEndDate={end_param}"
+
+        if last_modified_start:
+            logger.info(f"Fetching page {start_index} from NVD API (range {last_modified_start} to {last_modified_end or 'now'}). URL: {url}")
+        else:
+            logger.info(f"Fetching page {start_index} from NVD API (full sync). URL: {url}")
 
         # --- Tenta buscar a página com retries ---
         for attempt in range(self.max_retries): # Usar self.max_retries
@@ -987,131 +1005,180 @@ class NVDFetcher:
         # Usar um try/finally para garantir o rollback ou commit da sessão NO SERVIÇO
         # A sessão é gerenciada pelo serviço. O fetcher não faz commit/rollback direto.
         try:
-            while True:
-                # Passar last_synced_time_str (ISO 8601) para fetch_page
-                data = await self.fetch_page(start_index, last_synced_time_str)
+            # Preparar janelas de tempo quando incremental excede o limite da NVD
+            windows: List[Dict[str, str]] = []
+            if not full and last_synced_time:
+                # Converter para timezone UTC consciente
+                last_dt = last_synced_time if last_synced_time.tzinfo else last_synced_time.replace(tzinfo=timezone.utc)
+                last_dt = last_dt.astimezone(timezone.utc)
+                now_dt = datetime.now(timezone.utc)
+                # Construir janelas de até max_window_days
+                if (now_dt - last_dt).days > self.max_window_days:
+                    logger.warning(
+                        f"Janela incremental de {(now_dt - last_dt).days} dias excede o limite de {self.max_window_days} dias. Aplicando chunking por janelas.")
+                    cursor = last_dt
+                    while cursor <= now_dt:
+                        window_end = min(cursor + timedelta(days=self.max_window_days), now_dt)
+                        windows.append({
+                            'start': cursor.isoformat(timespec='milliseconds').replace('+00:00', 'Z'),
+                            'end': window_end.isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+                        })
+                        # Avança 1 segundo para evitar reprocessar o mesmo registro no limite inclusivo
+                        cursor = window_end + timedelta(seconds=1)
+                else:
+                    # Uma única janela dentro do limite
+                    windows.append({
+                        'start': last_dt.isoformat(timespec='milliseconds').replace('+00:00', 'Z'),
+                        'end': now_dt.isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+                    })
 
-                if data is None:
-                    logger.error("Failed to fetch data from NVD API. Stopping update process.")
-                    # Não atualiza a data de sincronização em caso de falha fatal no fetch
-                    break # Sair do loop principal
+            # Indicador de sucesso global
+            global_success = True
 
-                vulnerabilities_data_raw = data.get('vulnerabilities', [])
-                total_results_on_api = data.get('totalResults', 0)
+            # Se não é incremental (full) ou não há last_sync, executar loop único
+            if full or not windows:
+                windows = [{'start': None, 'end': None}]  # Sem filtros de data
 
-                if total_results_expected is None:
-                    total_results_expected = total_results_on_api
-                    logger.info(f"Total results for this query range expected: {total_results_expected}")
-                    # TODO: Opcional: Usar tqdm com o total esperado
-                    # pbar = tqdm.tqdm(total=total_results_expected, desc='Processing CVEs')
+            # Processar cada janela separadamente com paginação própria
+            for idx, win in enumerate(windows):
+                start_index = 0
+                total_results_expected = None
+                win_start = win['start']
+                win_end = win['end']
+                if win_start and win_end:
+                    terminal_feedback.info(
+                        f"🗓️ Processando janela {idx+1}/{len(windows)}: {win_start} → {win_end}",
+                        {"window_index": idx+1, "windows_total": len(windows)}
+                    )
 
+                while True:
+                    # Passar parâmetros de janela ao fetch_page
+                    data = await self.fetch_page(start_index, win_start, win_end)
 
-                if not vulnerabilities_data_raw:
-                    # Se a página atual retornou vazio e não há mais resultados esperados (ou chegamos ao fim teórico)
-                    # A API geralmente retorna totalResults > current_index mesmo na última página com dados,
-                    # mas é mais seguro verificar se a lista está vazia E chegamos ou passamos o total esperado.
-                    if start_index >= total_results_expected: # Usar total_results_expected para controle
-                         logger.info("Reached end of results.")
-                         break # Sair do loop se não houver mais dados nesta página E for o fim esperado
-                    else:
-                        # Se a página atual retornou vazio, mas ainda há resultados esperados (API inconsistência?)
-                        logger.warning(f"Page {start_index} returned no vulnerabilities, but total results suggest more data ({total_results_expected}). API issue? Stopping for safety.")
-                        break # Parar por segurança
+                    if data is None:
+                        logger.error("Failed to fetch data from NVD API. Stopping update process.")
+                        # Não atualiza a data de sincronização em caso de falha fatal no fetch
+                        global_success = False
+                        break  # Sair do loop da janela atual
 
+                    vulnerabilities_data_raw = data.get('vulnerabilities', [])
+                    total_results_on_api = data.get('totalResults', 0)
 
-                # OTIMIZAÇÃO DE MEMÓRIA: Processar dados em lotes menores para reduzir uso de memória
-                import gc  # Para garbage collection explícito
-                
-                MEMORY_BATCH_SIZE = 50  # Processar em lotes menores para evitar estouro de memória
-                
-                # Processar vulnerabilidades em mini-lotes para otimizar memória
-                for i in range(0, len(vulnerabilities_data_raw), MEMORY_BATCH_SIZE):
-                    batch = vulnerabilities_data_raw[i:i + MEMORY_BATCH_SIZE]
-                    
-                    # Processar lote atual
-                    processed_data_list = []
-                    for item in batch:
-                        # process_cve_data AGORA retorna um dicionário/DTO, não um objeto ORM
-                        extracted_data = await self.process_cve_data(item.get('cve'))
-                        if extracted_data:  # Se a extração/mapeamento foi bem-sucedido
-                            processed_data_list.append(extracted_data)
-                    
-                    # Salvar mini-lote imediatamente para liberar memória
-                    if processed_data_list:
-                        try:
-                            # Validar dados antes de salvar
-                            valid_data = []
-                            for data in processed_data_list:
-                                if self._validate_cve_data(data):
-                                    valid_data.append(data)
+                    if total_results_expected is None:
+                        total_results_expected = total_results_on_api
+                        logger.info(f"Total results for this query range expected: {total_results_expected}")
+                        # TODO: Opcional: Usar tqdm com o total esperado
+                        # pbar = tqdm.tqdm(total=total_results_expected, desc='Processing CVEs')
+
+                    if not vulnerabilities_data_raw:
+                        # Se a página atual retornou vazio e não há mais resultados esperados (ou chegamos ao fim teórico)
+                        # A API geralmente retorna totalResults > current_index mesmo na última página com dados,
+                        # mas é mais seguro verificar se a lista está vazia E chegamos ou passamos o total esperado.
+                        if start_index >= total_results_expected:  # Usar total_results_expected para controle
+                            logger.info("Reached end of results for current window.")
+                            break  # Sair do loop se não houver mais dados nesta página E for o fim esperado
+                        else:
+                            # Se a página atual retornou vazio, mas ainda há resultados esperados (API inconsistência?)
+                            logger.warning(
+                                f"Page {start_index} returned no vulnerabilities, but total results suggest more data ({total_results_expected}). API issue? Stopping for safety.")
+                            break  # Parar por segurança
+
+                    # OTIMIZAÇÃO DE MEMÓRIA: Processar dados em lotes menores para reduzir uso de memória
+                    import gc  # Para garbage collection explícito
+
+                    MEMORY_BATCH_SIZE = 50  # Processar em lotes menores para evitar estouro de memória
+
+                    # Processar vulnerabilidades em mini-lotes para otimizar memória
+                    for i in range(0, len(vulnerabilities_data_raw), MEMORY_BATCH_SIZE):
+                        batch = vulnerabilities_data_raw[i:i + MEMORY_BATCH_SIZE]
+
+                        # Processar lote atual
+                        processed_data_list = []
+                        for item in batch:
+                            # process_cve_data AGORA retorna um dicionário/DTO, não um objeto ORM
+                            extracted_data = await self.process_cve_data(item.get('cve'))
+                            if extracted_data:  # Se a extração/mapeamento foi bem-sucedido
+                                processed_data_list.append(extracted_data)
+
+                        # Salvar mini-lote imediatamente para liberar memória
+                        if processed_data_list:
+                            try:
+                                # Validar dados antes de salvar
+                                valid_data = []
+                                for data in processed_data_list:
+                                    if self._validate_cve_data(data):
+                                        valid_data.append(data)
+                                    else:
+                                        terminal_feedback.warning(
+                                            f"⚠️ Dados inválidos para CVE {data.get('cve_id', 'unknown')}")
+
+                                if valid_data:
+                                    # O serviço lida com a criação/atualização dos objetos ORM e o commit em lote.
+                                    processed_count_batch = vulnerability_service.save_vulnerabilities_batch(valid_data)
+                                    total_processed += processed_count_batch  # Acumula o total processado PELO SERVIÇO
+
+                                    # Feedback de progresso
+                                    terminal_feedback.info(
+                                        f"📦 Mini-lote {i//MEMORY_BATCH_SIZE + 1} processado",
+                                        {
+                                            "cves_processadas": processed_count_batch,
+                                            "total_acumulado": total_processed,
+                                            "memoria_mb": memory_monitor.get_memory_usage_mb()
+                                        }
+                                    )
+
+                                    logger.debug(
+                                        f"Processed mini-batch {i//MEMORY_BATCH_SIZE + 1} with {processed_count_batch} CVEs")
                                 else:
-                                    terminal_feedback.warning(f"⚠️ Dados inválidos para CVE {data.get('cve_id', 'unknown')}")
-                            
-                            if valid_data:
-                                # O serviço lida com a criação/atualização dos objetos ORM e o commit em lote.
-                                processed_count_batch = vulnerability_service.save_vulnerabilities_batch(valid_data)
-                                total_processed += processed_count_batch  # Acumula o total processado PELO SERVIÇO
-                                
-                                # Feedback de progresso
-                                terminal_feedback.info(
-                                    f"📦 Mini-lote {i//MEMORY_BATCH_SIZE + 1} processado",
-                                    {
-                                        "cves_processadas": processed_count_batch,
-                                        "total_acumulado": total_processed,
-                                        "memoria_mb": memory_monitor.get_memory_usage_mb()
-                                    }
-                                )
-                                
-                                logger.debug(f"Processed mini-batch {i//MEMORY_BATCH_SIZE + 1} with {processed_count_batch} CVEs")
-                            else:
-                                terminal_feedback.warning(f"⚠️ Nenhum dado válido no mini-lote {i//MEMORY_BATCH_SIZE + 1}")
-                                
-                        except Exception as service_error:
-                            # Captura erros que ocorreram no serviço de persistência
-                            logger.error(f"Error saving vulnerability mini-batch: {service_error}", exc_info=True)
-                            terminal_feedback.error(f"❌ Erro ao salvar mini-lote: {str(service_error)}")
-                            logger.error("Stopping update due to service persistence error.")
-                            raise  # Re-raise para parar o processamento
-                    
-                    # Limpar referências para liberar memória
-                    del processed_data_list
-                    del batch
-                    
-                    # Garbage collection periódico para mini-lotes
-                    if i % (MEMORY_BATCH_SIZE * 2) == 0:
-                        gc.collect()
-                
-                # Limpar dados da página atual para liberar memória
-                del vulnerabilities_data_raw
-                
-                logger.info(f"Completed page starting at index {start_index}. Total processed: {total_processed}")
+                                    terminal_feedback.warning(
+                                        f"⚠️ Nenhum dado válido no mini-lote {i//MEMORY_BATCH_SIZE + 1}")
 
+                            except Exception as service_error:
+                                # Captura erros que ocorreram no serviço de persistência
+                                logger.error(f"Error saving vulnerability mini-batch: {service_error}", exc_info=True)
+                                terminal_feedback.error(f"❌ Erro ao salvar mini-lote: {str(service_error)}")
+                                logger.error("Stopping update due to service persistence error.")
+                                raise  # Re-raise para parar o processamento
 
-                # Verificar se há mais páginas a buscar com base no totalResults esperado
-                # Isso pode ser um pouco impreciso se o totalResults mudar durante a execução,
-                # mas é uma boa heurística. A condição principal de saída é quando fetch_page
-                # retorna uma lista vazia E index >= total_results_expected.
-                if start_index + self.page_size >= total_results_expected: # Usar self.page_size
-                    logger.info("Reached end of results based on totalResults estimate.")
-                    # Verifica se realmente não há mais dados na próxima chamada
-                    # (já coberto pela lógica de 'not vulnerabilities_data' no início do loop)
-                    pass # Continua o loop para a próxima fetch_page, que deve retornar vazio
+                        # Limpar referências para liberar memória
+                        del processed_data_list
+                        del batch
 
-                # Avançar para o próximo índice
-                start_index += self.page_size # Usar self.page_size
-                
-                # OTIMIZAÇÃO DE MEMÓRIA: Monitoramento e garbage collection periódico entre páginas
-                page_number = start_index // self.page_size
-                if page_number % 5 == 0:  # A cada 5 páginas
-                    # Verificar status da memória e executar GC se necessário
-                    gc_stats = memory_monitor.auto_manage_memory(f"após página {page_number}")
-                    if gc_stats:
-                        logger.info(f"GC automático executado: {gc_stats['objects_collected']} objetos, {gc_stats['memory_freed_mb']:.1f}MB liberados")
-                    else:
-                        gc.collect()  # GC regular
-                    
-                    memory_monitor.log_memory_status(f"página {page_number}")
-                    logger.debug(f"Executed garbage collection after {page_number} pages")
+                        # Garbage collection periódico para mini-lotes
+                        if i % (MEMORY_BATCH_SIZE * 2) == 0:
+                            gc.collect()
+
+                    # Limpar dados da página atual para liberar memória
+                    del vulnerabilities_data_raw
+
+                    logger.info(f"Completed page starting at index {start_index}. Total processed: {total_processed}")
+
+                    # Verificar se há mais páginas a buscar com base no totalResults esperado
+                    # Isso pode ser um pouco impreciso se o totalResults mudar durante a execução,
+                    # mas é uma boa heurística. A condição principal de saída é quando fetch_page
+                    # retorna uma lista vazia E index >= total_results_expected.
+                    if start_index + self.page_size >= total_results_expected:  # Usar self.page_size
+                        logger.info("Reached end of results for current window based on totalResults estimate.")
+                        # Verifica se realmente não há mais dados na próxima chamada
+                        # (já coberto pela lógica de 'not vulnerabilities_data' no início do loop)
+                        pass  # Continua o loop para a próxima fetch_page, que deve retornar vazio
+
+                    # Avançar para o próximo índice
+                    start_index += self.page_size  # Usar self.page_size
+
+                    # OTIMIZAÇÃO DE MEMÓRIA: Monitoramento e garbage collection periódico entre páginas
+                    page_number = start_index // self.page_size
+                    if page_number % 5 == 0:  # A cada 5 páginas
+                        # Verificar status da memória e executar GC se necessário
+                        gc_stats = memory_monitor.auto_manage_memory(f"após página {page_number}")
+                        if gc_stats:
+                            logger.info(
+                                f"GC automático executado: {gc_stats['objects_collected']} objetos, {gc_stats['memory_freed_mb']:.1f}MB liberados")
+                        else:
+                            gc.collect()  # GC regular
+
+                        memory_monitor.log_memory_status(f"página {page_number}")
+                        logger.debug(f"Executed garbage collection after {page_number} pages")
 
                 # Adicionar um pequeno delay entre as páginas, além do rate limit interno do fetch_page
                 # Isso pode ser útil se a API tiver limites por minuto/hora além do por segundo.
@@ -1124,7 +1191,8 @@ class NVDFetcher:
             # Atualizar a data somente se a operação foi bem-sucedida (sem falhas fatais no fetch ou save)
             # Uma operação bem-sucedida significa que o loop principal não foi interrompido por um erro.
             # Podemos usar uma flag ou verificar se chegamos ao fim esperado (index >= total_results_expected ou total_results_expected == 0).
-            sync_completed_successfully = (data is not None) and (start_index >= total_results_expected or total_results_expected == 0) # Sucesso se buscou tudo ou não havia nada
+            # Sucesso se todas as janelas completaram sem falha
+            sync_completed_successfully = global_success
 
             if sync_completed_successfully:
                  # Atualizar a data da última sincronização usando o serviço
@@ -1219,52 +1287,22 @@ if __name__ == '__main__':
             "NVD_CACHE_DIR": getattr(app.config, 'NVD_CACHE_DIR', "cache"),
             "NVD_REQUEST_TIMEOUT": getattr(app.config, 'NVD_REQUEST_TIMEOUT', 30),
             "NVD_USER_AGENT": getattr(app.config, 'NVD_USER_AGENT', "Sec4all.co NVD Fetcher"), # Exemplo de outra config
+            "NVD_MAX_WINDOW_DAYS": getattr(app.config, 'NVD_MAX_WINDOW_DAYS', 120),
         }
 
         # Validar configurações essenciais (ex: API_BASE)
         if not nvd_config.get("NVD_API_BASE"):
              logger.error("NVD_API_BASE configuration is missing in app.config. Cannot run fetcher.")
              sys.exit(1) # Sair com código de erro
-
-        # TODO: Importar e instanciar o VulnerabilityService aqui, passando db.session para ele
-        # from services.vulnerability_service import VulnerabilityService
-        # vulnerability_service = VulnerabilityService(db.session)
-        # REMOVER a linha abaixo após implementar o serviço
-        logger.warning("VulnerabilityService not yet implemented. Persistence logic is still in NVDFetcher (TODO).") # Placeholder
-    
-    def get_rate_limiter_stats(self) -> Dict[str, Any]:
-        """
-        Retorna estatísticas do rate limiter
-        """
-        return self.rate_limiter.get_stats()
-    
-    def reset_rate_limiter_stats(self) -> None:
-        """
-        Reseta as estatísticas do rate limiter
-        """
-        self.rate_limiter.reset_stats()
         
-    def log_rate_limiter_stats(self) -> None:
-        """
-        Registra estatísticas do rate limiter no log
-        """
-        stats = self.get_rate_limiter_stats()
-        logger.info(
-            f"Rate Limiter Stats - Total: {stats['total_requests']}, "
-            f"Rate Limited: {stats['rate_limited_requests']}, "
-            f"Avg Wait: {stats['avg_wait_time']:.2f}s, "
-            f"Max Wait: {stats['max_wait_time']:.2f}s, "
-            f"Window Utilization: {stats['window_utilization']:.1f}%"
-        )
-
         # Usar aiohttp.ClientSession dentro de um bloco async with para garantir que seja fechada
         async def run_fetcher():
-             async with aiohttp.ClientSession() as http_session:
+            async with aiohttp.ClientSession() as http_session:
                 # Instanciar o fetcher, passando a sessão HTTP e as configurações
                 fetcher = NVDFetcher(http_session, nvd_config)
-                
-                # Criar instância do VulnerabilityService
-                from services.vulnerability_service import VulnerabilityService
+
+                # Criar instância do VulnerabilityService (módulo dentro de app)
+                from app.services.vulnerability_service import VulnerabilityService
                 vulnerability_service = VulnerabilityService(db.session)
 
                 # Rodar o update assíncrono, passando o serviço
@@ -1275,9 +1313,10 @@ if __name__ == '__main__':
         # Rodar a função assíncrona principal
         try:
             asyncio.run(run_fetcher())
+            sys.exit(0)
         except Exception as e:
             logger.error("An error occurred during the asyncio run.", exc_info=True)
             sys.exit(1) # Sair com código de erro em caso de falha
 
-    # Considerar adicionar um sys.exit(0) para sucesso explícito se a lógica acima não levantar exceção
+    # Execução finalizada
     logger.info("Standalone script execution finished.")

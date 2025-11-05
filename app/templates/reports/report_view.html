@@ -6,243 +6,7 @@
 
 {% block extra_css %}
 <link href="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.css" rel="stylesheet">
-<style>
-.report-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 2rem 0;
-    margin-bottom: 2rem;
-    border-radius: 0.5rem;
-}
-
-.report-badge {
-    display: inline-block;
-    padding: 0.5rem 1rem;
-    border-radius: 2rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-    margin-right: 0.5rem;
-    margin-bottom: 0.5rem;
-}
-
-.report-badge.impact-high { background-color: #dc3545; color: white; }
-.report-badge.impact-medium { background-color: #fd7e14; color: white; }
-.report-badge.impact-low { background-color: #28a745; color: white; }
-.report-badge.urgency-high { background-color: #e83e8c; color: white; }
-.report-badge.urgency-medium { background-color: #6f42c1; color: white; }
-.report-badge.urgency-low { background-color: #6c757d; color: white; }
-
-.section-card {
-    border: none;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    border-radius: 0.75rem;
-    margin-bottom: 2rem;
-    overflow: hidden;
-}
-
-.section-header {
-    background: linear-gradient(90deg, #f8f9fa 0%, #e9ecef 100%);
-    padding: 1.5rem;
-    border-bottom: 1px solid #dee2e6;
-}
-
-.section-content {
-    padding: 2rem;
-}
-
-.chart-container {
-    position: relative;
-    height: 400px;
-    margin: 1rem 0;
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--border-radius);
-    padding: 1rem;
-    min-height: 300px;
-}
-
-.chart-container.small {
-    height: 300px;
-    min-height: 200px;
-}
-
-.chart-container.large {
-    height: 500px;
-    min-height: 400px;
-}
-
-.chart-placeholder {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: var(--glass-bg);
-    border-radius: var(--border-radius);
-    transition: opacity 0.3s ease;
-}
-
-.chart-placeholder.fade-out {
-    opacity: 0;
-    pointer-events: none;
-}
-
-.metric-card {
-    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-    border: 1px solid #dee2e6;
-    border-radius: 0.5rem;
-    padding: 1.5rem;
-    text-align: center;
-    margin-bottom: 1rem;
-    transition: transform 0.2s ease;
-}
-
-.metric-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.metric-value {
-    font-size: 2.5rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-}
-
-.metric-label {
-    color: #6c757d;
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.vulnerability-item {
-    border-left: 4px solid #dee2e6;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    background-color: #f8f9fa;
-    border-radius: 0 0.375rem 0.375rem 0;
-}
-
-.vulnerability-item.critical { border-left-color: #dc3545; }
-.vulnerability-item.high { border-left-color: #fd7e14; }
-.vulnerability-item.medium { border-left-color: #ffc107; }
-.vulnerability-item.low { border-left-color: #28a745; }
-
-.ai-analysis {
-    background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
-    border: 1px solid #bbdefb;
-    border-radius: 0.5rem;
-    padding: 1.5rem;
-    margin: 1rem 0;
-}
-
-.ai-analysis .ai-icon {
-    color: #1976d2;
-    font-size: 1.5rem;
-    margin-right: 0.5rem;
-}
-
-.timeline-item {
-    position: relative;
-    padding-left: 2rem;
-    margin-bottom: 1.5rem;
-}
-
-.timeline-item::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0.5rem;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background-color: #007bff;
-}
-
-.timeline-item::after {
-    content: '';
-    position: absolute;
-    left: 5px;
-    top: 1.2rem;
-    width: 2px;
-    height: calc(100% + 0.5rem);
-    background-color: #dee2e6;
-}
-
-.timeline-item:last-child::after {
-    display: none;
-}
-
-.export-toolbar {
-    background-color: #f8f9fa;
-    border-radius: 0.5rem;
-    padding: 1rem;
-    margin-bottom: 2rem;
-}
-
-.floating-toc {
-    position: fixed;
-    top: 50%;
-    right: 20px;
-    transform: translateY(-50%);
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 0.5rem;
-    padding: 1rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    max-width: 250px;
-    z-index: 1000;
-}
-
-.floating-toc ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.floating-toc li {
-    margin-bottom: 0.5rem;
-}
-
-.floating-toc a {
-    color: #6c757d;
-    text-decoration: none;
-    font-size: 0.875rem;
-    display: block;
-    padding: 0.25rem 0;
-    border-left: 2px solid transparent;
-    padding-left: 0.5rem;
-}
-
-.floating-toc a:hover,
-.floating-toc a.active {
-    color: #007bff;
-    border-left-color: #007bff;
-}
-
-.print-only {
-    display: none;
-}
-
-@media print {
-    .no-print { display: none !important; }
-    .print-only { display: block !important; }
-    .section-card { break-inside: avoid; }
-    .chart-container { height: 300px !important; }
-}
-
-.status-processing {
-    background: linear-gradient(45deg, #ffc107, #fd7e14);
-    background-size: 400% 400%;
-    animation: gradient 2s ease infinite;
-}
-
-@keyframes gradient {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-}
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/reports.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -257,11 +21,11 @@
                     
                     <!-- Badges -->
                     <div class="mb-3">
-                        <span class="report-badge" style="background-color: rgba(255,255,255,0.2);">
+                        <span class="report-badge report-badge-neutral">
                             <i class="bi bi-file-earmark-text me-1"></i>
                             {{ report.report_type.value.replace('_', ' ').title() }}
                         </span>
-                        <span class="report-badge" style="background-color: rgba(255,255,255,0.2);">
+                        <span class="report-badge report-badge-neutral">
                             <i class="bi bi-calendar me-1"></i>
                             {% if report.period_start and report.period_end %}
                                 {{ report.period_start.strftime('%d/%m/%Y') }} - {{ report.period_end.strftime('%d/%m/%Y') }}
@@ -273,7 +37,7 @@
                                 N/A
                             {% endif %}
                         </span>
-                        <span class="report-badge" style="background-color: rgba(255,255,255,0.2);">
+                        <span class="report-badge report-badge-neutral">
                             <i class="bi bi-bullseye me-1"></i>
                             {{ report.scope.value.replace('_', ' ').title() }}
                         </span>

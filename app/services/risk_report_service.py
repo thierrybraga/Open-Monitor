@@ -24,6 +24,9 @@ class RiskReportService:
         """
         self.client = None
         self._initialized = False
+        self.timeout = 30
+        self.max_retries = 2
+        self.backoff_base = 1.5
     
     def _initialize_client(self):
         """
@@ -36,6 +39,9 @@ class RiskReportService:
         self.model = current_app.config.get('OPENAI_MODEL', 'gpt-3.5-turbo')
         self.max_tokens = current_app.config.get('OPENAI_MAX_TOKENS', 800)
         self.temperature = current_app.config.get('OPENAI_TEMPERATURE', 0.5)
+        self.timeout = current_app.config.get('OPENAI_TIMEOUT', 30)
+        self.max_retries = current_app.config.get('OPENAI_MAX_RETRIES', 2)
+        self.backoff_base = current_app.config.get('OPENAI_RETRY_BACKOFF', 1.5)
         
         if not self.api_key:
             logger.warning("OPENAI_API_KEY não configurada - modo demo ativo")
@@ -49,6 +55,28 @@ class RiskReportService:
                 self.client = None
         
         self._initialized = True
+
+    def _chat_completion_with_retries(self, messages):
+        attempt = 0
+        last_err = None
+        while attempt < max(1, int(self.max_retries)):
+            try:
+                return self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature
+                )
+            except Exception as e:
+                last_err = e
+                attempt += 1
+                if attempt >= int(self.max_retries):
+                    break
+                import time as _time
+                sleep_secs = (self.backoff_base ** attempt)
+                logger.warning(f"OpenAI falhou (tentativa {attempt}/{self.max_retries}): {e}. Retentando em {sleep_secs:.2f}s...")
+                _time.sleep(sleep_secs)
+        raise last_err if last_err else RuntimeError("Falha ao consultar OpenAI para análise de risco")
     
     def build_markdown_prompt(self, description: str) -> str:
         """
@@ -186,15 +214,10 @@ Classifique o risco considerando que a organização **utiliza a tecnologia afet
                 else:
                     try:
                         prompt = self.build_markdown_prompt(description)
-                        response = self.client.chat.completions.create(
-                            model=self.model,
-                            messages=[
-                                {"role": "system", "content": "Você é um analista de risco especializado em vulnerabilidades."},
-                                {"role": "user", "content": prompt}
-                            ],
-                            max_tokens=self.max_tokens,
-                            temperature=self.temperature
-                        )
+                        response = self._chat_completion_with_retries([
+                            {"role": "system", "content": "Você é um analista de risco especializado em vulnerabilidades."},
+                            {"role": "user", "content": prompt}
+                        ])
                         risks_md = self.sanitize_markdown_output(response.choices[0].message.content.strip())
                     except Exception as e:
                         logger.error(f"Erro ao consultar OpenAI: {e}")

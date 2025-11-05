@@ -6,10 +6,18 @@ Responsável por gerar resumos executivos, análises de impacto de negócio (BIA
 """
 
 import logging
+import time
+import json
+import hashlib
+import uuid
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 from flask import current_app
 from openai import OpenAI
+try:
+    import tiktoken
+except Exception:
+    tiktoken = None
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +33,13 @@ class ReportAIService:
         self.temperature = None
         self.demo_mode = False
         self._initialized = False
+        self.timeout = 30
+        self.max_retries = 2
+        self.backoff_base = 1.5
+        # Melhorias: limite de contexto, cache simples
+        self.context_limit = 4096
+        self._cache_enabled = True
+        self._cache: Dict[str, Any] = {}
     
     def _initialize_openai(self):
         """Inicializa o cliente OpenAI dentro do contexto da aplicação."""
@@ -36,6 +51,9 @@ class ReportAIService:
             self.model = current_app.config.get('OPENAI_MODEL', 'gpt-3.5-turbo')
             self.max_tokens = current_app.config.get('OPENAI_MAX_TOKENS', 2000)
             self.temperature = current_app.config.get('OPENAI_TEMPERATURE', 0.3)
+            self.timeout = current_app.config.get('OPENAI_TIMEOUT', 30)
+            self.max_retries = current_app.config.get('OPENAI_MAX_RETRIES', 2)
+            self.backoff_base = current_app.config.get('OPENAI_RETRY_BACKOFF', 1.5)
             
             if not self.api_key:
                 logger.warning("OPENAI_API_KEY não configurada - modo demo ativo")
@@ -51,11 +69,109 @@ class ReportAIService:
             logger.error(f"Erro ao inicializar cliente OpenAI: {e}")
             self.demo_mode = True
             self._initialized = True
+
+    def _estimate_tokens_text(self, text: str) -> int:
+        if not text:
+            return 0
+        try:
+            if tiktoken:
+                try:
+                    enc = tiktoken.encoding_for_model(self.model)
+                except Exception:
+                    enc = tiktoken.get_encoding('cl100k_base')
+                return len(enc.encode(text))
+        except Exception:
+            pass
+        return int(len(text.split()) * 1.3)
+
+    def _safe_truncate_text(self, text: str, max_tokens_allowed: int) -> str:
+        """Trunca texto de forma segura baseada em estimativa de tokens."""
+        if not text:
+            return text
+        try:
+            est = self._estimate_tokens_text(text)
+            if est <= max_tokens_allowed:
+                return text
+            ratio = max(0.3, float(max_tokens_allowed) / max(1, est))
+            cut_len = int(len(text) * ratio)
+            if cut_len <= 0:
+                cut_len = min(512, len(text))
+            head = text[: int(cut_len * 0.6)]
+            tail = text[-int(cut_len * 0.4):]
+            return head + "\n\n...\n\n" + tail
+        except Exception:
+            return text[: max(1, int(len(text) * 0.7))]
+
+    def _make_cache_key(self, analysis_type: str, payload: Dict[str, Any]) -> str:
+        try:
+            serialized = json.dumps(payload or {}, sort_keys=True, ensure_ascii=False, default=str)
+        except Exception:
+            serialized = str(payload)
+        base = f"{analysis_type}|{self.model}|{hashlib.sha256(serialized.encode('utf-8')).hexdigest()}"
+        return base
+
+    def _cache_get(self, key: str) -> Optional[Any]:
+        if not self._cache_enabled:
+            return None
+        return self._cache.get(key)
+
+    def _cache_set(self, key: str, value: Any) -> None:
+        if not self._cache_enabled:
+            return
+        self._cache[key] = value
+
+    def _build_common_response(self, analysis_type: str, markdown: str, request_id: Optional[str] = None, usage: Optional[Dict[str, Any]] = None, extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        now = datetime.utcnow().isoformat()
+        result = {
+            'type': analysis_type,
+            'markdown': markdown or '',
+            'created_at': now,
+            'model': self.model,
+            'request_id': request_id or f"req_{uuid.uuid4().hex[:12]}",
+        }
+        if usage:
+            result['usage'] = usage
+        if extra:
+            result.update(extra)
+        return result
+
+    def _chat_completion_with_retries(self, messages, meta: Optional[Dict[str, Any]] = None):
+        attempt = 0
+        last_err = None
+        request_id = f"ai_{(meta or {}).get('analysis_type', 'unknown')}_{int(time.time()*1000)}_{uuid.uuid4().hex[:8]}"
+        start_ts = time.time()
+        while attempt < max(1, int(self.max_retries)):
+            try:
+                resp = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature
+                )
+                latency = (time.time() - start_ts)
+                try:
+                    usage = getattr(resp, 'usage', None)
+                    logger.info(f"OpenAI sucesso [{request_id}] type={(meta or {}).get('analysis_type')} latency={latency:.2f}s usage={usage}")
+                except Exception:
+                    logger.info(f"OpenAI sucesso [{request_id}] type={(meta or {}).get('analysis_type')} latency={latency:.2f}s")
+                return resp
+            except Exception as e:
+                last_err = e
+                attempt += 1
+                if attempt >= int(self.max_retries):
+                    break
+                sleep_secs = (self.backoff_base ** attempt)
+                logger.warning(f"OpenAI falhou [{request_id}] (tentativa {attempt}/{self.max_retries}) type={(meta or {}).get('analysis_type')}: {e}. Retentando em {sleep_secs:.2f}s...")
+                import time as _time
+                _time.sleep(sleep_secs)
+        latency = (time.time() - start_ts)
+        logger.error(f"OpenAI erro final [{request_id}] type={(meta or {}).get('analysis_type')} latency={latency:.2f}s: {last_err}")
+        raise last_err if last_err else RuntimeError("Falha desconhecida ao chamar OpenAI para relatório")
     
     def generate_executive_summary(self, 
                                  report_data: Dict[str, Any],
                                  report_type: str,
-                                 organization_context: Optional[str] = None) -> str:
+                                 organization_context: Optional[str] = None) -> Dict[str, Any]:
         """
         Gera um resumo executivo baseado nos dados do relatório.
         
@@ -71,7 +187,8 @@ class ReportAIService:
             self._initialize_openai()
             
             if self.demo_mode:
-                return self._generate_demo_executive_summary(report_data, report_type)
+                demo_md = self._generate_demo_executive_summary(report_data, report_type)
+                return self._build_common_response('executive_summary', demo_md, extra={'demo_mode': True})
             
             # Preparar dados para o prompt
             asset_count = report_data.get('assets', {}).get('total_assets', 0)
@@ -89,23 +206,47 @@ class ReportAIService:
                 asset_count, vuln_count, vuln_by_severity, risk_stats, 
                 report_type, organization_context, cisa_kev_data, epss_stats, vendor_product_data
             )
+            # Validar/truncar se necessário
+            try:
+                sys_prompt = self._get_executive_system_prompt()
+                est_total = self._estimate_tokens_text(sys_prompt) + self._estimate_tokens_text(prompt)
+                if est_total > (self.context_limit - int(self.max_tokens or 1000) - 256):
+                    prompt = self._safe_truncate_text(prompt, max(512, self.context_limit - int(self.max_tokens or 1000) - 256))
+            except Exception:
+                pass
+
+            # Cache
+            cache_key = self._make_cache_key('executive_summary', {
+                'asset_count': asset_count,
+                'vuln_count': vuln_count,
+                'vuln_by_severity': vuln_by_severity,
+                'risk_stats': risk_stats,
+                'report_type': report_type,
+                'organization_context': organization_context,
+            })
+            cached = self._cache_get(cache_key)
+            if cached:
+                return cached
             
             # Fazer requisição à OpenAI
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": self._get_executive_system_prompt()},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=self.max_tokens,
-                temperature=self.temperature
-            )
-            
-            return response.choices[0].message.content
+            response = self._chat_completion_with_retries([
+                {"role": "system", "content": self._get_executive_system_prompt()},
+                {"role": "user", "content": prompt}
+            ], meta={'analysis_type': 'executive_summary'})
+            content_md = response.choices[0].message.content
+            usage = None
+            try:
+                usage = getattr(response, 'usage', None)
+            except Exception:
+                usage = None
+            result = self._build_common_response('executive_summary', content_md, usage=usage)
+            self._cache_set(cache_key, result)
+            return result
             
         except Exception as e:
             logger.error(f"Erro ao gerar resumo executivo: {e}")
-            return self._generate_demo_executive_summary(report_data, report_type)
+            demo_md = self._generate_demo_executive_summary(report_data, report_type)
+            return self._build_common_response('executive_summary', demo_md, extra={'demo_mode': True, 'error': str(e)})
     
     def generate_business_impact_analysis(self,
                                         report_data: Dict[str, Any],
@@ -132,114 +273,21 @@ class ReportAIService:
             critical_assets = [asset for asset in asset_attributes if asset.get('criticality') == 'HIGH']
             high_severity_vulns = report_data.get('vulnerabilities', {}).get('vulnerabilities_by_severity', {}).get('HIGH', 0)
             critical_vulns = report_data.get('vulnerabilities', {}).get('vulnerabilities_by_severity', {}).get('CRITICAL', 0)
+            # Dados enriquecidos
+            cisa_kev_data = report_data.get('vulnerabilities', {}).get('cisa_kev_data', {})
+            epss_stats = report_data.get('vulnerabilities', {}).get('epss_stats', {})
+            vendor_product_data = report_data.get('vulnerabilities', {}).get('vendor_product_data', {})
             
             # Construir prompt
             prompt = self._build_bia_prompt(
                 critical_assets, high_severity_vulns, critical_vulns, 
                 asset_attributes, cve_mappings, cisa_kev_data=cisa_kev_data, epss_stats=epss_stats, vendor_product_data=vendor_product_data)
             
-            # Dados enriquecidos para BIA
-            threat_intelligence_info = ""
-            if cisa_kev_data or epss_stats:
-                threat_intelligence_info = f"""
-**DADOS DE THREAT INTELLIGENCE:**
-"""
-                if cisa_kev_data:
-                    kev_count = cisa_kev_data.get('total_kev_vulnerabilities', 0)
-                    threat_intelligence_info += f"""
-- Vulnerabilidades CISA KEV: {kev_count} (exploração ativa confirmada)
-- Prioridade máxima para remediação devido ao risco de exploração imediata
-"""
-                    
-                    if epss_stats:
-                        high_epss = epss_stats.get('high_probability_count', 0)
-                        avg_epss = epss_stats.get('average_score', 0)
-                        threat_intelligence_info += f"""
-- Vulnerabilidades com alta probabilidade de exploração (EPSS): {high_epss}
-- Score médio EPSS: {avg_epss:.3f} (predição de exploração em 30 dias)
-"""
-                
-                vendor_risk_info = ""
-                if vendor_product_data:
-                    top_vendors = vendor_product_data.get('top_affected_vendors', [])[:5]
-                    vendor_risk_info = f"""
-**ANÁLISE DE RISCO POR VENDOR:**
-- Principais vendors afetados: {', '.join([f"{v['vendor']} ({v['count']})" for v in top_vendors])}
-- Concentração de risco por fornecedor pode amplificar impacto de negócio
-- Necessidade de avaliação de fornecedores alternativos
-"""
-                
-                return f"""Realize uma Business Impact Analysis (BIA) baseada nos seguintes dados:
-
-**Ativos Críticos Identificados:**
-{len(critical_assets)} ativos classificados como críticos
-
-**Vulnerabilidades de Alto Impacto:**
-- Críticas: {critical_vulns}
-- Altas: {high_severity_vulns}
-
-{threat_intelligence_info}
-{vendor_risk_info}
-
-**Atributos dos Ativos:**
-{self._format_asset_attributes(asset_attributes[:10])}  # Limitar para não sobrecarregar
-
-**ANÁLISE BIA REQUERIDA:**
-
-1. **Impacto Financeiro Potencial**
-   - Perda de receita por hora/dia de interrupção
-   - Custos de recuperação e resposta a incidentes
-   - Multas regulatórias e penalidades
-   - Considere dados CISA KEV e EPSS para priorização de risco
-
-2. **Impacto Operacional nos Processos**
-   - Interrupção de processos críticos de negócio
-   - Degradação de serviços e SLAs
-   - Impacto na produtividade e operações
-   - Efeito cascata em sistemas dependentes
-
-3. **Riscos Reputacionais**
-   - Danos à marca e confiança do cliente
-   - Impacto no valor de mercado
-   - Relacionamento com stakeholders
-   - Exposição midiática negativa
-
-4. **Tempo de Recuperação Estimado (RTO/RPO)**
-   - Recovery Time Objective por categoria de ativo
-   - Recovery Point Objective para dados críticos
-   - Mean Time To Recovery (MTTR)
-   - Janelas de manutenção disponíveis
-
-5. **Interdependências Críticas**
-   - Mapeamento de dependências entre sistemas
-   - Fornecedores e parceiros críticos
-   - Infraestrutura compartilhada
-   - Pontos únicos de falha
-
-6. **Classificação de Prioridade para Remediação**
-   - Matriz de risco (probabilidade x impacto)
-   - Priorização baseada em criticidade de negócio
-   - Consideração de dados CISA KEV (prioridade máxima)
-   - Integração de scores EPSS para probabilidade de exploração
-
-**CONSIDERAÇÕES ESPECIAIS:**
-- Vulnerabilidades CISA KEV devem ser tratadas como CRÍTICAS para BIA
-- Scores EPSS altos indicam maior probabilidade de materialização do risco
-- Concentração de vulnerabilidades por vendor pode amplificar impacto
-- Considere cenários de exploração simultânea de múltiplas vulnerabilidades
-
-Forneça uma análise BIA estruturada em markdown com foco em impactos quantificáveis de negócio."""
-            
             # Fazer requisição à OpenAI
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": self._get_bia_system_prompt()},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=self.max_tokens,
-                temperature=self.temperature
-            )
+            response = self._chat_completion_with_retries([
+                {"role": "system", "content": self._get_bia_system_prompt()},
+                {"role": "user", "content": prompt}
+            ])
             
             return response.choices[0].message.content
             
@@ -280,15 +328,10 @@ Forneça uma análise BIA estruturada em markdown com foco em impactos quantific
             )
             
             # Fazer requisição à OpenAI
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": self._get_remediation_system_prompt()},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=self.max_tokens,
-                temperature=self.temperature
-            )
+            response = self._chat_completion_with_retries([
+                {"role": "system", "content": self._get_remediation_system_prompt()},
+                {"role": "user", "content": prompt}
+            ])
             
             return response.choices[0].message.content
             
@@ -299,7 +342,7 @@ Forneça uma análise BIA estruturada em markdown com foco em impactos quantific
     def generate_technical_study(self,
                                report_data: Dict[str, Any],
                                asset_configurations: List[Dict[str, Any]],
-                               security_architecture: Optional[Dict[str, Any]] = None) -> str:
+                               security_architecture: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Gera análise técnica aprofundada para Estudo Técnico.
         
@@ -315,7 +358,8 @@ Forneça uma análise BIA estruturada em markdown com foco em impactos quantific
             self._initialize_openai()
             
             if self.demo_mode:
-                return self._generate_demo_technical_study(report_data, asset_configurations)
+                demo_md = self._generate_demo_technical_study(report_data, asset_configurations)
+                return self._build_common_response('technical_study', demo_md, extra={'demo_mode': True})
             
             # Preparar dados para análise
             asset_count = len(asset_configurations)
@@ -326,108 +370,179 @@ Forneça uma análise BIA estruturada em markdown com foco em impactos quantific
             prompt = self._build_technical_study_prompt(
                 asset_configurations, vuln_data, technical_details, security_architecture
             )
-            
-            # Fazer requisição à OpenAI
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": self._get_technical_study_system_prompt()},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=self.max_tokens,
-                temperature=self.temperature
-            )
-            
-            return response.choices[0].message.content
+            # Validar/truncar
+            try:
+                sys_prompt = self._get_technical_study_system_prompt()
+                est_total = self._estimate_tokens_text(sys_prompt) + self._estimate_tokens_text(prompt)
+                if est_total > (self.context_limit - int(self.max_tokens or 1000) - 256):
+                    prompt = self._safe_truncate_text(prompt, max(512, self.context_limit - int(self.max_tokens or 1000) - 256))
+            except Exception:
+                pass
+
+            # Cache
+            cache_key = self._make_cache_key('technical_study', {
+                'asset_config_count': len(asset_configurations),
+                'vulnerability_summary': self._format_vulnerability_summary(vuln_data),
+                'has_security_architecture': bool(security_architecture),
+            })
+            cached = self._cache_get(cache_key)
+            if cached:
+                return cached
+
+            response = self._chat_completion_with_retries([
+                {"role": "system", "content": self._get_technical_study_system_prompt()},
+                {"role": "user", "content": prompt}
+            ], meta={'analysis_type': 'technical_study'})
+
+            content_md = response.choices[0].message.content
+            usage = getattr(response, 'usage', None)
+            result = self._build_common_response('technical_study', content_md, usage=usage)
+            self._cache_set(cache_key, result)
+            return result
             
         except Exception as e:
             logger.error(f"Erro ao gerar estudo técnico: {e}")
-            return self._generate_demo_technical_study(report_data, asset_configurations)
+            demo_md = self._generate_demo_technical_study(report_data, asset_configurations)
+            return self._build_common_response('technical_study', demo_md, extra={'demo_mode': True, 'error': str(e)})
     
     def generate_cisa_kev_analysis(self,
                                  cisa_kev_data: Dict[str, Any],
-                                 vulnerability_data: Dict[str, Any]) -> str:
+                                 vulnerability_data: Dict[str, Any]) -> Dict[str, Any]:
         """Gera análise específica de vulnerabilidades CISA KEV."""
         try:
-            if not self.openai_client:
-                return self._generate_demo_cisa_kev_analysis(cisa_kev_data, vulnerability_data)
+            self._initialize_openai()
+            if self.demo_mode:
+                demo_md = self._generate_demo_cisa_kev_analysis(cisa_kev_data, vulnerability_data)
+                return self._build_common_response('cisa_kev_analysis', demo_md, extra={'demo_mode': True})
             
             # Construir prompt específico para CISA KEV
             prompt = self._build_cisa_kev_prompt(cisa_kev_data, vulnerability_data)
+            # Validar/truncar
+            try:
+                sys_prompt = self._get_cisa_kev_system_prompt()
+                est_total = self._estimate_tokens_text(sys_prompt) + self._estimate_tokens_text(prompt)
+                if est_total > (self.context_limit - int(self.max_tokens or 1000) - 256):
+                    prompt = self._safe_truncate_text(prompt, max(512, self.context_limit - int(self.max_tokens or 1000) - 256))
+            except Exception:
+                pass
+
+            # Cache
+            cache_key = self._make_cache_key('cisa_kev_analysis', {
+                'cisa_kev_data': cisa_kev_data,
+                'vulnerability_summary': self._format_vulnerability_summary(vulnerability_data),
+            })
+            cached = self._cache_get(cache_key)
+            if cached:
+                return cached
             
-            response = self.openai_client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": self._get_cisa_kev_system_prompt()},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=2000,
-                temperature=0.7
-            )
-            
-            return response.choices[0].message.content
+            response = self._chat_completion_with_retries([
+                {"role": "system", "content": self._get_cisa_kev_system_prompt()},
+                {"role": "user", "content": prompt}
+            ], meta={'analysis_type': 'cisa_kev_analysis'})
+            content_md = response.choices[0].message.content
+            usage = getattr(response, 'usage', None)
+            result = self._build_common_response('cisa_kev_analysis', content_md, usage=usage)
+            self._cache_set(cache_key, result)
+            return result
             
         except Exception as e:
             logger.error(f"Erro ao gerar análise CISA KEV: {str(e)}")
-            return self._generate_demo_cisa_kev_analysis(cisa_kev_data, vulnerability_data)
+            demo_md = self._generate_demo_cisa_kev_analysis(cisa_kev_data, vulnerability_data)
+            return self._build_common_response('cisa_kev_analysis', demo_md, extra={'demo_mode': True, 'error': str(e)})
 
     def generate_epss_analysis(self,
                               epss_data: Dict[str, Any],
-                              vulnerability_data: Dict[str, Any]) -> str:
+                              vulnerability_data: Dict[str, Any]) -> Dict[str, Any]:
         """Gera análise específica de dados EPSS."""
         try:
-            if not self.openai_client:
-                return self._generate_demo_epss_analysis(epss_data, vulnerability_data)
+            self._initialize_openai()
+            if self.demo_mode:
+                demo_md = self._generate_demo_epss_analysis(epss_data, vulnerability_data)
+                return self._build_common_response('epss_analysis', demo_md, extra={'demo_mode': True})
             
             # Construir prompt específico para EPSS
             prompt = self._build_epss_prompt(epss_data, vulnerability_data)
-            
-            response = self.openai_client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": self._get_epss_system_prompt()},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=2000,
-                temperature=0.7
-            )
-            
-            return response.choices[0].message.content
+            # Validar/truncar
+            try:
+                sys_prompt = self._get_epss_system_prompt()
+                est_total = self._estimate_tokens_text(sys_prompt) + self._estimate_tokens_text(prompt)
+                if est_total > (self.context_limit - int(self.max_tokens or 1000) - 256):
+                    prompt = self._safe_truncate_text(prompt, max(512, self.context_limit - int(self.max_tokens or 1000) - 256))
+            except Exception:
+                pass
+
+            # Cache
+            cache_key = self._make_cache_key('epss_analysis', {
+                'epss_data': epss_data,
+                'vulnerability_summary': self._format_vulnerability_summary(vulnerability_data),
+            })
+            cached = self._cache_get(cache_key)
+            if cached:
+                return cached
+
+            response = self._chat_completion_with_retries([
+                {"role": "system", "content": self._get_epss_system_prompt()},
+                {"role": "user", "content": prompt}
+            ], meta={'analysis_type': 'epss_analysis'})
+            content_md = response.choices[0].message.content
+            usage = getattr(response, 'usage', None)
+            result = self._build_common_response('epss_analysis', content_md, usage=usage)
+            self._cache_set(cache_key, result)
+            return result
             
         except Exception as e:
             logger.error(f"Erro ao gerar análise EPSS: {str(e)}")
-            return self._generate_demo_epss_analysis(epss_data, vulnerability_data)
+            demo_md = self._generate_demo_epss_analysis(epss_data, vulnerability_data)
+            return self._build_common_response('epss_analysis', demo_md, extra={'demo_mode': True, 'error': str(e)})
 
     def generate_vendor_product_analysis(self,
                                        vendor_product_data: Dict[str, Any],
-                                       vulnerability_data: Dict[str, Any]) -> str:
+                                       vulnerability_data: Dict[str, Any]) -> Dict[str, Any]:
         """Gera análise específica de vendors e produtos."""
         try:
-            if not self.openai_client:
-                return self._generate_demo_vendor_product_analysis(vendor_product_data, vulnerability_data)
+            self._initialize_openai()
+            if self.demo_mode:
+                demo_md = self._generate_demo_vendor_product_analysis(vendor_product_data, vulnerability_data)
+                return self._build_common_response('vendor_product_analysis', demo_md, extra={'demo_mode': True})
             
             # Construir prompt específico para vendor/product
             prompt = self._build_vendor_product_prompt(vendor_product_data, vulnerability_data)
-            
-            response = self.openai_client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": self._get_vendor_product_system_prompt()},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=2000,
-                temperature=0.7
-            )
-            
-            return response.choices[0].message.content
+            # Validar/truncar
+            try:
+                sys_prompt = self._get_vendor_product_system_prompt()
+                est_total = self._estimate_tokens_text(sys_prompt) + self._estimate_tokens_text(prompt)
+                if est_total > (self.context_limit - int(self.max_tokens or 1000) - 256):
+                    prompt = self._safe_truncate_text(prompt, max(512, self.context_limit - int(self.max_tokens or 1000) - 256))
+            except Exception:
+                pass
+
+            # Cache
+            cache_key = self._make_cache_key('vendor_product_analysis', {
+                'vendor_product_data': vendor_product_data,
+                'vulnerability_summary': self._format_vulnerability_summary(vulnerability_data),
+            })
+            cached = self._cache_get(cache_key)
+            if cached:
+                return cached
+
+            response = self._chat_completion_with_retries([
+                {"role": "system", "content": self._get_vendor_product_system_prompt()},
+                {"role": "user", "content": prompt}
+            ], meta={'analysis_type': 'vendor_product_analysis'})
+            content_md = response.choices[0].message.content
+            usage = getattr(response, 'usage', None)
+            result = self._build_common_response('vendor_product_analysis', content_md, usage=usage)
+            self._cache_set(cache_key, result)
+            return result
             
         except Exception as e:
             logger.error(f"Erro ao gerar análise vendor/product: {str(e)}")
-            return self._generate_demo_vendor_product_analysis(vendor_product_data, vulnerability_data)
+            demo_md = self._generate_demo_vendor_product_analysis(vendor_product_data, vulnerability_data)
+            return self._build_common_response('vendor_product_analysis', demo_md, extra={'demo_mode': True, 'error': str(e)})
 
     def generate_technical_analysis(self,
                                   vulnerability_data: Dict[str, Any],
-                                  cve_details: List[Dict[str, Any]]) -> str:
+                                  cve_details: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Gera análise técnica detalhada das vulnerabilidades.
         
@@ -436,13 +551,14 @@ Forneça uma análise BIA estruturada em markdown com foco em impactos quantific
             cve_details: Detalhes específicos das CVEs
             
         Returns:
-            Análise técnica em formato markdown
+            Dict com campos 'markdown' e metadados
         """
         try:
             self._initialize_openai()
             
             if self.demo_mode:
-                return self._generate_demo_technical_analysis(vulnerability_data)
+                demo_md = self._generate_demo_technical_analysis(vulnerability_data)
+                return self._build_common_response('technical_analysis', demo_md, extra={'demo_mode': True})
             
             # Preparar dados técnicos
             cvss_stats = vulnerability_data.get('cvss_statistics', {})
@@ -452,23 +568,41 @@ Forneça uma análise BIA estruturada em markdown com foco em impactos quantific
             prompt = self._build_technical_analysis_prompt(
                 vulnerability_data, cve_details, cvss_stats, cwe_distribution
             )
-            
+            # Validar/truncar
+            try:
+                sys_prompt = self._get_technical_system_prompt()
+                est_total = self._estimate_tokens_text(sys_prompt) + self._estimate_tokens_text(prompt)
+                if est_total > (self.context_limit - int(self.max_tokens or 1000) - 256):
+                    prompt = self._safe_truncate_text(prompt, max(512, self.context_limit - int(self.max_tokens or 1000) - 256))
+            except Exception:
+                pass
+
+            # Cache
+            cache_key = self._make_cache_key('technical_analysis', {
+                'cvss_stats': cvss_stats,
+                'cwe_distribution': cwe_distribution,
+                'vulnerability_summary': self._format_vulnerability_summary(vulnerability_data),
+                'cve_details': cve_details,
+            })
+            cached = self._cache_get(cache_key)
+            if cached:
+                return cached
+
             # Fazer requisição à OpenAI
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": self._get_technical_system_prompt()},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=self.max_tokens,
-                temperature=self.temperature
-            )
-            
-            return response.choices[0].message.content
+            response = self._chat_completion_with_retries([
+                {"role": "system", "content": self._get_technical_system_prompt()},
+                {"role": "user", "content": prompt}
+            ], meta={'analysis_type': 'technical_analysis'})
+            content_md = response.choices[0].message.content
+            usage = getattr(response, 'usage', None)
+            result = self._build_common_response('technical_analysis', content_md, usage=usage)
+            self._cache_set(cache_key, result)
+            return result
             
         except Exception as e:
             logger.error(f"Erro ao gerar análise técnica: {e}")
-            return self._generate_demo_technical_analysis(vulnerability_data)
+            demo_md = self._generate_demo_technical_analysis(vulnerability_data)
+            return self._build_common_response('technical_analysis', demo_md, extra={'demo_mode': True, 'error': str(e)})
     
     # Métodos para construção de prompts
     
@@ -1095,7 +1229,21 @@ Forneça análise estratégica focada em gestão de vendors e produtos."""
             name = asset.get('name', 'N/A')
             criticality = asset.get('criticality', 'N/A')
             type_info = asset.get('type', 'N/A')
-            formatted.append(f"- {name} (Criticidade: {criticality}, Tipo: {type_info})")
+            rto = asset.get('rto_hours')
+            rpo = asset.get('rpo_hours')
+            uptime = asset.get('uptime_text')
+            cost = asset.get('operational_cost_per_hour')
+            metrics = []
+            if rto is not None:
+                metrics.append(f"RTO: {rto}h")
+            if rpo is not None:
+                metrics.append(f"RPO: {rpo}h")
+            if uptime:
+                metrics.append(f"Uptime: {uptime}")
+            if cost is not None:
+                metrics.append(f"Custo/h: ${cost:,.2f}")
+            metrics_str = f" | {'; '.join(metrics)}" if metrics else ""
+            formatted.append(f"- {name} (Criticidade: {criticality}, Tipo: {type_info}{metrics_str})")
         
         return "\n".join(formatted)
     

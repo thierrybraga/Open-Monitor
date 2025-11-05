@@ -175,7 +175,7 @@
         </div>
     </div>
 
-    <form method="POST" action="{{ url_for('report.create_report') }}" id="reportForm">
+    <form method="POST" action="{{ url_for('report.create_report') }}" id="reportForm" enctype="multipart/form-data">
         {{ form.hidden_tag() }}
         
         <!-- Etapa 1: Configuração Básica -->
@@ -311,6 +311,22 @@
                         </div>
                         {% if form.custom_assets.errors %}
                             <div class="text-danger small">{{ form.custom_assets.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Upload de CSV opcional para cadastro de ativos -->
+                    <div class="col-12">
+                        <label class="form-label" for="csv_file">
+                            <i class="bi bi-upload me-1"></i>
+                            {{ form.csv_file.label.text }}
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text" id="csv-addon"><i class="bi bi-upload"></i></span>
+                            {{ form.csv_file(class="form-control", id="csv_file", accept=".csv", aria_describedby="csv-addon") }}
+                        </div>
+                        <small class="text-muted">Arquivo CSV com colunas: hostid, alias, os (nessa ordem). Opcional.</small>
+                        {% if form.csv_file and form.csv_file.errors %}
+                            <div class="text-danger small">{{ form.csv_file.errors[0] }}</div>
                         {% endif %}
                     </div>
                 </div>
@@ -520,9 +536,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Notificações: mostrar/esconder campo de e-mail
     const notifyEl = document.getElementById('notify_completion');
     const emailContainer = document.getElementById('notification-email-container');
+    const emailInput = document.getElementById('notification_email');
     if (notifyEl) {
         const toggleEmail = () => {
             if (emailContainer) emailContainer.style.display = notifyEl.checked ? 'block' : 'none';
+            if (emailInput) {
+                emailInput.required = !!notifyEl.checked;
+                emailInput.setAttribute('pattern', '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$');
+            }
         };
         notifyEl.addEventListener('change', toggleEmail);
         toggleEmail();
@@ -535,6 +556,27 @@ document.addEventListener('DOMContentLoaded', function() {
     if (aiOptionsInit && includeAIEl) aiOptionsInit.style.display = includeAIEl.checked ? 'block' : 'none';
     const chartOptionsInit = document.getElementById('chart-options');
     if (chartOptionsInit && includeChartsEl) chartOptionsInit.style.display = includeChartsEl.checked ? 'block' : 'none';
+
+    // Validação simples de e-mail no submit quando notificações estiverem habilitadas
+    const formEl = document.getElementById('reportForm');
+    if (formEl) {
+        formEl.addEventListener('submit', function(e) {
+            try {
+                if (notifyEl && notifyEl.checked && emailInput) {
+                    const val = (emailInput.value || '').trim();
+                    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!re.test(val)) {
+                        e.preventDefault();
+                        alert('Informe um e-mail válido para receber a notificação.');
+                        emailInput.focus();
+                        return false;
+                    }
+                }
+            } catch (err) {
+                console.warn('Validação de e-mail falhou:', err);
+            }
+        });
+    }
 });
 </script>
 {% endblock %}

@@ -73,8 +73,9 @@ class FlaskRateLimiter:
             # Fallback para IP se não autenticado
             return self._get_client_id_by_ip()
         elif strategy == 'endpoint':
-            # Baseado no endpoint
-            return f"endpoint_{request.endpoint or 'unknown'}"
+            # Baseado no path da requisição para categorizar corretamente
+            path = getattr(request, 'path', None) or 'unknown'
+            return f"endpoint_{path}"
         else:
             return request.remote_addr or 'unknown'
     
@@ -134,7 +135,8 @@ class FlaskRateLimiter:
         logger.info(f"Applying rate limiting to {request.path}")
         
         client_id = self._get_client_id()
-        limiter = self._get_limiter(client_id, endpoint=request.endpoint)
+        # Use request.path para obter configuração específica por categoria (/api, /auth, etc.)
+        limiter = self._get_limiter(client_id, endpoint=request.path)
         
         # Verificar se pode fazer a requisição
         now = time.time()
@@ -179,7 +181,7 @@ class FlaskRateLimiter:
         
         # Armazenar limiter no contexto da requisição
         g.rate_limiter = limiter
-        g.rate_limiter_endpoint = request.endpoint
+        g.rate_limiter_endpoint_path = request.path
     
     def _after_request(self, response):
         """
@@ -192,8 +194,9 @@ class FlaskRateLimiter:
         if hasattr(g, 'rate_limiter') and self.config.INCLUDE_HEADERS:
             limiter = g.rate_limiter
             now = time.time()
-            endpoint = getattr(g, 'rate_limiter_endpoint', '')
-            endpoint_config = self.config.get_rate_limit_for_endpoint(endpoint or '')
+            # Utilize o path para determinar a categoria de rate limit
+            endpoint_path = getattr(g, 'rate_limiter_endpoint_path', '')
+            endpoint_config = self.config.get_rate_limit_for_endpoint(endpoint_path or '')
             
             response.headers['X-RateLimit-Limit'] = str(endpoint_config['requests'])
             response.headers['X-RateLimit-Remaining'] = str(

@@ -80,4 +80,18 @@ def setup_csp(app: Flask) -> None:
             logger.error(f"Error setting up CSP header: {e}", exc_info=True)
             return {'csp_header': None}
     
+    @app.after_request
+    def apply_csp_header(response):
+        """Attach CSP header to every response using the current request nonce."""
+        try:
+            csp_config = app.config.get('CSP', {})
+            if csp_config:
+                nonce = g.get('csp_nonce')
+                csp_header = build_csp_header(csp_config, nonce)
+                # Set HTTP header for robust enforcement
+                response.headers['Content-Security-Policy'] = csp_header
+        except Exception as e:
+            logger.error(f"Failed to apply CSP header: {e}", exc_info=True)
+        return response
+
     logger.info("CSP setup completed")

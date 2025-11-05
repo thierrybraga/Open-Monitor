@@ -26,6 +26,7 @@ class CVEVendor(db.Model):
 
     __table_args__ = (
         PrimaryKeyConstraint('cve_id', 'vendor_id', name='pk_cve_vendor'),
+        Index('ix_cve_vendors_vendor_cve', 'vendor_id', 'cve_id'),
     )
 
     # vulnerability: Vulnerability = relationship( # Removido as aspas para usar o type hint direto

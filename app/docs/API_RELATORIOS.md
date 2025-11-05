@@ -812,3 +812,32 @@ Para futuras versões, use o header:
 ```http
 Accept: application/vnd.openmonitor.v2+json
 ```
+## Parâmetros de Vendor (vendor_ids e alias vendor)
+
+Para todos os endpoints sob `/api/analytics`, quando aplicável, é possível filtrar os resultados por fornecedores (vendors) usando o parâmetro `vendor_ids`. Esse parâmetro aceita:
+
+- Valores repetidos (`?vendor_ids=1&vendor_ids=2`)
+- Valores separados por vírgula (`?vendor_ids=1,2,3`)
+
+Também é suportado o alias `vendor` com o mesmo comportamento de `vendor_ids`. Exemplos equivalentes:
+
+- `GET /api/analytics/overview?vendor_ids=18,21`
+- `GET /api/analytics/overview?vendor=18,21`
+
+Precedência e fallback:
+
+- IDs explícitos na URL têm prioridade sobre preferências salvas.
+- Na ausência de `vendor_ids`/`vendor`, endpoints podem recorrer às preferências do usuário autenticado armazenadas em `SyncMetadata`.
+- Usuários não autenticados não possuem preferências salvas; recomenda-se uso explícito de `vendor_ids`/`vendor` na URL.
+
+Endpoints que aceitam `vendor_ids`/`vendor`:
+
+- `GET /api/analytics/overview`
+- `GET /api/analytics/details/top_products`
+- `GET /api/analytics/details/top_cwes`
+- `GET /api/analytics/patch-status`
+- `GET /api/analytics/severity_distribution`
+- `GET /api/analytics/cve_history`
+- `GET /api/analytics/top-vendors` (agora aceita `vendor_ids`/`vendor` explicitamente)
+
+Observação: para visualizações com paginação, os parâmetros `page` e `per_page` podem ser combinados com `vendor_ids`/`vendor` normalmente.

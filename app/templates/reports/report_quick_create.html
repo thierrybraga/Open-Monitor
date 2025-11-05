@@ -134,11 +134,11 @@
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <h1 class="h3 mb-0">
+                    <h1 class="h3 mb-0 text-strong">
                         <i class="bi bi-lightning-fill me-2 text-warning"></i>
                         Relatório Rápido
                     </h1>
-                    <p class="text-muted mb-0">Crie relatórios de segurança em poucos cliques</p>
+                    <p class="text-medium mb-0">Crie relatórios de segurança em poucos cliques</p>
                 </div>
                 <div>
                     <a href="{{ url_for('report.create_report') }}" class="btn btn-outline-primary me-2">
@@ -154,13 +154,13 @@
         </div>
     </div>
 
-    <form method="POST" action="{{ url_for('report.quick_create_report') }}" id="quickReportForm">
+    <form method="POST" action="{{ url_for('report.quick_create_report') }}" id="quickReportForm" enctype="multipart/form-data">
         {{ form.hidden_tag() }}
         
         <!-- Seleção de Template -->
         <div class="row mb-4">
             <div class="col-12">
-                <h4 class="mb-3">
+                <h4 class="mb-3 text-strong">
                     <i class="bi bi-collection me-2"></i>
                     Escolha um Template
                 </h4>
@@ -318,7 +318,7 @@
             
             <div class="col-lg-4 col-md-6">
                 <div class="quick-card" data-template="kpi_kri">
-                    <div class="card-icon bg-purple text-white" style="background-color: #6f42c1;">
+                    <div class="card-icon text-white" style="background-color: var(--primary-600); color: var(--color-on-primary);">
                         <i class="bi bi-speedometer2"></i>
                     </div>
                     <div class="card-title">KPIs e KRIs</div>
@@ -382,7 +382,7 @@
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
-                        <h5 class="card-title mb-0">
+                        <h5 class="card-title mb-0 text-strong">
                             <i class="bi bi-sliders me-2"></i>
                             Configurações Básicas
                         </h5>
@@ -438,6 +438,16 @@
                                     <div class="text-danger small">{{ form.description.errors[0] }}</div>
                                 {% endif %}
                             </div>
+                            
+                            <!-- Upload de CSV -->
+                            <div class="col-12">
+                                <label class="form-label" for="csv_file">{{ form.csv_file.label.text }}</label>
+                                {{ form.csv_file(class="form-control", id="csv_file", accept=".csv") }}
+                                <small class="text-muted">Arquivo CSV opcional com colunas: hostid, alias, os (nessa ordem).</small>
+                                {% if form.csv_file.errors %}
+                                    <div class="text-danger small">{{ form.csv_file.errors[0] }}</div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -449,7 +459,7 @@
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
-                        <h5 class="card-title mb-0">
+                        <h5 class="card-title mb-0 text-strong">
                             <i class="bi bi-gear me-2"></i>
                             Opções Avançadas
                             <small class="text-muted">(Opcional)</small>
@@ -509,7 +519,7 @@
                             Visualizar
                         </button>
                         
-                        <button type="submit" class="btn btn-success" id="createBtn" disabled>
+                        <button type="submit" class="btn btn-primary" id="createBtn" disabled>
                             <i class="bi bi-lightning-fill me-1"></i>
                             Criar Relatório Rápido
                         </button>
@@ -529,7 +539,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">
+                <h5 class="modal-title text-strong">
                     <i class="bi bi-eye me-2"></i>
                     Preview do Relatório
                 </h5>
@@ -557,7 +567,7 @@
         <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;">
             <span class="visually-hidden">Criando relatório...</span>
         </div>
-        <h5>Criando seu relatório...</h5>
+        <h5 class="text-strong">Criando seu relatório...</h5>
         <p class="text-muted mb-3">Isso pode levar alguns minutos. Por favor, aguarde.</p>
         <div class="progress">
             <div class="progress-bar progress-bar-striped progress-bar-animated" 
@@ -575,6 +585,48 @@
 <script>
 let selectedTemplate = null;
 let advancedVisible = false;
+
+// Checagem de contraste para primários e ajuste de --color-on-primary caso necessário
+document.addEventListener('DOMContentLoaded', function() {
+    function getVar(name, fallback) {
+        const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        return val || fallback;
+    }
+    function hexToRgb(hex) {
+        const m = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+        if (!m) return null;
+        return {
+            r: parseInt(m[1], 16),
+            g: parseInt(m[2], 16),
+            b: parseInt(m[3], 16)
+        };
+    }
+    function relLum({r,g,b}) {
+        // sRGB to linear
+        const srgb = [r/255, g/255, b/255].map(c => c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4));
+        return 0.2126*srgb[0] + 0.7152*srgb[1] + 0.0722*srgb[2];
+    }
+    function contrastRatio(hex1, hex2) {
+        const rgb1 = hexToRgb(hex1); const rgb2 = hexToRgb(hex2);
+        if (!rgb1 || !rgb2) return 999; // se não conseguir parsear, não ajustar
+        const L1 = relLum(rgb1); const L2 = relLum(rgb2);
+        const lighter = Math.max(L1, L2); const darker = Math.min(L1, L2);
+        return (lighter + 0.05) / (darker + 0.05);
+    }
+    try {
+        const primary500 = getVar('--primary-500', '#6366f1');
+        const primary600 = getVar('--primary-600', '#4f46e5');
+        const onPrimary = getVar('--color-on-primary', '#ffffff');
+        const ratio500 = contrastRatio(primary500, onPrimary);
+        const ratio600 = contrastRatio(primary600, onPrimary);
+        // Ajusta se algum estiver abaixo de AA (4.5)
+        if (ratio500 < 4.5 || ratio600 < 4.5) {
+            document.documentElement.style.setProperty('--color-on-primary', '#000000');
+        }
+    } catch (e) {
+        // silencioso
+    }
+});
 
 // Seleção de template
 document.querySelectorAll('.quick-card').forEach(card => {
@@ -741,7 +793,7 @@ const period = document.getElementById('period_days').selectedOptions[0]?.text |
     previewContent.innerHTML = `
         <div class="row">
             <div class="col-md-6">
-                <h6>Informações Básicas</h6>
+                <h6 class="text-medium">Informações Básicas</h6>
                 <table class="table table-sm">
                     <tr><td><strong>Título:</strong></td><td>${title}</td></tr>
                     <tr><td><strong>Tipo:</strong></td><td>${template.title}</td></tr>
@@ -751,7 +803,7 @@ const period = document.getElementById('period_days').selectedOptions[0]?.text |
                 </table>
             </div>
             <div class="col-md-6">
-                <h6>Seções Incluídas</h6>
+                <h6 class="text-medium">Seções Incluídas</h6>
                 <ul class="list-unstyled">
                     ${template.sections.map(section => `
                         <li><i class="bi bi-check-circle text-success me-2"></i>${section}</li>
@@ -759,7 +811,7 @@ const period = document.getElementById('period_days').selectedOptions[0]?.text |
                 </ul>
             </div>
             <div class="col-12 mt-3">
-                <h6>Descrição</h6>
+                <h6 class="text-medium">Descrição</h6>
                 <p class="text-muted">${description}</p>
             </div>
         </div>
@@ -827,6 +879,9 @@ document.getElementById('quickReportForm').addEventListener('submit', function(e
                 progressOverlay.style.display = 'none';
                 const details = data.error || (data.errors ? JSON.stringify(data.errors) : 'Erro desconhecido');
                 alert('Erro ao criar relatório: ' + (data.message ? (data.message + ' - ' + details) : details));
+                if (data.redirect_url) {
+                    window.location.href = data.redirect_url;
+                }
             }
         }, 1000);
     })

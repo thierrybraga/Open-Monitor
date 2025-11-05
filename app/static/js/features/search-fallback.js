@@ -79,14 +79,5 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Example buttons
-    document.querySelectorAll('.example-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const query = this.dataset.query;
-            if (searchInput && query) {
-                searchInput.value = query;
-                searchInput.dispatchEvent(new Event('input'));
-            }
-        });
-    });
+    // Removido: handlers de exemplos rápidos (.example-btn)
 });

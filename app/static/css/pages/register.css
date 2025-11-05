@@ -1,0 +1,47 @@
+/* Página de Registro - padronização com variantes auth-minimal */
+
+.auth-container .auth-card.auth-minimal {
+  max-width: var(--auth-card-max-width, 560px);
+  padding: var(--auth-card-padding, 2rem);
+  border-radius: var(--auth-card-radius, 12px);
+  box-shadow: var(--auth-card-shadow, 0 6px 24px rgba(0,0,0,0.08));
+}
+
+.auth-card.auth-minimal h1 {
+  font-size: 1.75rem;
+  line-height: 1.25;
+  margin-bottom: 0.75rem;
+}
+
+.auth-card.auth-minimal p.text-muted {
+  margin-bottom: 1.5rem;
+}
+
+.btn-full {
+  width: 100%;
+}
+
+.form-label.required::after {
+  content: '*';
+  margin-left: 4px;
+  color: var(--bs-danger);
+  font-weight: 600;
+}
+
+.invalid-feedback {
+  display: none;
+}
+
+.form-control.is-invalid ~ .invalid-feedback {
+  display: block;
+}
+
+/* Melhor alinhamento do checkbox de termos */
+.form-check-input {
+  margin-top: 0.2rem;
+}
+
+.auth-footer {
+  margin-top: 1.5rem;
+  text-align: center;
+}

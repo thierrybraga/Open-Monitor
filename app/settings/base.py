@@ -18,6 +18,13 @@ def getenv_typed(name, cast, default=None):
 class BaseConfig:
     SECRET_KEY = '1234'
     DEBUG = False
+    
+    # Modo público - permite acesso às vulnerabilidades sem autenticação
+    # Usa parsing explícito de string para evitar bool('false') == True
+    PUBLIC_MODE = getenv_typed('PUBLIC_MODE', lambda x: x.lower() == 'true', True)
+
+    # Permitir login mesmo quando PUBLIC_MODE estiver habilitado
+    LOGIN_ENABLED_IN_PUBLIC_MODE = getenv_typed('LOGIN_ENABLED_IN_PUBLIC_MODE', lambda x: x.lower() == 'true', False)
 
     # Se existir DATABASE_URL, usa; senão usa o SQLite em instance/vulnerabilities.db
     _db_url = os.getenv('DATABASE_URL')
@@ -33,13 +40,46 @@ class BaseConfig:
     LOG_FILE = Path(os.getenv('LOG_FILE', 'logs/app.log'))
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO').upper()
 
+    # Internationalization / Localization defaults
+    HTML_LANG = os.getenv('HTML_LANG', 'pt-BR')  # BCP 47 for HTML/JS
+    LANGUAGE = os.getenv('LANGUAGE', 'pt-BR')    # Used in templates/SEO
+    LOCALE = os.getenv('LOCALE', 'pt_BR')        # Underscore for OG/locale
+
+    # -----------------------------
+    # Sessão e Cookies (Segurança)
+    # -----------------------------
+    # Em ambientes locais (http://localhost), cookies "secure" não são enviados.
+    # Por isso, habilite via env quando deploy em produção (HTTPS).
+    SESSION_COOKIE_NAME = os.getenv('SESSION_COOKIE_NAME', 'om_session')
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = os.getenv('SESSION_COOKIE_SAMESITE', 'Lax')
+    SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
+
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SECURE = SESSION_COOKIE_SECURE
+
+    # Duração padrão da sessão (pode ser ajustada por preferências do usuário)
+    from datetime import timedelta
+    PERMANENT_SESSION_LIFETIME = timedelta(minutes=int(os.getenv('SESSION_LIFETIME_MINUTES', '30')))
+
+    # -----------------------------
+    # Cache Analytics
+    # -----------------------------
+    # TTL padrão para respostas de Analytics e intervalo de atualização periódica
+    ANALYTICS_CACHE_TTL = int(os.getenv('ANALYTICS_CACHE_TTL', '900'))  # 15 minutos
+    ANALYTICS_CACHE_REFRESH_INTERVAL_MINUTES = int(os.getenv('ANALYTICS_CACHE_REFRESH_INTERVAL_MINUTES', '15'))
+    MULTILINGUAL = getenv_typed('MULTILINGUAL', lambda x: x.lower() == 'true', True)
+    SUPPORTED_LOCALES = ['en_US', 'pt_BR']
+    BABEL_DEFAULT_LOCALE = LOCALE
+    BABEL_DEFAULT_TIMEZONE = os.getenv('BABEL_DEFAULT_TIMEZONE', 'UTC')
+
     # PDF Export Configuration
     # Default engine favors 'reportlab' to avoid native dependencies in dev
     PDF_ENGINE = os.getenv('PDF_ENGINE', 'reportlab')
     # Optional wkhtmltopdf path for pdfkit engine (Windows example path)
     WKHTMLTOPDF_PATH = os.getenv('WKHTMLTOPDF_PATH')
     # Base URL used by HTML-to-PDF generators to resolve assets
-    BASE_URL = os.getenv('BASE_URL', 'http://localhost:5000')
+    BASE_URL = os.getenv('BASE_URL', 'http://localhost:8000')
     CSP = {
         'default-src': ["'self'"],
         'script-src':  [
@@ -91,11 +131,27 @@ class BaseConfig:
         'form-action': ["'self'"]  # Restringe envio de formulários
     }
     
+    # -----------------------------
+    # Redis Cache (Opcional)
+    # -----------------------------
+    # Desabilitado por padrão em desenvolvimento para evitar erros quando
+    # não há serviço Redis local. Pode ser habilitado via variável de ambiente.
+    REDIS_CACHE_ENABLED = getenv_typed('REDIS_CACHE_ENABLED', lambda x: x.lower() == 'true', False)
+    REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+    REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
+    REDIS_PORT = getenv_typed('REDIS_PORT', int, 6379)
+    REDIS_DB = getenv_typed('REDIS_DB', int, 0)
+    REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
+    
     # OpenAI Configuration
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
     OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-3.5-turbo')
     OPENAI_MAX_TOKENS = getenv_typed('OPENAI_MAX_TOKENS', int, 1000)
     OPENAI_TEMPERATURE = getenv_typed('OPENAI_TEMPERATURE', float, 0.7)
+    OPENAI_TIMEOUT = getenv_typed('OPENAI_TIMEOUT', int, 30)
+    OPENAI_MAX_RETRIES = getenv_typed('OPENAI_MAX_RETRIES', int, 2)
+    OPENAI_RETRY_BACKOFF = getenv_typed('OPENAI_RETRY_BACKOFF', float, 1.5)
+    OPENAI_STREAMING = getenv_typed('OPENAI_STREAMING', int, 0) == 1
     
     # Email Configuration
     MAIL_SERVER = os.getenv('MAIL_SERVER', 'localhost')

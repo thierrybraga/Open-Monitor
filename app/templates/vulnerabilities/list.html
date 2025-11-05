@@ -15,6 +15,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/vulnerabilities.chart.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/table.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -87,6 +88,15 @@
         <div class="filters-card">
             <h2 id="filters-title" class="visually-hidden">Filtros de Vulnerabilidades</h2>
             <form method="GET" class="filters-form" role="search" aria-label="Filtrar vulnerabilidades">
+                {# Preservar filtro de vendors selecionados e catalog_tag em submissões #}
+                {% if selected_vendor_ids %}
+                  {% for vid in selected_vendor_ids %}
+                    <input type="hidden" name="vendor_ids" value="{{ vid }}">
+                  {% endfor %}
+                {% endif %}
+                {% if current_catalog_tag %}
+                  <input type="hidden" name="catalog_tag" value="{{ current_catalog_tag }}">
+                {% endif %}
                 <div class="row mb-4">
                     <div class="col-lg-4 col-md-6 mb-3">
                         <label for="search-input" class="form-label fw-semibold">Buscar Vulnerabilidades</label>
@@ -245,7 +255,7 @@
             <h2 id="table-title" class="visually-hidden">Lista de vulnerabilidades</h2>
             <div class="table-card">
                 <div class="table-responsive" role="region" aria-labelledby="table-title" tabindex="0">
-                <table class="table table-sm table-hover table-striped" id="vulnerabilities-table" data-current-page="{{ current_page }}" data-last_page="{{ last_page }}" aria-label="Tabela de Vulnerabilidades">
+                <table class="table table-sm table-hover table-striped table-modern align-middle" id="vulnerabilities-table" data-current-page="{{ current_page }}" data-last_page="{{ last_page }}" aria-label="Tabela de Vulnerabilidades">
                     <caption class="visually-hidden">Lista de vulnerabilidades com colunas: CVE ID, Severidade, Descrição, Fornecedor, Produto, Pontuação CVSS, Data de Publicação e Ações.</caption>
                     <thead>
                         <tr role="row">
@@ -360,57 +370,7 @@
                     <tfoot>
                         <tr>
                             <td colspan="8" class="table-pagination-footer">
-                                <div class="table-pagination-nav pagination-section" role="navigation" aria-label="Navegação de páginas de vulnerabilidades">
-                                    {% set args = request.args.to_dict(flat=False) %}
-                                    {% set _ = args.pop('page', None) %}
-                                    {% set _ = args.pop('severity', None) %}
-                                    <div class="d-flex justify-content-between align-items-center mt-3">
-                                        <div class="pagination-controls">
-                                            {% if pagination.has_prev %}
-                                                {% if filters.severity %}
-                                                    <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui', page=pagination.prev_num, severity=filters.severity, **args) }}" class="btn btn-sm btn-outline-primary page-link page-link-prev">
-                                                        <i class="fas fa-chevron-left"></i> Anterior
-                                                    </a>
-                                                {% else %}
-                                                    <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui', page=pagination.prev_num, **args) }}" class="btn btn-sm btn-outline-primary page-link page-link-prev">
-                                                        <i class="fas fa-chevron-left"></i> Anterior
-                                                    </a>
-                                                {% endif %}
-                                            {% else %}
-                                                <button class="btn btn-sm btn-outline-primary page-link page-link-prev" disabled>
-                                                    <i class="fas fa-chevron-left"></i> Anterior
-                                                </button>
-                                            {% endif %}
-                                            <span class="mx-3 pagination-text">
-                                                Página <span>{{ pagination.page }}</span> de <span>{{ pagination.pages }}</span>
-                                            </span>
-                                            {% if pagination.has_next %}
-                                                {% if filters.severity %}
-                                                    <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui', page=pagination.next_num, severity=filters.severity, **args) }}" class="btn btn-sm btn-outline-primary page-link page-link-next">
-                                                        Próxima <i class="fas fa-chevron-right"></i>
-                                                    </a>
-                                                {% else %}
-                                                    <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui', page=pagination.next_num, **args) }}" class="btn btn-sm btn-outline-primary page-link page-link-next">
-                                                        Próxima <i class="fas fa-chevron-right"></i>
-                                                    </a>
-                                                {% endif %}
-                                            {% else %}
-                                                <button class="btn btn-sm btn-outline-primary page-link page-link-next" disabled>
-                                                    Próxima <i class="fas fa-chevron-right"></i>
-                                                </button>
-                                            {% endif %}
-                                        </div>
-                                        <div class="page-size-controls">
-                                            <label for="per-page-select" class="form-label mb-0 me-2">Itens por página:</label>
-                                            {% set current_per_page = request.args.get('per_page', '20')|int %}
-                                            <select id="per-page-select" class="form-select form-select-sm" style="width: auto;" onchange="changePerPage(this.value)">
-                                                {% for option in [10, 20, 50, 100] %}
-                                                    <option value="{{ option }}" {{ 'selected' if option == current_per_page else '' }}>{{ option }}</option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
+                                {{ render_pagination(pagination, 'vulnerability_ui.list_vulnerabilities_ui', route_severity=filters.severity, variant='minimal') }}
                             </td>
                         </tr>
                     </tfoot>

@@ -1,8 +1,8 @@
-/* main.css - Sistema de design Open CVE Report
+/* main.css - Sistema de design Open Monitor
  * Arquivo principal de estilo com arquitetura CSS escalável
  * Gerencia a importação de todos os outros arquivos CSS.
- * Versão: 2.2 - Ordem de importação ajustada e redundâncias removidas
- * Última atualização: Abril 2025
+ * Versão: 2.3 - Ordem de importação ajustada e redundâncias removidas
+ * Última atualização: 2023
  */
 
 /* ==========================================================================\
@@ -14,23 +14,12 @@
  * Carregamento otimizado com font-display: swap para evitar FOIT
  * Pesos carregados: Regular (400), Medium (500), Semibold (600), Bold (700)
  */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap&font-display=swap');
-
-/*
- * Biblioteca de Ícones - Utilizamos uma combinação de:
- * - Bootstrap Icons: Elementos de formulário e complementares
- * - Remix Icons: Interface principal e ações comuns (Remover se não usado)
- * Versões específicas para garantir consistência
- */
-/* Remover se não usado */
-/* @import url('https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.min.css'); */
-/* Bootstrap Icons import removido; carregado via base.html com fallback local */
-/* Font Awesome import removido; carregado via base.html com fallback local */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 /* Vendor CSS (local) - Carregar cedo para base de estilos */
 @import 'vendor/bootstrap.min.css';
-@import 'vendor/bootstrap-icons.css?v=20251005';
-@import 'vendor/all.min.css?v=20251005';
+@import 'vendor/bootstrap-icons.css';
+@import 'vendor/all.min.css';
 
 
 /* ==========================================================================\

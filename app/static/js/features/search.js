@@ -88,18 +88,7 @@ class SearchManager {
             });
         }
 
-        // Example buttons
-        document.querySelectorAll('.example-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const query = btn.dataset.query;
-                if (query && this.searchInput) {
-                    this.searchInput.value = query;
-                    this.searchInput.dispatchEvent(new Event('input'));
-                    this.searchInput.focus();
-                    this.showNotification(`Exemplo carregado: ${query}`, 'success');
-                }
-            });
-        });
+        // Removido: handlers de exemplos rápidos (.example-btn)
     }
 
     handleInputChange(e) {
@@ -646,3 +635,62 @@ const searchManager = new SearchManager();
 
 // Export for potential use in other scripts
 window.SearchManager = SearchManager;
+
+// Mapbox initialization for Search page
+function initMap() {
+    try {
+        if (typeof mapboxgl === 'undefined' || !window.MAPBOX_ACCESS_TOKEN) {
+            console.warn('Mapbox GL not available or access token missing.');
+            return;
+        }
+        mapboxgl.accessToken = window.MAPBOX_ACCESS_TOKEN;
+
+        var mapEl = document.getElementById('map');
+        if (!mapEl) {
+            console.warn('Map container #map not found.');
+            return;
+        }
+
+        var lat = parseFloat(mapEl.getAttribute('data-lat'));
+        var lng = parseFloat(mapEl.getAttribute('data-lng'));
+        var label = mapEl.getAttribute('data-label') || '';
+
+        if (isNaN(lat) || isNaN(lng)) {
+            // Fallback coordinates (Belo Horizonte)
+            lat = -19.9245;
+            lng = -43.9352;
+            label = label || 'Belo Horizonte, MG';
+        }
+
+        var loadingEl = document.getElementById('map-loading');
+        if (loadingEl) {
+            loadingEl.classList.remove('d-none');
+        }
+
+        var map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v11',
+            center: [lng, lat],
+            zoom: 11,
+        });
+
+        map.on('load', function() {
+            if (loadingEl) { loadingEl.classList.add('d-none'); }
+        });
+
+        var marker = new mapboxgl.Marker({ color: '#3b82f6' })
+            .setLngLat([lng, lat])
+            .addTo(map);
+
+        if (label) {
+            var popup = new mapboxgl.Popup({ offset: 25 })
+                .setText(label);
+            marker.setPopup(popup);
+        }
+    } catch (e) {
+        console.error('Error initializing Mapbox map:', e);
+    }
+}
+
+// Inicializa o mapa quando o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', initMap);

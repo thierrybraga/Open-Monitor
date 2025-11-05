@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 
 from flask import Blueprint, jsonify, request, Response
+from flask import current_app
 from sqlalchemy import func, desc, or_, text
 # Função auxiliar para validação de parâmetros de paginação
 def validate_pagination_params(page, per_page):
@@ -26,6 +27,12 @@ from app.models.vulnerability import Vulnerability
 from app.models.references import Reference
 from app.services.vulnerability_service import VulnerabilityService
 
+# Optional Redis-based cache
+try:
+    from app.services.redis_cache_service import RedisCacheService
+except Exception:
+    RedisCacheService = None
+
 # Configure logger
 logger = logging.getLogger(__name__)
 
@@ -37,86 +44,248 @@ analytics_api_bp = Blueprint('analytics_api', __name__, url_prefix='/api/analyti
 def get_analytics_overview() -> Response:
     """Get overview analytics data including counts and distributions."""
     try:
+        # Initialize cache if available
+        cache = None
+        if RedisCacheService and current_app:
+            redis_config = {
+                'REDIS_CACHE_ENABLED': current_app.config.get('REDIS_CACHE_ENABLED', True),
+                'REDIS_URL': current_app.config.get('REDIS_URL', 'redis://localhost:6379/0'),
+                'REDIS_HOST': current_app.config.get('REDIS_HOST', 'localhost'),
+                'REDIS_PORT': current_app.config.get('REDIS_PORT', 6379),
+                'REDIS_DB': current_app.config.get('REDIS_DB', 0),
+                'REDIS_PASSWORD': current_app.config.get('REDIS_PASSWORD'),
+                'CACHE_DEFAULT_TTL': current_app.config.get('ANALYTICS_CACHE_TTL', 900),
+                'CACHE_MAX_TTL': current_app.config.get('CACHE_MAX_TTL', 86400),
+                'CACHE_KEY_PREFIX': current_app.config.get('CACHE_KEY_PREFIX', 'analytics_cache:'),
+                'CACHE_USE_COMPRESSION': current_app.config.get('CACHE_USE_COMPRESSION', True),
+                'CACHE_COMPRESSION_THRESHOLD': current_app.config.get('CACHE_COMPRESSION_THRESHOLD', 1024)
+            }
+            try:
+                cache = RedisCacheService(redis_config)
+            except Exception:
+                cache = None
         session = db.session
         vuln_service = VulnerabilityService(session)
-        
-        # Get basic counts
-        counts = vuln_service.get_dashboard_counts()
-        
-        # Calculate patched vs unpatched using real patch_available data
-        from datetime import datetime, timedelta
-        
-        # Get real patch status from patch_available field
-        patched_cves = session.query(Vulnerability).filter(
-            Vulnerability.patch_available == True
-        ).count()
-        
-        unpatched_cves = session.query(Vulnerability).filter(
-            Vulnerability.patch_available == False
-        ).count()
-        
-        # Handle cases where patch_available is None (not yet processed)
-        unknown_patch_status = counts.get('total', 0) - patched_cves - unpatched_cves
-        
-        # Calculate additional metrics
-        avg_cvss = session.query(func.avg(Vulnerability.cvss_score)).scalar() or 0.0
-        
-        # Calculate average exploitability score using direct SQL
+
+        # Build base query and apply vendor preference filter if present
+        from flask_login import current_user
+        from app.models.sync_metadata import SyncMetadata
+        from app.models.cve_vendor import CVEVendor
+        from app.models.cve_product import CVEProduct
+        from app.models.weakness import Weakness
         from sqlalchemy import text
+        # Models used for accurate product counting
+        from app.models.version_reference import VersionReference
+        from app.models.product import Product
+
+        # Determine selected vendors: prefer explicit query param vendor_ids (supports repeated and comma-separated), else user preferences
+        selected_vendor_ids: List[int] = []
         try:
-            # First try to get from CVSSMetric table
-            result = session.execute(text(
-                "SELECT AVG(exploitability_score) FROM cvss_metrics WHERE exploitability_score IS NOT NULL"
-            ))
-            avg_exploit_from_metrics = result.scalar()
-            
+            raw_multi = request.args.getlist('vendor_ids')
+            vendor_param = request.args.get('vendor_ids')
+            raw_single = request.args.get('vendor')
+            explicit_ids: List[int] = []
+            for v in raw_multi or []:
+                for p in str(v).split(','):
+                    p = p.strip()
+                    if p.isdigit():
+                        explicit_ids.append(int(p))
+            if vendor_param:
+                for p in str(vendor_param).split(','):
+                    p = p.strip()
+                    if p.isdigit():
+                        explicit_ids.append(int(p))
+            if raw_single:
+                for p in str(raw_single).split(','):
+                    p = p.strip()
+                    if p.isdigit():
+                        explicit_ids.append(int(p))
+            if explicit_ids:
+                selected_vendor_ids = sorted(list(set(explicit_ids)))
+        except Exception:
+            selected_vendor_ids = []
+
+        # Cache: build key and try to return cached response
+        cache_key = None
+        if cache:
+            try:
+                if selected_vendor_ids:
+                    vendor_key = 'vendors:' + ','.join(str(v) for v in selected_vendor_ids)
+                else:
+                    vendor_key = 'vendors:all'
+                cache_key = f"overview:{vendor_key}"
+                cached = cache.get(cache_key, namespace='analytics')
+                if cached:
+                    return jsonify(cached), 200
+            except Exception:
+                pass
+
+        # If no vendor_ids passed explicitly, fall back to authenticated user preferences
+        try:
+            if not selected_vendor_ids and current_user.is_authenticated:
+                key = f'user_vendor_preferences:{current_user.id}'
+                pref = session.query(SyncMetadata).filter_by(key=key).first()
+                if pref and pref.value:
+                    selected_vendor_ids = [int(x) for x in pref.value.split(',') if x.strip().isdigit()]
+        except Exception:
+            # Keep selected_vendor_ids as is (likely empty)
+            pass
+
+        # Build base query and apply vendor filter using unified logic (vendors and products from vendor)
+        base_query = session.query(Vulnerability)
+        if selected_vendor_ids:
+            try:
+                # Use union of CVEs associated directly to vendor and via products from vendor
+                from sqlalchemy import union
+                from app.models.product import Product
+                cves_por_vendor = (
+                    session
+                    .query(CVEVendor.cve_id)
+                    .filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+                )
+                cves_por_produto_vendor = (
+                    session
+                    .query(CVEProduct.cve_id)
+                    .join(Product, Product.id == CVEProduct.product_id)
+                    .filter(Product.vendor_id.in_(selected_vendor_ids))
+                )
+                cves_unificados_sq = union(cves_por_vendor, cves_por_produto_vendor).subquery()
+                base_query = base_query.filter(
+                    Vulnerability.cve_id.in_(session.query(cves_unificados_sq.c.cve_id))
+                ).distinct()
+            except Exception:
+                # Fallback robust: apply filter via direct joins
+                base_query = (
+                    base_query
+                    .outerjoin(CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id)
+                    .outerjoin(CVEProduct, CVEProduct.cve_id == Vulnerability.cve_id)
+                    .outerjoin(Product, Product.id == CVEProduct.product_id)
+                    .filter(or_(CVEVendor.vendor_id.in_(selected_vendor_ids), Product.vendor_id.in_(selected_vendor_ids)))
+                    .distinct()
+                )
+        
+        # Calculate patched vs unpatched using vendor-scoped base query
+        patched_cves = base_query.filter(Vulnerability.patch_available == True).count()
+        unpatched_cves = base_query.filter(
+            or_(
+                Vulnerability.patch_available == False,
+                Vulnerability.patch_available.is_(None)
+            )
+        ).count()
+        
+        # Calculate additional metrics using vendor-scoped base query
+        avg_cvss = base_query.with_entities(func.avg(Vulnerability.cvss_score)).scalar() or 0.0
+        
+        # Calculate average exploitability score vendor-scoped
+        try:
+            from app.models.cvss_metric import CVSSMetric
+            avg_exploit_query = (
+                session.query(func.avg(CVSSMetric.exploitability_score))
+                .join(Vulnerability, Vulnerability.cve_id == CVSSMetric.cve_id)
+                .filter(CVSSMetric.exploitability_score.isnot(None))
+            )
+            if selected_vendor_ids:
+                try:
+                    # Align exploitability scoping to unified vendor filter
+                    from sqlalchemy import union
+                    from app.models.product import Product
+                    cves_por_vendor = (
+                        session
+                        .query(CVEVendor.cve_id)
+                        .filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+                    )
+                    cves_por_produto_vendor = (
+                        session
+                        .query(CVEProduct.cve_id)
+                        .join(Product, Product.id == CVEProduct.product_id)
+                        .filter(Product.vendor_id.in_(selected_vendor_ids))
+                    )
+                    cves_unificados_sq = union(cves_por_vendor, cves_por_produto_vendor).subquery()
+                    avg_exploit_query = avg_exploit_query.filter(
+                        Vulnerability.cve_id.in_(session.query(cves_unificados_sq.c.cve_id))
+                    ).distinct()
+                except Exception:
+                    avg_exploit_query = avg_exploit_query.join(CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id)\
+                        .filter(CVEVendor.vendor_id.in_(selected_vendor_ids))\
+                        .distinct()
+            avg_exploit_from_metrics = avg_exploit_query.scalar()
             if avg_exploit_from_metrics:
                 avg_exploit = round(float(avg_exploit_from_metrics), 2)
             else:
-                # Fallback: calculate as 80% of CVSS score
-                avg_exploit_calc = session.query(func.avg(Vulnerability.cvss_score * 0.8)).scalar()
+                avg_exploit_calc = base_query.with_entities(func.avg(Vulnerability.cvss_score * 0.8)).scalar()
                 avg_exploit = round(float(avg_exploit_calc), 2) if avg_exploit_calc else 0.0
         except Exception as e:
             logger.error(f"Error calculating exploitability score: {e}")
-            # Fallback: calculate as 80% of CVSS score
-            avg_exploit_calc = session.query(func.avg(Vulnerability.cvss_score * 0.8)).scalar()
+            avg_exploit_calc = base_query.with_entities(func.avg(Vulnerability.cvss_score * 0.8)).scalar()
             avg_exploit = round(float(avg_exploit_calc), 2) if avg_exploit_calc else 0.0
         
-        # Calculate active threats (critical vulnerabilities from last 30 days)
-        recent_date = datetime.now() - timedelta(days=30)
-        active_threats = session.query(Vulnerability).filter(
-            Vulnerability.base_severity == 'CRITICAL',
-            Vulnerability.published_date >= recent_date
+        # Calculate active threats using CISA KEV inclusion (exploited vulnerabilities)
+        # Vendor scoping is already applied via base_query
+        active_threats = base_query.filter(
+            Vulnerability.cisa_exploit_add.isnot(None)
         ).count()
         
-        # Count unique vendors and products using direct NVD data
-        from app.models.weakness import Weakness
+        # Count vendors/products/cwes with preferences when present
+        if selected_vendor_ids:
+            vendor_count = len(selected_vendor_ids)
+            try:
+                # Accurate product count: distinct products affected and correctly associated to vendor
+                # Using VersionReference joined with Product and filtering by Product.vendor_id
+                product_count = (
+                    session.query(func.count(func.distinct(VersionReference.product_id)))
+                    .join(Product, Product.id == VersionReference.product_id)
+                    .filter(Product.vendor_id.in_(selected_vendor_ids))
+                    .scalar() or 0
+                )
+            except Exception:
+                product_count = 0
+            try:
+                # Count CWEs for CVEs scoped by unified vendor filter
+                from sqlalchemy import union
+                from app.models.product import Product
+                cves_por_vendor = (
+                    session
+                    .query(CVEVendor.cve_id)
+                    .filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+                )
+                cves_por_produto_vendor = (
+                    session
+                    .query(CVEProduct.cve_id)
+                    .join(Product, Product.id == CVEProduct.product_id)
+                    .filter(Product.vendor_id.in_(selected_vendor_ids))
+                )
+                cves_unificados_sq = union(cves_por_vendor, cves_por_produto_vendor).subquery()
+                cwe_count = (
+                    session.query(func.count(func.distinct(Weakness.cwe_id)))
+                    .join(Vulnerability, Vulnerability.cve_id == Weakness.cve_id)
+                    .filter(Vulnerability.cve_id.in_(session.query(cves_unificados_sq.c.cve_id)))
+                    .scalar() or 0
+                )
+            except Exception:
+                cwe_count = 0
+        else:
+            # Fallback original counts (no vendor selection)
+            vendor_count = session.execute(text("""
+                SELECT COUNT(DISTINCT vendor_data.value) as vendor_count
+                FROM vulnerabilities vuln,
+                     json_each(vuln.nvd_vendors_data) as vendor_data
+                WHERE vuln.nvd_vendors_data IS NOT NULL 
+                  AND vendor_data.value IS NOT NULL 
+                  AND vendor_data.value != ''
+            """)).scalar() or 0
+            product_count = session.execute(text("""
+                SELECT COUNT(DISTINCT product_data.value) as product_count
+                FROM vulnerabilities vuln,
+                     json_each(vuln.nvd_products_data) as product_data
+                WHERE vuln.nvd_products_data IS NOT NULL 
+                  AND product_data.value IS NOT NULL 
+                  AND product_data.value != ''
+            """)).scalar() or 0
+            cwe_count = session.query(func.count(func.distinct(Weakness.cwe_id))).scalar() or 0
         
-        # Count vendors from JSON data
-        vendor_count_result = session.execute(text("""
-            SELECT COUNT(DISTINCT vendor_data.value) as vendor_count
-            FROM vulnerabilities vuln,
-                 json_each(vuln.nvd_vendors_data) as vendor_data
-            WHERE vuln.nvd_vendors_data IS NOT NULL 
-              AND vendor_data.value IS NOT NULL 
-              AND vendor_data.value != ''
-        """)).scalar() or 0
-        
-        # Count products from JSON data
-        product_count_result = session.execute(text("""
-            SELECT COUNT(DISTINCT product_data.value) as product_count
-            FROM vulnerabilities vuln,
-                 json_each(vuln.nvd_products_data) as product_data
-            WHERE vuln.nvd_products_data IS NOT NULL 
-              AND product_data.value IS NOT NULL 
-              AND product_data.value != ''
-        """)).scalar() or 0
-        
-        vendor_count = vendor_count_result
-        product_count = product_count_result
-        cwe_count = session.query(func.count(func.distinct(Weakness.cwe_id))).scalar() or 0
-        
-        # Calculate patch coverage percentage
+        # Calculate patch coverage percentage using the same total as overview counts
+        # Recompute counts with explicit vendor_ids to ensure alignment
+        counts = vuln_service.get_dashboard_counts(selected_vendor_ids or None)
         total_cves = counts.get('total', 0)
         patch_coverage = (patched_cves / total_cves * 100) if total_cves > 0 else 0.0
         
@@ -143,7 +312,23 @@ def get_analytics_overview() -> Response:
             }
         }
         
-        return jsonify(overview_data), 200
+        # Store in cache
+        try:
+            if cache and cache_key:
+                ttl = current_app.config.get('ANALYTICS_CACHE_TTL', 900)
+                cache.set(cache_key, overview_data, ttl=ttl, namespace='analytics')
+        except Exception:
+            pass
+
+        # Add short-term client cache headers to leverage browser caching
+        resp = jsonify(overview_data)
+        try:
+            # Prefer cache_control properties for reliable header formatting
+            resp.cache_control.public = True
+            resp.cache_control.max_age = 120
+        except Exception:
+            pass
+        return resp, 200
         
     except Exception as e:
         logger.error(f"Error fetching analytics overview: {e}", exc_info=True)
@@ -160,18 +345,89 @@ def get_analytics_details(category: str) -> Response:
     logger.info(f"get_analytics_details called with category: {category}")
     try:
         session = db.session
-        
-        # Validação robusta de parâmetros
+        # Prepare cache
+        cache = None
+        if RedisCacheService and current_app:
+            redis_config = {
+                'REDIS_CACHE_ENABLED': current_app.config.get('REDIS_CACHE_ENABLED', True),
+                'REDIS_URL': current_app.config.get('REDIS_URL', 'redis://localhost:6379/0'),
+                'REDIS_HOST': current_app.config.get('REDIS_HOST', 'localhost'),
+                'REDIS_PORT': current_app.config.get('REDIS_PORT', 6379),
+                'REDIS_DB': current_app.config.get('REDIS_DB', 0),
+                'REDIS_PASSWORD': current_app.config.get('REDIS_PASSWORD'),
+                'CACHE_DEFAULT_TTL': current_app.config.get('ANALYTICS_CACHE_TTL', 900),
+                'CACHE_MAX_TTL': current_app.config.get('CACHE_MAX_TTL', 86400),
+                'CACHE_KEY_PREFIX': current_app.config.get('CACHE_KEY_PREFIX', 'analytics_cache:'),
+                'CACHE_USE_COMPRESSION': current_app.config.get('CACHE_USE_COMPRESSION', True),
+                'CACHE_COMPRESSION_THRESHOLD': current_app.config.get('CACHE_COMPRESSION_THRESHOLD', 1024)
+            }
+            try:
+                cache = RedisCacheService(redis_config)
+            except Exception:
+                cache = None
+        # Validar categoria permitida
+        allowed_categories = {
+            'test_simple',
+            'top_products',
+            'top_cwes',
+            'severity_distribution',
+            'patch_status',
+            'latest_cves',
+            'cve_history'
+        }
+        if category not in allowed_categories:
+            return jsonify({
+                'success': False,
+                'error': 'Categoria inválida',
+                'allowed': sorted(list(allowed_categories))
+            }), 400
+        # Carregar preferências de vendor do usuário e aceitar vendor_ids via query
+        selected_vendor_ids: List[int] = []
+        selected_vendor_names: List[str] = []
         try:
-            page = int(request.args.get('page', 1))
-            per_page = int(request.args.get('per_page', 10))
-        except (ValueError, TypeError):
-            page = 1
-            per_page = 10
+            from flask_login import current_user
+            from app.models.sync_metadata import SyncMetadata
+            from app.models.vendor import Vendor
+            # Preferências do usuário autenticado
+            if current_user.is_authenticated:
+                key = f'user_vendor_preferences:{current_user.id}'
+                pref = session.query(SyncMetadata).filter_by(key=key).first()
+                if pref and pref.value:
+                    selected_vendor_ids = [int(x) for x in pref.value.split(',') if x.strip().isdigit()]
+            # vendor_ids explícitos na URL têm prioridade
+            try:
+                raw_multi = request.args.getlist('vendor_ids')
+                raw_single = request.args.get('vendor', '')
+                explicit_ids: List[int] = []
+                for v in raw_multi:
+                    parts = str(v).split(',')
+                    for p in parts:
+                        p = p.strip()
+                        if p.isdigit():
+                            explicit_ids.append(int(p))
+                if raw_single:
+                    for p in str(raw_single).split(','):
+                        p = p.strip()
+                        if p.isdigit():
+                            explicit_ids.append(int(p))
+                if explicit_ids:
+                    selected_vendor_ids = sorted(list(set(explicit_ids)))
+            except Exception:
+                pass
+            if selected_vendor_ids:
+                # Obter nomes dos vendors para filtrar consultas baseadas em JSON
+                selected_vendor_names = [v.name for v in session.query(Vendor).filter(Vendor.id.in_(selected_vendor_ids)).all()]
+        except Exception:
+            selected_vendor_ids = []
+            selected_vendor_names = []
         
-        # Garantir valores válidos
-        page = max(1, page)
-        per_page = min(max(1, per_page), 100)
+        # Validação robusta de parâmetros de paginação
+        try:
+            req_page = request.args.get('page', 1, type=int)
+            req_per_page = request.args.get('per_page', 10, type=int)
+        except Exception:
+            req_page, req_per_page = 1, 10
+        page, per_page = validate_pagination_params(req_page, req_per_page)
         
         if category == 'test_simple':
             # Ultra simple test case
@@ -192,24 +448,34 @@ def get_analytics_details(category: str) -> Response:
                 trend_previous_end = datetime.now() - timedelta(days=90)
                 
                 # Enhanced query to extract products and calculate all required metrics
-                query = text("""
+                # Construir filtros condicionais por vendor usando associação via CVEVendor (cv.vendor_id)
+                vendor_filter_clause = ""
+                vendor_params: Dict[str, Any] = {}
+                if selected_vendor_ids:
+                    placeholders = []
+                    for idx, vid in enumerate(selected_vendor_ids):
+                        key = f"vid_{idx}"
+                        placeholders.append(f":{key}")
+                        vendor_params[key] = vid
+                    vendor_filter_clause = f" AND cv.vendor_id IN ({', '.join(placeholders)})"
+
+                sql_query = """
                     WITH product_cves AS (
                         SELECT 
                             v.cve_id,
-                            json_each.value as product_name,
-                            CASE 
-                                WHEN v.nvd_vendors_data IS NOT NULL 
-                                THEN json_extract(v.nvd_vendors_data, '$[0]')
-                                ELSE 'Unknown'
-                            END as vendor_name,
+                            p.name as product_name,
+                            ven.name as vendor_name,
                             v.cvss_score,
                             v.base_severity,
                             v.published_date,
                             v.patch_available
-                        FROM vulnerabilities v, json_each(v.nvd_products_data)
-                        WHERE v.nvd_products_data IS NOT NULL 
-                        AND v.nvd_products_data != '[]'
-                        AND v.nvd_products_data != 'null'
+                        FROM vulnerabilities v
+                        JOIN cve_products cp ON cp.cve_id = v.cve_id
+                        JOIN product p ON p.id = cp.product_id
+                        JOIN cve_vendors cv ON cv.cve_id = v.cve_id
+                        JOIN vendor ven ON ven.id = cv.vendor_id
+                        WHERE 1=1
+                        {vendor_filter}
                     ),
                     product_metrics AS (
                         SELECT 
@@ -259,42 +525,60 @@ def get_analytics_details(category: str) -> Response:
                     FROM product_metrics
                     ORDER BY total_cves DESC
                     LIMIT :limit OFFSET :offset
-                """)
+                """
                 
                 # Count total unique products for pagination
-                count_query = text("""
+                sql_count = """
                     WITH product_cves AS (
                         SELECT 
-                            json_each.value as product_name,
-                            CASE 
-                                WHEN nvd_vendors_data IS NOT NULL 
-                                THEN json_extract(nvd_vendors_data, '$[0]')
-                                ELSE 'Unknown'
-                            END as vendor_name
-                        FROM vulnerabilities, json_each(vulnerabilities.nvd_products_data)
-                        WHERE nvd_products_data IS NOT NULL 
-                        AND nvd_products_data != '[]'
-                        AND nvd_products_data != 'null'
+                            p.name as product_name,
+                            ven.name as vendor_name
+                        FROM vulnerabilities v
+                        JOIN cve_products cp ON cp.cve_id = v.cve_id
+                        JOIN product p ON p.id = cp.product_id
+                        JOIN cve_vendors cv ON cv.cve_id = v.cve_id
+                        JOIN vendor ven ON ven.id = cv.vendor_id
+                        WHERE 1=1
+                        {vendor_filter}
                     )
                     SELECT COUNT(DISTINCT product_name || '|' || vendor_name) as total
                     FROM product_cves
-                """)
+                """
                 
                 # Calculate offset for pagination
                 offset = (page - 1) * per_page
+
+                # Cache key for top_products (vendors + pagination)
+                cache_key = None
+                if cache:
+                    try:
+                        if selected_vendor_ids:
+                            vendor_key = 'vendors:' + ','.join(str(v) for v in selected_vendor_ids)
+                        else:
+                            vendor_key = 'vendors:all'
+                        cache_key = f"top_products:{vendor_key}:page:{page}:pp:{per_page}"
+                        cached = cache.get(cache_key, namespace='analytics')
+                        if cached:
+                            return jsonify(cached), 200
+                    except Exception:
+                        pass
                 
                 # Execute count query
-                total_count = session.execute(count_query).scalar()
+                sql_count_final = sql_count.format(vendor_filter=vendor_filter_clause)
+                total_count = session.execute(text(sql_count_final), vendor_params).scalar()
                 
                 # Execute main query with date parameters
-                results = session.execute(query, {
+                query_final = text(sql_query.format(vendor_filter=vendor_filter_clause))
+                params = {
                     'limit': per_page,
                     'offset': offset,
                     'recent_date': recent_date,
                     'trend_current_start': trend_current_start,
                     'trend_previous_start': trend_previous_start,
-                    'trend_previous_end': trend_previous_end
-                }).fetchall()
+                    'trend_previous_end': trend_previous_end,
+                    **vendor_params
+                }
+                results = session.execute(query_final, params).fetchall()
                 
                 # Helper functions for enhanced data formatting
                 def get_risk_level_and_icon(risk_score):
@@ -402,6 +686,18 @@ def get_analytics_details(category: str) -> Response:
                     'has_prev': page > 1,
                     'has_next': page < total_pages
                 }
+
+                # Store in cache
+                try:
+                    if cache and cache_key:
+                        ttl = current_app.config.get('ANALYTICS_CACHE_TTL', 900)
+                        payload = {
+                            'data': data,
+                            'pagination': pagination
+                        }
+                        cache.set(cache_key, payload, ttl=ttl, namespace='analytics')
+                except Exception:
+                    pass
             except Exception as e:
                 logger.error(f"Error in top_products: {str(e)}", exc_info=True)
                 return jsonify({'error': f'Database error: {str(e)}'}), 500
@@ -409,27 +705,46 @@ def get_analytics_details(category: str) -> Response:
         elif category == 'top_cwes':
             # Get top CWEs by CVE count using the weakness table
             from app.models.weakness import Weakness
+            from app.models.vulnerability import Vulnerability
             from sqlalchemy import func, desc
             
             # Get total count for pagination - check if weakness table has data
-            total_count = session.query(
-                func.count(func.distinct(Weakness.cwe_id))
-            ).filter(
+            base_weakness_query = session.query(Weakness).filter(
                 Weakness.cwe_id.isnot(None),
                 Weakness.cwe_id != ''
-            ).scalar()
+            )
+            if selected_vendor_ids:
+                from app.models.cve_vendor import CVEVendor
+                base_weakness_query = base_weakness_query.join(
+                    Vulnerability, Vulnerability.cve_id == Weakness.cve_id
+                ).join(
+                    CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id
+                ).filter(
+                    CVEVendor.vendor_id.in_(selected_vendor_ids)
+                ).distinct()
+            total_count = base_weakness_query.with_entities(func.count(func.distinct(Weakness.cwe_id))).scalar()
             
             # Calculate offset
             offset = (page - 1) * per_page
             
             # Query the weakness table for CWE data
-            results = session.query(
+            results_query = session.query(
                 Weakness.cwe_id,
                 func.count(Weakness.cve_id).label('count')
             ).filter(
                 Weakness.cwe_id.isnot(None),
                 Weakness.cwe_id != ''
-            ).group_by(
+            )
+            if selected_vendor_ids:
+                from app.models.cve_vendor import CVEVendor
+                results_query = results_query.join(
+                    Vulnerability, Vulnerability.cve_id == Weakness.cve_id
+                ).join(
+                    CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id
+                ).filter(
+                    CVEVendor.vendor_id.in_(selected_vendor_ids)
+                ).distinct()
+            results = results_query.group_by(
                 Weakness.cwe_id
             ).order_by(
                 desc('count')
@@ -453,14 +768,20 @@ def get_analytics_details(category: str) -> Response:
             
         elif category == 'severity_distribution':
             # Get severity distribution data for pie chart
-            results = db.session.query(
-            Vulnerability.base_severity,
-            func.count(Vulnerability.cve_id).label('count')
-        ).filter(
-            Vulnerability.base_severity.isnot(None)
-        ).group_by(
-            Vulnerability.base_severity
-        ).all()
+            query = db.session.query(
+                Vulnerability.base_severity,
+                func.count(Vulnerability.cve_id).label('count')
+            ).filter(
+                Vulnerability.base_severity.isnot(None)
+            )
+            if selected_vendor_ids:
+                from app.models.cve_vendor import CVEVendor
+                query = query.join(CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id).filter(
+                    CVEVendor.vendor_id.in_(selected_vendor_ids)
+                ).distinct()
+            results = query.group_by(
+                Vulnerability.base_severity
+            ).all()
             
             data = [{
                 'label': result.base_severity or 'Unknown',
@@ -471,11 +792,14 @@ def get_analytics_details(category: str) -> Response:
             # Get patch status distribution for pie chart
             # Consider CVEs older than 90 days as "patched" and newer/critical ones as "unpatched"
             # Use real patch_available field instead of proxy logic
-            patched_count = session.query(Vulnerability).filter(
-                Vulnerability.patch_available == True
-            ).count()
-            
-            unpatched_count = session.query(Vulnerability).filter(
+            base = session.query(Vulnerability)
+            if selected_vendor_ids:
+                from app.models.cve_vendor import CVEVendor
+                base = base.join(CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id).filter(
+                    CVEVendor.vendor_id.in_(selected_vendor_ids)
+                ).distinct()
+            patched_count = base.filter(Vulnerability.patch_available == True).count()
+            unpatched_count = base.filter(
                 or_(
                     Vulnerability.patch_available == False,
                     Vulnerability.patch_available.is_(None)
@@ -505,7 +829,7 @@ def get_analytics_details(category: str) -> Response:
                 'patch_status': 'Patched' if vuln.patch_available else 'Unpatched'
             } for vuln in results]
             
-            return jsonify({
+            resp = jsonify({
                 'data': data,
                 'pagination': {
                     'page': page,
@@ -513,7 +837,14 @@ def get_analytics_details(category: str) -> Response:
                     'total': total_count,
                     'pages': (total_count + per_page - 1) // per_page
                 }
-            }), 200
+            })
+            try:
+                # Prefer cache_control properties for reliable header formatting
+                resp.cache_control.public = True
+                resp.cache_control.max_age = 60
+            except Exception:
+                pass
+            return resp, 200
             
         else:
             return jsonify({'error': f'Unknown category: {category}'}), 400
@@ -523,7 +854,14 @@ def get_analytics_details(category: str) -> Response:
         if (category == 'top_products' or category == 'top_cwes' or category == 'test_simple') and 'pagination' in locals():
             response_data['pagination'] = pagination
             
-        return jsonify(response_data), 200
+        resp = jsonify(response_data)
+        try:
+            # Prefer cache_control properties for reliable header formatting
+            resp.cache_control.public = True
+            resp.cache_control.max_age = 120
+        except Exception:
+            pass
+        return resp, 200
         
     except Exception as e:
         logger.error(f"Error fetching analytics details for {category}: {e}", exc_info=True)
@@ -561,11 +899,38 @@ def get_timeseries_data(metric_id: str) -> Response:
         if metric_id == 'cve_history':
             # Get CVE count by day - using simple approach
             try:
-                # Get all vulnerabilities in date range
-                vulnerabilities = session.query(Vulnerability).filter(
+                # Build base query within date range
+                query = session.query(Vulnerability).filter(
                     Vulnerability.published_date >= datetime.combine(start_date, datetime.min.time()),
                     Vulnerability.published_date <= datetime.combine(end_date, datetime.max.time())
-                ).all()
+                )
+
+                # Apply user vendor preferences if present
+                try:
+                    from flask_login import current_user
+                    from app.models.sync_metadata import SyncMetadata
+                    from app.models.cve_vendor import CVEVendor
+                    # Prefer explicit vendor_ids from query string; fallback to user preferences
+                    selected_vendor_ids = []
+                    vendor_ids_param = request.args.get('vendor_ids')
+                    if vendor_ids_param:
+                        selected_vendor_ids = [int(x) for x in vendor_ids_param.split(',') if x.strip().isdigit()]
+                    if current_user.is_authenticated:
+                        key = f'user_vendor_preferences:{current_user.id}'
+                        pref = session.query(SyncMetadata).filter_by(key=key).first()
+                        if not selected_vendor_ids and pref and pref.value:
+                            selected_vendor_ids = [int(x) for x in pref.value.split(',') if x.strip().isdigit()]
+                    if selected_vendor_ids:
+                        query = (
+                            query
+                            .join(CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id)
+                            .filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+                            .distinct()
+                        )
+                except Exception:
+                    pass
+
+                vulnerabilities = query.all()
                 
                 # Group by date manually
                 date_counts = {}
@@ -615,12 +980,34 @@ def get_severity_distribution() -> Response:
     try:
         session = db.session
         
-        # Get severity counts
+        # Base query with optional vendor preference filtering
+        base_query = session.query(Vulnerability)
+        try:
+            from flask_login import current_user
+            from app.models.sync_metadata import SyncMetadata
+            from app.models.cve_vendor import CVEVendor
+            selected_vendor_ids = []
+            if current_user.is_authenticated:
+                key = f'user_vendor_preferences:{current_user.id}'
+                pref = session.query(SyncMetadata).filter_by(key=key).first()
+                if pref and pref.value:
+                    selected_vendor_ids = [int(x) for x in pref.value.split(',') if x.strip().isdigit()]
+            if selected_vendor_ids:
+                base_query = (
+                    base_query
+                    .join(CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id)
+                    .filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+                    .distinct()
+                )
+        except Exception:
+            pass
+
+        # Get severity counts using filtered base query when applicable
         severity_counts = {
-            'CRITICAL': session.query(Vulnerability).filter(Vulnerability.base_severity == 'CRITICAL').count(),
-            'HIGH': session.query(Vulnerability).filter(Vulnerability.base_severity == 'HIGH').count(),
-            'MEDIUM': session.query(Vulnerability).filter(Vulnerability.base_severity == 'MEDIUM').count(),
-            'LOW': session.query(Vulnerability).filter(Vulnerability.base_severity == 'LOW').count()
+            'CRITICAL': base_query.filter(Vulnerability.base_severity == 'CRITICAL').count(),
+            'HIGH': base_query.filter(Vulnerability.base_severity == 'HIGH').count(),
+            'MEDIUM': base_query.filter(Vulnerability.base_severity == 'MEDIUM').count(),
+            'LOW': base_query.filter(Vulnerability.base_severity == 'LOW').count()
         }
         
         # Format data for Chart.js
@@ -654,16 +1041,38 @@ def get_patch_status() -> Response:
     """Get patch status data for pie chart using real patch_available data."""
     try:
         session = db.session
+
+        # Base query with optional vendor preference filtering
+        base_query = session.query(Vulnerability)
+        try:
+            from flask_login import current_user
+            from app.models.sync_metadata import SyncMetadata
+            from app.models.cve_vendor import CVEVendor
+            selected_vendor_ids = []
+            if current_user.is_authenticated:
+                key = f'user_vendor_preferences:{current_user.id}'
+                pref = session.query(SyncMetadata).filter_by(key=key).first()
+                if pref and pref.value:
+                    selected_vendor_ids = [int(x) for x in pref.value.split(',') if x.strip().isdigit()]
+            if selected_vendor_ids:
+                base_query = (
+                    base_query
+                    .join(CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id)
+                    .filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+                    .distinct()
+                )
+        except Exception:
+            pass
+
+        # Get total CVEs using filtered base query
+        total_cves = base_query.count()
         
-        # Get total CVEs
-        total_cves = session.query(Vulnerability).count()
-        
-        # Get real patch status from patch_available field
-        patched_cves = session.query(Vulnerability).filter(
+        # Get real patch status from patch_available field using filtered base query
+        patched_cves = base_query.filter(
             Vulnerability.patch_available == True
         ).count()
         
-        unpatched_cves = session.query(Vulnerability).filter(
+        unpatched_cves = base_query.filter(
             Vulnerability.patch_available == False
         ).count()
         
@@ -830,18 +1239,36 @@ def get_top_vendors() -> Response:
         session = db.session
         limit = request.args.get('limit', 10, type=int)
         
-        # Apply vendor preferences if present; otherwise use JSON counts
+        # Accept explicit vendor_ids via query (alias 'vendor'), fallback to authenticated preferences
         from flask_login import current_user
         from app.models.sync_metadata import SyncMetadata
         from app.models.cve_vendor import CVEVendor
         from app.models.vendor import Vendor
         selected_vendor_ids: List[int] = []
         try:
-            if current_user.is_authenticated:
-                key = f'user_vendor_preferences:{current_user.id}'
-                pref = session.query(SyncMetadata).filter_by(key=key).first()
-                if pref and pref.value:
-                    selected_vendor_ids = [int(x) for x in pref.value.split(',') if x.strip().isdigit()]
+            # Parse explicit vendor_ids from query (supports repeated and comma-separated)
+            raw_multi = request.args.getlist('vendor_ids')
+            raw_alias = request.args.get('vendor', '')
+            explicit_ids: List[int] = []
+            for v in raw_multi:
+                for p in str(v).split(','):
+                    p = p.strip()
+                    if p.isdigit():
+                        explicit_ids.append(int(p))
+            if raw_alias:
+                for p in str(raw_alias).split(','):
+                    p = p.strip()
+                    if p.isdigit():
+                        explicit_ids.append(int(p))
+            if explicit_ids:
+                selected_vendor_ids = sorted(list(set(explicit_ids)))
+            else:
+                # Fallback to user preferences when authenticated
+                if current_user.is_authenticated:
+                    key = f'user_vendor_preferences:{current_user.id}'
+                    pref = session.query(SyncMetadata).filter_by(key=key).first()
+                    if pref and pref.value:
+                        selected_vendor_ids = [int(x) for x in pref.value.split(',') if x.strip().isdigit()]
         except Exception:
             selected_vendor_ids = []
 
@@ -898,14 +1325,33 @@ def get_top_products() -> Response:
         from app.models.sync_metadata import SyncMetadata
         from app.models.cve_vendor import CVEVendor
         query = session.query(Vulnerability.cve_id, Vulnerability.description)
-        # Apply vendor preferences if present
+        # Aplicar vendor_ids: prioridade para query string; fallback para preferências
         selected_vendor_ids: List[int] = []
         try:
-            if current_user.is_authenticated:
-                key = f'user_vendor_preferences:{current_user.id}'
-                pref = session.query(SyncMetadata).filter_by(key=key).first()
-                if pref and pref.value:
-                    selected_vendor_ids = [int(x) for x in pref.value.split(',') if x.strip().isdigit()]
+            # vendor_ids explícitos na URL
+            raw_multi = request.args.getlist('vendor_ids')
+            raw_single = request.args.get('vendor', '')
+            explicit_ids: List[int] = []
+            for v in raw_multi:
+                parts = str(v).split(',')
+                for p in parts:
+                    p = p.strip()
+                    if p.isdigit():
+                        explicit_ids.append(int(p))
+            if raw_single:
+                for p in str(raw_single).split(','):
+                    p = p.strip()
+                    if p.isdigit():
+                        explicit_ids.append(int(p))
+            if explicit_ids:
+                selected_vendor_ids = sorted(list(set(explicit_ids)))
+            else:
+                # Preferências do usuário autenticado
+                if current_user.is_authenticated:
+                    key = f'user_vendor_preferences:{current_user.id}'
+                    pref = session.query(SyncMetadata).filter_by(key=key).first()
+                    if pref and pref.value:
+                        selected_vendor_ids = [int(x) for x in pref.value.split(',') if x.strip().isdigit()]
         except Exception:
             selected_vendor_ids = []
         if selected_vendor_ids:
@@ -983,6 +1429,29 @@ def get_top_cwes() -> Response:
         severity_filter = request.args.get('severity', '')
         risk_filter = request.args.get('risk', '')
         search_query = request.args.get('search', '').strip()
+
+        # Normalize risk filter: support numeric threshold (e.g., 8, 6, 4) and label-based filters
+        risk_filter_str = str(risk_filter or '').strip()
+        risk_threshold: Optional[float] = None
+        risk_label_filter: Optional[str] = None
+        if risk_filter_str:
+            try:
+                risk_threshold = float(risk_filter_str)
+            except Exception:
+                # Accept Portuguese and English labels
+                normalized = risk_filter_str.lower()
+                if normalized in ('extremo', 'extreme', 'severe'):
+                    # Treat 'Extremo' as threshold >= 8.0
+                    risk_threshold = 8.0
+                elif normalized in ('alto', 'high'):
+                    risk_label_filter = 'Alto'
+                elif normalized in ('medio', 'médio', 'medium'):
+                    risk_label_filter = 'Médio'
+                elif normalized in ('baixo', 'low'):
+                    risk_label_filter = 'Baixo'
+                else:
+                    # Fallback: compare raw string against computed risk_level later
+                    risk_label_filter = risk_filter_str
         
         # Sort parameters
         sort_by = request.args.get('sort_by', 'count')
@@ -993,6 +1462,7 @@ def get_top_cwes() -> Response:
         
         # Get top CWEs from weakness table with enhanced metrics
         from app.models.weakness import Weakness
+        from app.models.vulnerability import Vulnerability
         from sqlalchemy import case, extract, and_, or_
         
         # Calculate recent date (last 12 months)
@@ -1006,6 +1476,75 @@ def get_top_cwes() -> Response:
             Weakness.cwe_id.isnot(None),
             Weakness.cwe_id != ''
         )
+
+        # Apply vendor filter from explicit query param or user preferences
+        selected_vendor_ids: List[int] = []
+        try:
+            # Explicit vendor_ids via query string (supports repeated and comma-separated)
+            raw_multi = request.args.getlist('vendor_ids')
+            raw_single = request.args.get('vendor', '')
+            explicit_ids: List[int] = []
+            for v in raw_multi:
+                for p in str(v).split(','):
+                    p = p.strip()
+                    if p.isdigit():
+                        explicit_ids.append(int(p))
+            if raw_single:
+                for p in str(raw_single).split(','):
+                    p = p.strip()
+                    if p.isdigit():
+                        explicit_ids.append(int(p))
+            if explicit_ids:
+                selected_vendor_ids = sorted(list(set(explicit_ids)))
+            else:
+                # Fallback to user preferences when authenticated
+                from flask_login import current_user
+                from app.models.sync_metadata import SyncMetadata
+                from app.models.cve_vendor import CVEVendor
+                if current_user.is_authenticated:
+                    key = f'user_vendor_preferences:{current_user.id}'
+                    pref = session.query(SyncMetadata).filter_by(key=key).first()
+                    if pref and pref.value:
+                        selected_vendor_ids = [int(x) for x in pref.value.split(',') if x.strip().isdigit()]
+        except Exception:
+            selected_vendor_ids = []
+
+        if selected_vendor_ids:
+            # Restrict weaknesses to CVEs for selected vendors using unified filter (direct vendor and via products)
+            try:
+                from sqlalchemy import union
+                from app.models.cve_vendor import CVEVendor
+                from app.models.cve_product import CVEProduct
+                from app.models.product import Product
+                cves_por_vendor = (
+                    session
+                    .query(CVEVendor.cve_id)
+                    .filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+                )
+                cves_por_produto_vendor = (
+                    session
+                    .query(CVEProduct.cve_id)
+                    .join(Product, Product.id == CVEProduct.product_id)
+                    .filter(Product.vendor_id.in_(selected_vendor_ids))
+                )
+                cves_unificados_sq = union(cves_por_vendor, cves_por_produto_vendor).subquery()
+                base_query = (
+                    base_query
+                    .filter(Weakness.cve_id.in_(session.query(cves_unificados_sq.c.cve_id)))
+                )
+            except Exception:
+                # Fallback robust: apply filter via direct joins on vendor and product
+                from app.models.cve_vendor import CVEVendor
+                from app.models.cve_product import CVEProduct
+                from app.models.product import Product
+                base_query = (
+                    base_query
+                    .join(Vulnerability, Vulnerability.cve_id == Weakness.cve_id)
+                    .outerjoin(CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id)
+                    .outerjoin(CVEProduct, CVEProduct.cve_id == Vulnerability.cve_id)
+                    .outerjoin(Product, Product.id == CVEProduct.product_id)
+                    .filter(or_(CVEVendor.vendor_id.in_(selected_vendor_ids), Product.vendor_id.in_(selected_vendor_ids)))
+                )
         
         # Apply search filter if provided
         if search_query:
@@ -1042,7 +1581,34 @@ def get_top_cwes() -> Response:
             ).filter(
                 Weakness.cwe_id == cwe_id,
                 Vulnerability.published_date.isnot(None)
-            ).first()
+            )
+            
+            # Apply vendor filter to enhanced metrics as well (unified filter)
+            try:
+                if selected_vendor_ids:
+                    from sqlalchemy import union
+                    from app.models.cve_vendor import CVEVendor
+                    from app.models.cve_product import CVEProduct
+                    from app.models.product import Product
+                    cves_por_vendor = (
+                        session
+                        .query(CVEVendor.cve_id)
+                        .filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+                    )
+                    cves_por_produto_vendor = (
+                        session
+                        .query(CVEProduct.cve_id)
+                        .join(Product, Product.id == CVEProduct.product_id)
+                        .filter(Product.vendor_id.in_(selected_vendor_ids))
+                    )
+                    cves_unificados_sq = union(cves_por_vendor, cves_por_produto_vendor).subquery()
+                    enhanced_metrics = enhanced_metrics.filter(
+                        Vulnerability.cve_id.in_(session.query(cves_unificados_sq.c.cve_id))
+                    )
+            except Exception:
+                pass
+
+            enhanced_metrics = enhanced_metrics.first()
             
             # Combine basic count with enhanced metrics
             results.append((
@@ -1141,10 +1707,15 @@ def get_top_cwes() -> Response:
             # Apply severity filter
             if severity_filter and primary_severity != severity_filter:
                 continue
-                
-            # Apply risk filter
-            if risk_filter and risk_level != risk_filter:
-                continue
+
+            # Apply risk filter (numeric threshold or label)
+            if risk_threshold is not None:
+                if risk_score < risk_threshold:
+                    continue
+            elif risk_label_filter:
+                # Compare label filter to computed risk level
+                if risk_level != risk_label_filter:
+                    continue
             
             all_data.append(cwe_data)
         
@@ -1211,26 +1782,85 @@ def get_latest_cves() -> Response:
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 20, type=int), 100)
         
-        # Get latest CVEs ordered by published date with vendor preference filter
-        query = session.query(Vulnerability).order_by(
-            desc(Vulnerability.published_date)
-        )
+        # Build base query ordered by published date
+        query = session.query(Vulnerability).order_by(desc(Vulnerability.published_date))
+
+        # Determine selected vendors: prefer explicit query param vendor_ids, else user preferences
+        selected_vendor_ids: List[int] = []
+        try:
+            # Parse vendor_ids from query string (supports repeated params and comma-separated)
+            raw_multi = request.args.getlist('vendor_ids')
+            vendor_param = request.args.get('vendor_ids')
+            raw_single = request.args.get('vendor')
+            explicit_ids: List[int] = []
+            for v in raw_multi or []:
+                for p in str(v).split(','):
+                    p = p.strip()
+                    if p.isdigit():
+                        explicit_ids.append(int(p))
+            if vendor_param:
+                for p in str(vendor_param).split(','):
+                    p = p.strip()
+                    if p.isdigit():
+                        explicit_ids.append(int(p))
+            if raw_single:
+                for p in str(raw_single).split(','):
+                    p = p.strip()
+                    if p.isdigit():
+                        explicit_ids.append(int(p))
+            if explicit_ids:
+                selected_vendor_ids = sorted(list(set(explicit_ids)))
+        except Exception:
+            selected_vendor_ids = []
+
+        # If no vendor_ids passed explicitly, fall back to authenticated user preferences
         try:
             from flask_login import current_user
             from app.models.sync_metadata import SyncMetadata
-            from app.models.cve_vendor import CVEVendor
-            selected_vendor_ids: List[int] = []
-            if current_user.is_authenticated:
+            if not selected_vendor_ids and current_user.is_authenticated:
                 key = f'user_vendor_preferences:{current_user.id}'
                 pref = session.query(SyncMetadata).filter_by(key=key).first()
                 if pref and pref.value:
                     selected_vendor_ids = [int(x) for x in pref.value.split(',') if x.strip().isdigit()]
-            if selected_vendor_ids:
-                query = query.join(CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id)\
-                             .filter(CVEVendor.vendor_id.in_(selected_vendor_ids))\
-                             .distinct()
         except Exception:
+            # Keep selected_vendor_ids as is (likely empty)
             pass
+
+        # Apply unified vendor filter (direct vendor CVEs and via products from vendor)
+        if selected_vendor_ids:
+            try:
+                from sqlalchemy import union
+                from app.models.cve_vendor import CVEVendor
+                from app.models.cve_product import CVEProduct
+                from app.models.product import Product
+                cves_por_vendor = (
+                    session
+                    .query(CVEVendor.cve_id)
+                    .filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+                )
+                cves_por_produto_vendor = (
+                    session
+                    .query(CVEProduct.cve_id)
+                    .join(Product, Product.id == CVEProduct.product_id)
+                    .filter(Product.vendor_id.in_(selected_vendor_ids))
+                )
+                cves_unificados_sq = union(cves_por_vendor, cves_por_produto_vendor).subquery()
+                query = query.filter(
+                    Vulnerability.cve_id.in_(session.query(cves_unificados_sq.c.cve_id))
+                ).distinct()
+            except Exception:
+                # Fallback robust: apply filter via direct joins
+                from app.models.cve_vendor import CVEVendor
+                from app.models.cve_product import CVEProduct
+                from app.models.product import Product
+                query = (
+                    query
+                    .outerjoin(CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id)
+                    .outerjoin(CVEProduct, CVEProduct.cve_id == Vulnerability.cve_id)
+                    .outerjoin(Product, Product.id == CVEProduct.product_id)
+                    .filter(or_(CVEVendor.vendor_id.in_(selected_vendor_ids), Product.vendor_id.in_(selected_vendor_ids)))
+                    .distinct()
+                )
         
         # Apply pagination
         offset = (page - 1) * per_page
@@ -1352,19 +1982,42 @@ def get_exploit_impact_data() -> Response:
         
         # Query CVSSMetric table for exploitability and impact scores
         from app.models.cvss_metric import CVSSMetric
+        from app.models.vulnerability import Vulnerability
+        from app.models.cve_vendor import CVEVendor
         import random
         
+        # Optional vendor filter via user preferences
+        selected_vendor_ids: List[int] = []
+        try:
+            from flask_login import current_user
+            from app.models.sync_metadata import SyncMetadata
+            if current_user.is_authenticated:
+                key = f'user_vendor_preferences:{current_user.id}'
+                pref = session.query(SyncMetadata).filter_by(key=key).first()
+                if pref and pref.value:
+                    selected_vendor_ids = [int(x) for x in pref.value.split(',') if x.strip().isdigit()]
+        except Exception:
+            selected_vendor_ids = []
+
         # First try to get real data
-        results = session.query(
-            CVSSMetric.exploitability_score,
-            CVSSMetric.impact_score,
-            CVSSMetric.base_severity,
-            CVSSMetric.cve_id
-        ).filter(
-            CVSSMetric.exploitability_score.isnot(None),
-            CVSSMetric.impact_score.isnot(None),
-            CVSSMetric.is_primary == True
-        ).limit(100).all()
+        results = (
+            session.query(
+                CVSSMetric.exploitability_score,
+                CVSSMetric.impact_score,
+                CVSSMetric.base_severity,
+                CVSSMetric.cve_id
+            )
+            .join(Vulnerability, Vulnerability.cve_id == CVSSMetric.cve_id)
+            .filter(
+                CVSSMetric.exploitability_score.isnot(None),
+                CVSSMetric.impact_score.isnot(None),
+                CVSSMetric.is_primary == True
+            )
+        )
+        if selected_vendor_ids:
+            results = results.join(CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id)
+            results = results.filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+        results = results.limit(100).all()
         
         chart_data = []
         
@@ -1373,14 +2026,22 @@ def get_exploit_impact_data() -> Response:
             logger.info("No real exploit/impact data found, generating simulated data")
             
             # Get sample of CVEs with CVSS scores
-            cvss_results = session.query(
-                CVSSMetric.base_score,
-                CVSSMetric.base_severity,
-                CVSSMetric.cve_id
-            ).filter(
-                CVSSMetric.base_score.isnot(None),
-                CVSSMetric.is_primary == True
-            ).limit(50).all()
+            cvss_results = (
+                session.query(
+                    CVSSMetric.base_score,
+                    CVSSMetric.base_severity,
+                    CVSSMetric.cve_id
+                )
+                .join(Vulnerability, Vulnerability.cve_id == CVSSMetric.cve_id)
+                .filter(
+                    CVSSMetric.base_score.isnot(None),
+                    CVSSMetric.is_primary == True
+                )
+            )
+            if selected_vendor_ids:
+                cvss_results = cvss_results.join(CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id)
+                cvss_results = cvss_results.filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+            cvss_results = cvss_results.limit(50).all()
             
             for result in cvss_results:
                 base_score = float(result.base_score)
@@ -1429,16 +2090,40 @@ def get_attack_vector_data() -> Response:
         
         # Query CVSSMetric table for attack vector distribution
         from app.models.cvss_metric import CVSSMetric
+        from app.models.vulnerability import Vulnerability
+        from app.models.cve_vendor import CVEVendor
+
+        # Optional vendor filter via user preferences
+        selected_vendor_ids: List[int] = []
+        try:
+            from flask_login import current_user
+            from app.models.sync_metadata import SyncMetadata
+            if current_user.is_authenticated:
+                key = f'user_vendor_preferences:{current_user.id}'
+                pref = session.query(SyncMetadata).filter_by(key=key).first()
+                if pref and pref.value:
+                    selected_vendor_ids = [int(x) for x in pref.value.split(',') if x.strip().isdigit()]
+        except Exception:
+            selected_vendor_ids = []
         
         # First try to get real data from CVSS v3.x metrics
-        results = session.query(
-            CVSSMetric.attack_vector,
-            func.count(CVSSMetric.id).label('count')
-        ).filter(
-            CVSSMetric.attack_vector.isnot(None),
-            CVSSMetric.is_primary == True,
-            CVSSMetric.cvss_version.in_(['3.0', '3.1', '4.0'])
-        ).group_by(CVSSMetric.attack_vector).all()
+        results = (
+            session.query(
+                CVSSMetric.attack_vector,
+                func.count(CVSSMetric.id).label('count')
+            )
+            # Join to vulnerabilities to enable vendor scoping
+            .join(Vulnerability, Vulnerability.cve_id == CVSSMetric.cve_id)
+            .filter(
+                CVSSMetric.attack_vector.isnot(None),
+                CVSSMetric.is_primary == True,
+                CVSSMetric.cvss_version.in_(['3.0', '3.1', '4.0'])
+            )
+        )
+        if selected_vendor_ids:
+            results = results.join(CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id)
+            results = results.filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+        results = results.group_by(CVSSMetric.attack_vector).all()
         
         chart_data = []
         
@@ -1446,14 +2131,22 @@ def get_attack_vector_data() -> Response:
         if not results:
             logger.info("No CVSS v3.x attack vector data found, trying CVSS v2.x access vector")
             
-            results = session.query(
-                CVSSMetric.access_vector,
-                func.count(CVSSMetric.id).label('count')
-            ).filter(
-                CVSSMetric.access_vector.isnot(None),
-                CVSSMetric.is_primary == True,
-                CVSSMetric.cvss_version == '2.0'
-            ).group_by(CVSSMetric.access_vector).all()
+            results = (
+                session.query(
+                    CVSSMetric.access_vector,
+                    func.count(CVSSMetric.id).label('count')
+                )
+                .join(Vulnerability, Vulnerability.cve_id == CVSSMetric.cve_id)
+                .filter(
+                    CVSSMetric.access_vector.isnot(None),
+                    CVSSMetric.is_primary == True,
+                    CVSSMetric.cvss_version == '2.0'
+                )
+            )
+            if selected_vendor_ids:
+                results = results.join(CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id)
+                results = results.filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+            results = results.group_by(CVSSMetric.access_vector).all()
             
             # Map CVSS v2.x access_vector to v3.x attack_vector equivalents
             vector_mapping = {
@@ -1519,56 +2212,126 @@ def get_top_assigners():
     Retorna os assigners com mais CVEs atribuídos para renderização em gráfico de barras.
     """
     try:
-        with db.session() as session:
-            # Query para contar CVEs por assigner, excluindo valores nulos
-            results = session.query(
-                Vulnerability.assigner,
-                func.count(Vulnerability.cve_id).label('cve_count')
-            ).filter(
-                Vulnerability.assigner.isnot(None),
-                Vulnerability.assigner != ''
-            ).group_by(
-                Vulnerability.assigner
-            ).order_by(
-                desc('cve_count')
-            ).limit(10).all()  # Top 10 assigners
-            
-            if not results:
-                # Se não há dados reais, gerar dados simulados
-                simulated_data = [
-                    ('MITRE Corporation', 45230),
-                    ('Red Hat Product Security', 12450),
-                    ('Microsoft Security Response Center', 8920),
-                    ('Oracle Corporation', 6780),
-                    ('IBM Product Security', 5640),
-                    ('Google Security Team', 4320),
-                    ('Adobe Product Security', 3890),
-                    ('Cisco Product Security', 3210),
-                    ('VMware Security Response', 2870),
-                    ('Apache Software Foundation', 2450)
-                ]
-                
-                labels = [item[0] for item in simulated_data]
-                values = [item[1] for item in simulated_data]
-            else:
-                labels = [result.assigner for result in results]
-                values = [result.cve_count for result in results]
-            
-            # Gerar cores para as barras
-            colors = [get_assigner_color(i) for i in range(len(labels))]
-            
-            data = {
-                'labels': labels,
-                'values': values,
-                'colors': colors,
-                'total_assigners': len(labels)
-            }
-            
-            return jsonify(data)
+        from sqlalchemy import func, desc
+        session = db.session
+        # Parse vendor_ids explícitos da query; fallback para preferências do usuário
+        explicit_vendor_ids: List[int] = []
+        try:
+            raw_multi = request.args.getlist('vendor_ids')
+            raw_single = request.args.get('vendor_ids')
+            parsed: List[int] = []
+            for v in raw_multi:
+                for p in str(v).split(','):
+                    p = p.strip()
+                    if p.isdigit():
+                        parsed.append(int(p))
+            if raw_single:
+                for p in str(raw_single).split(','):
+                    p = p.strip()
+                    if p.isdigit():
+                        parsed.append(int(p))
+            if parsed:
+                explicit_vendor_ids = sorted(list(set(parsed)))
+        except Exception:
+            explicit_vendor_ids = []
+
+        selected_vendor_ids: List[int] = explicit_vendor_ids[:]
+        if not selected_vendor_ids:
+            try:
+                from flask_login import current_user
+                from app.models.sync_metadata import SyncMetadata
+                if current_user.is_authenticated:
+                    key = f'user_vendor_preferences:{current_user.id}'
+                    pref = session.query(SyncMetadata).filter_by(key=key).first()
+                    if pref and pref.value:
+                        selected_vendor_ids = [int(x) for x in pref.value.split(',') if x.strip().isdigit()]
+            except Exception:
+                selected_vendor_ids = []
+
+        # Query para contar CVEs por assigner, usando fallback para source_identifier (NVD 2.0)
+        # Coalesce garante compatibilidade com dados onde "assigner" não é populado
+        assigner_coalesced = func.coalesce(Vulnerability.assigner, Vulnerability.source_identifier).label('assigner')
+        results_query = session.query(
+            assigner_coalesced,
+            func.count(Vulnerability.cve_id).label('cve_count')
+        ).filter(
+            assigner_coalesced.isnot(None),
+            assigner_coalesced != ''
+        )
+
+        # Apply vendor scoping if present; otherwise use base query
+        if selected_vendor_ids:
+            try:
+                from app.models.cve_vendor import CVEVendor
+                results_query = (
+                    results_query
+                    .join(CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id)
+                    .filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+                )
+            except Exception as e:
+                logger.warning(f"Top Assigners: falha ao aplicar filtro de vendor, usando fallback vazio. erro={e}")
+                data = {
+                    'labels': [],
+                    'values': [],
+                    'colors': [],
+                    'total_assigners': 0,
+                    'debug': 'vendor filter failed, returning empty'
+                }
+                return jsonify(data), 200
+
+        # Executar agregação
+        results = results_query.group_by(
+            assigner_coalesced
+        ).order_by(
+            desc(func.count(Vulnerability.cve_id))
+        ).limit(10).all()
+
+        if not results:
+            simulated_data = [
+                ('MITRE Corporation', 45230),
+                ('Red Hat Product Security', 12450),
+                ('Microsoft Security Response Center', 8920),
+                ('Oracle Corporation', 6780),
+                ('IBM Product Security', 5640),
+                ('Google Security Team', 4320),
+                ('Adobe Product Security', 3890),
+                ('Cisco Product Security', 3210),
+                ('VMware Security Response', 2870),
+                ('Apache Software Foundation', 2450)
+            ]
+            labels = [item[0] for item in simulated_data]
+            values = [item[1] for item in simulated_data]
+        else:
+            labels = [result.assigner for result in results]
+            values = [result.cve_count for result in results]
+
+        # Gerar cores para as barras
+        colors = [get_assigner_color(i) for i in range(len(labels))]
+
+        data = {
+            'labels': labels,
+            'values': values,
+            'colors': colors,
+            'total_assigners': len(labels)
+        }
+
+        return jsonify(data), 200
             
     except Exception as e:
-        logger.error(f"Erro ao buscar dados de Top Assigners: {str(e)}")
-        return jsonify({'error': 'Erro interno do servidor'}), 500
+        logger.error(f"Erro ao buscar dados de Top Assigners: {str(e)}", exc_info=True)
+        # Fallback seguro de nível superior: retornar estrutura vazia com debug em vez de 500
+        try:
+            data = {
+                'labels': [],
+                'values': [],
+                'colors': [],
+                'total_assigners': 0,
+                'debug': str(e)
+            }
+            return jsonify(data), 200
+        except Exception:
+            # Como último recurso, mantém resposta antiga 500
+            return jsonify({'error': 'Erro interno do servidor'}), 500
 
 def get_assigner_color(index):
     """

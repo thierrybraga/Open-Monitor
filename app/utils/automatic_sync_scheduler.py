@@ -32,6 +32,8 @@ from database.database import Database
 from services.vulnerability_service import VulnerabilityService
 from app.jobs.enhanced_nvd_fetcher import EnhancedNVDFetcher
 from app.config.parallel_nvd_config import ParallelNVDConfig
+from app.utils.sync_metadata_orm import upsert_sync_metadata
+from app.app import create_app
 
 class AutomaticSyncScheduler:
     """
@@ -56,6 +58,7 @@ class AutomaticSyncScheduler:
         self.database = None
         self.vulnerability_service = None
         self.nvd_fetcher = None
+        self.app = None
         
         # Estado
         self.is_running = False
@@ -139,16 +142,16 @@ class AutomaticSyncScheduler:
         """
         try:
             self.app_logger.subsection("Inicializando Serviços")
-            
+
             # Database
             self.database = Database()
             await self.database.connect()
             self.app_logger.success("Conexão com banco de dados estabelecida")
-            
+
             # Vulnerability Service
             self.vulnerability_service = VulnerabilityService(self.database)
             self.app_logger.success("Serviço de vulnerabilidades inicializado")
-            
+
             # NVD Fetcher
             self.nvd_fetcher = EnhancedNVDFetcher(
                 max_workers=self.config.max_workers,
@@ -157,7 +160,15 @@ class AutomaticSyncScheduler:
                 enable_monitoring=self.config.enable_monitoring
             )
             self.app_logger.success("NVD Fetcher inicializado")
-            
+
+            # Flask app para operações ORM (app context obrigatório)
+            try:
+                self.app = create_app()
+                self.app_logger.success("Aplicação Flask criada para operações ORM")
+            except Exception as e:
+                self.app_logger.error(f"Falha ao criar aplicação Flask para ORM: {e}")
+                return False
+
             return True
             
         except Exception as e:
@@ -328,25 +339,46 @@ class AutomaticSyncScheduler:
         """
         try:
             self.app_logger.info("🧹 Iniciando limpeza semanal")
-            
-            # Limpar logs antigos (mais de 30 dias)
-            cutoff_date = datetime.now() - timedelta(days=30)
-            
-            # Exemplo de limpeza - adapte conforme necessário
-            cleanup_queries = [
-                f"DELETE FROM sync_metadata WHERE created_at < '{cutoff_date.isoformat()}'",
-                # Adicione outras queries de limpeza conforme necessário
-            ]
-            
-            total_cleaned = 0
-            for query in cleanup_queries:
+
+            # Garantir que a tabela 'sync_metadata' existe antes de consultar
+            try:
+                exists_check = await self.database.execute_query(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                    ("sync_metadata",)
+                )
+                table_exists = bool(exists_check and len(exists_check) > 0)
+            except Exception:
+                # Fallback genérico: tentar uma consulta direta e capturar erro
                 try:
-                    result = await self.database.execute_query(query)
-                    if result:
-                        total_cleaned += len(result)
-                except Exception as e:
-                    self.app_logger.warning(f"Erro em query de limpeza: {str(e)}")
+                    await self.database.execute_query("SELECT 1 FROM sync_metadata LIMIT 1")
+                    table_exists = True
+                except Exception:
+                    table_exists = False
+
+            if not table_exists:
+                self.app_logger.info("Tabela 'sync_metadata' não encontrada; pulando limpeza semanal")
+                return
             
+            # Limpar registros antigos de sync_metadata (mais de 30 dias)
+            cutoff_date = datetime.now() - timedelta(days=30)
+
+            # Usar coluna existente 'last_modified' em vez de 'created_at'
+            count_query = "SELECT COUNT(*) as count FROM sync_metadata WHERE last_modified < ?"
+            delete_query = "DELETE FROM sync_metadata WHERE last_modified < ?"
+
+            total_cleaned = 0
+            try:
+                count_result = await self.database.execute_query(count_query, (cutoff_date.isoformat(timespec='seconds'),))
+                if count_result and len(count_result) > 0:
+                    total_cleaned = int(count_result[0].get('count', 0))
+            except Exception as e:
+                self.app_logger.warning(f"Erro ao contar registros para limpeza: {str(e)}")
+
+            try:
+                await self.database.execute_query(delete_query, (cutoff_date.isoformat(timespec='seconds'),))
+            except Exception as e:
+                self.app_logger.warning(f"Erro ao remover registros antigos: {str(e)}")
+
             self.app_logger.success(f"✅ Limpeza semanal concluída: {total_cleaned} registros removidos")
             
         except Exception as e:
@@ -441,38 +473,45 @@ class AutomaticSyncScheduler:
         Registra resultado de sincronização no banco.
         """
         try:
-            query = """
-                INSERT INTO sync_metadata 
-                (sync_id, last_sync_time, sync_type, vulnerabilities_count, duration, errors)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """
-            
-            await self.database.execute_query(
-                query,
-                (sync_id, datetime.now().isoformat(), sync_type, processed, duration, errors)
-            )
-            
+            if not self.app:
+                self.app = create_app()
+            with self.app.app_context():
+                ok, _ = upsert_sync_metadata(
+                    session=None,
+                    key="nvd_last_sync",
+                    value=datetime.utcnow().isoformat(timespec='milliseconds'),
+                    status="completed",
+                    sync_type=sync_type,
+                )
+                if not ok:
+                    raise RuntimeError("Upsert de SyncMetadata falhou")
         except Exception as e:
-            self.app_logger.warning(f"Erro ao registrar resultado de sincronização: {str(e)}")
+            self.app_logger.warning(f"Erro ao registrar resultado de sincronização via ORM: {str(e)}")
     
     async def _record_sync_error(self, sync_id: str, sync_type: str, error: str, duration: float):
         """
         Registra erro de sincronização no banco.
         """
         try:
-            query = """
-                INSERT INTO sync_metadata 
-                (sync_id, last_sync_time, sync_type, vulnerabilities_count, duration, errors, error_message)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """
-            
-            await self.database.execute_query(
-                query,
-                (sync_id, datetime.now().isoformat(), sync_type, 0, duration, 1, error)
-            )
-            
+            safe_error = (error or "").strip()
+            if len(safe_error) > 255:
+                safe_error = safe_error[:252] + "..."
+
+            if not self.app:
+                self.app = create_app()
+            with self.app.app_context():
+                ok, _ = upsert_sync_metadata(
+                    session=None,
+                    key="nvd_last_sync",
+                    value=safe_error,
+                    status="error",
+                    sync_type=sync_type,
+                    last_modified=datetime.utcnow(),
+                )
+                if not ok:
+                    raise RuntimeError("Upsert de erro de SyncMetadata falhou")
         except Exception as e:
-            self.app_logger.warning(f"Erro ao registrar erro de sincronização: {str(e)}")
+            self.app_logger.warning(f"Erro ao registrar erro de sincronização via ORM: {str(e)}")
     
     async def _cleanup_services(self):
         """

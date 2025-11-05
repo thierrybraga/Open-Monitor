@@ -274,7 +274,9 @@ class NavbarManager {
       
       // Fallback para horário atual se a API falhar
       const now = new Date();
-      const timeString = now.toLocaleTimeString('pt-BR', { 
+      const locale = (typeof window !== 'undefined' && window.UI_LANGUAGE) ? window.UI_LANGUAGE : (document && document.documentElement ? document.documentElement.lang : 'pt-BR');
+      const normalized = (function(l){ var ll = String(l || 'pt-BR').toLowerCase(); if (ll==='pt') return 'pt-BR'; if (ll==='en') return 'en-US'; return l || 'pt-BR'; })(locale);
+      const timeString = now.toLocaleTimeString(normalized, { 
         hour: '2-digit', 
         minute: '2-digit',
         hour12: false 

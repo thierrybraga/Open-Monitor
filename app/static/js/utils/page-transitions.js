@@ -64,8 +64,11 @@
     document.addEventListener('click', function (e) {
       var link = closestAnchor(e.target || e.srcElement);
       if (self.shouldInterceptLink(link)) {
-        if (e.preventDefault) e.preventDefault(); else e.returnValue = false;
-        self.navigateWithTransition(link.href);
+        // Em vez de substituir a navegação com window.location.assign,
+        // apenas mostramos o estado de carregamento e deixamos o navegador
+        // seguir a navegação padrão. Isso evita logs de net::ERR_ABORTED
+        // e navegações redundantes.
+        self.showLoadingState();
       }
     });
 
@@ -106,7 +109,11 @@
     // Internal link check
     try {
       var url = new URL(href, window.location.origin);
-      return url.origin === window.location.origin;
+      if (url.origin !== window.location.origin) return false;
+      // Avoid intercepting navigation to the same URL (prevents redundant reloads and aborts)
+      var currentUrl = new URL(window.location.href);
+      if (url.href === currentUrl.href) return false;
+      return true;
     } catch (e) {
       return false;
     }
@@ -121,10 +128,30 @@
     this.isTransitioning = true;
 
     try {
+      // Evitar navegação redundante para a mesma URL
+      try {
+        var target = new URL(url, window.location.origin);
+        var current = new URL(window.location.href);
+        if (target.href === current.href) {
+          this.hideLoadingState();
+          this.isTransitioning = false;
+          return;
+        }
+      } catch (_) {}
+
       this.showLoadingState();
-      setTimeout(function () {
-        window.location.href = url;
-      }, 200);
+      // Usar rAF duplo para garantir aplicação de estilos antes da navegação
+      var nextUrl = String(url);
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          try {
+            window.location.assign(nextUrl);
+          } catch (e) {
+            // Fallback se assign falhar por algum motivo
+            window.location.href = nextUrl;
+          }
+        });
+      });
     } catch (error) {
       safeConsole.error('Erro na transição:', error);
       this.hideLoadingState();
@@ -136,7 +163,15 @@
     if (!this.progressBar) return;
     this.progressBar.style.width = '30%';
     if (this.progressBar.classList) this.progressBar.classList.add('loading');
-    setTimeout(function () { this.progressBar.style.width = '70%'; }.bind(this), 200);
+    // Guard against DOM being torn down during navigation (prevents errors/noisy aborts)
+    setTimeout(function () {
+      if (!this.progressBar) return;
+      try {
+        this.progressBar.style.width = '70%';
+      } catch (e) {
+        // Silenciosamente ignora se a navegação interromper o contexto
+      }
+    }.bind(this), 200);
 
     var contentWrapper = document.querySelector('.main-content, .content-wrapper, main');
     if (contentWrapper && contentWrapper.classList) {
@@ -149,8 +184,13 @@
     this.progressBar.style.width = '100%';
     var self = this;
     setTimeout(function () {
-      self.progressBar.style.width = '0%';
-      if (self.progressBar.classList) self.progressBar.classList.remove('loading');
+      if (!self.progressBar) return;
+      try {
+        self.progressBar.style.width = '0%';
+        if (self.progressBar.classList) self.progressBar.classList.remove('loading');
+      } catch (e) {
+        // Ignorar erros se o DOM foi descarregado pela navegação
+      }
     }, 300);
 
     var contentWrapper = document.querySelector('.main-content, .content-wrapper, main');

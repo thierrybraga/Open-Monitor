@@ -2,9 +2,23 @@
 
 {% block title %}Criar Conta{% endblock %}
 
+{% block meta_description %}Crie sua conta para acessar recursos de segurança avançados do Open Monitor. Registro simples com validações modernas e proteção de dados.{% endblock %}
+{% block meta_keywords %}criar conta, registro, segurança, Open Monitor, cadastro{% endblock %}
+{% block og_title %}Criar Conta{% endblock %}
+{% block og_description %}Cadastre-se para usar o Open Monitor com segurança e facilidade.{% endblock %}
+
+{% block extra_head %}
+<link rel="canonical" href="{{ url_for('auth.register', _external=True) }}">
+<meta name="robots" content="noindex, nofollow">
+{% endblock %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/register.css') }}" rel="stylesheet">
+{% endblock %}
+
 {% block content %}
 <section class="auth-container auth-minimal container d-flex align-items-center justify-content-center min-vh-100">
-  <div class="auth-card auth-minimal w-100" style="max-width: 560px;">
+  <div class="auth-card auth-minimal w-100">
     <header class="text-center mb-4">
       <h1 class="mb-2">Criar conta</h1>
       <p class="text-muted">Cadastre-se para começar a usar o Open-Monitor</p>
@@ -114,7 +128,7 @@
       </div>
 
       <div class="d-grid gap-2">
-        <button type="submit" class="btn btn-primary btn-lg" id="register-btn">
+        <button type="submit" class="btn btn-primary btn-lg auth-submit-btn btn-full" id="register-btn" aria-live="polite">
           <span class="btn-text"><i class="bi bi-person-plus me-2"></i> Criar Conta</span>
           <span class="btn-loading" style="display: none;">
             <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>

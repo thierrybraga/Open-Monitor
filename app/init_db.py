@@ -130,7 +130,7 @@ def main():
             print("\nPróximos passos:")
             print("1. Configure o arquivo .env com suas variáveis")
             print("2. Execute: flask run")
-            print("3. Acesse: http://localhost:5000")
+            print("3. Acesse: http://localhost:8000")
             
         except Exception as e:
             print(f"\n✗ Erro durante a inicialização: {e}")

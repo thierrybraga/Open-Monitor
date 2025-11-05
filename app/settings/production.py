@@ -11,6 +11,9 @@ class ProductionConfig(BaseConfig):
     """
     DEBUG = False
 
+    # Em produção, habilitar cache Redis por padrão (pode ser sobrescrito via env)
+    REDIS_CACHE_ENABLED = os.getenv('REDIS_CACHE_ENABLED', 'true').lower() == 'true'
+
     @classmethod
     def validate(cls) -> None:
         # Chama a validação da classe base primeiro
