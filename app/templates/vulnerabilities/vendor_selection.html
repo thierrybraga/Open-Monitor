@@ -3,9 +3,7 @@
 
 {% block title %}Seleção de Vendors - Open Monitor{% endblock %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/vendors.css') }}">
-{% endblock %}
+{% block extra_css %}{% endblock %}
 
 {% block content %}
 {% set is_embed = (request.args.get('embed', '')|string).lower() in ['1','true'] %}
@@ -67,14 +65,14 @@
         </thead>
         <tbody id="vendors-tbody">
           {% for v in vendors %}
-          <tr class="vendor-row {{ 'selected' if selected_vendor_ids and v.id in selected_vendor_ids else '' }}" data-vendor-id="{{ v.id }}" role="row" aria-selected="{{ 'true' if selected_vendor_ids and v.id in selected_vendor_ids else 'false' }}">
+          <tr class="vendor-row {{ 'selected' if selected_vendor_ids and v.id in selected_vendor_ids else '' }}" data-vendor-id="{{ v.id }}" data-vendor-name="{{ v.name }}" role="row" aria-selected="{{ 'true' if selected_vendor_ids and v.id in selected_vendor_ids else 'false' }}">
             <td>
               <div class="form-check d-flex justify-content-center">
-                <input class="form-check-input vendor-checkbox" type="checkbox" id="vendor-{{ v.id }}" name="vendor_ids" value="{{ v.id }}" aria-labelledby="vendor-label-{{ v.id }}" {{ 'checked' if selected_vendor_ids and v.id in selected_vendor_ids else '' }}>
+                <input class="form-check-input vendor-checkbox" type="checkbox" id="vendor-{{ v.id if v.id is not none else v.name }}" name="vendor_ids" value="{{ v.id if v.id is not none else v.name }}" aria-labelledby="vendor-label-{{ v.id if v.id is not none else v.name }}" {{ 'checked' if selected_vendor_ids and v.id in selected_vendor_ids else '' }}>
               </div>
             </td>
             <td>
-              <label id="vendor-label-{{ v.id }}" for="vendor-{{ v.id }}" class="mb-0" style="cursor:pointer;">{{ v.name }}</label>
+              <label id="vendor-label-{{ v.id if v.id is not none else v.name }}" for="vendor-{{ v.id if v.id is not none else v.name }}" class="mb-0" style="cursor:pointer;">{{ v.name }}</label>
             </td>
             <td>
               <span class="badge bg-secondary" title="{{ (v.cve_count or 0) }} CVEs">{{ v.cve_count or 0 }}</span>
@@ -93,6 +91,7 @@
       {% endif %}
       <div class="d-flex align-items-center gap-2">
         <span id="selectedCountInfo" class="text-muted" aria-live="polite">Selecionados: 0</span>
+        <a href="#" class="btn btn-outline-primary" id="goToProductSelectionBtn" aria-disabled="true"><i class="bi bi-box-seam"></i> Selecionar Produtos</a>
       </div>
     </div>
     {% else %}
@@ -188,6 +187,7 @@
     var info = document.getElementById('selectedCountInfo');
     var infoTop = document.getElementById('selectedCountTopInfo');
     var applyBtn = document.getElementById('applyVendorSelectionBtn');
+    var goProductsBtn = document.getElementById('goToProductSelectionBtn');
     var selectAllBox = document.getElementById('select-all');
     if (info) info.textContent = 'Selecionados: ' + count + ' de ' + total;
     if (infoTop) infoTop.textContent = 'Selecionados: ' + count + ' de ' + total;
@@ -195,6 +195,15 @@
     var savedLen = 0;
     try { var savedArr = getSavedSelection(); savedLen = savedArr ? savedArr.length : 0; } catch (_) {}
     if (applyBtn) applyBtn.disabled = savedLen === 0;
+    if (goProductsBtn) {
+      if (savedLen === 0) {
+        goProductsBtn.classList.add('disabled');
+        goProductsBtn.setAttribute('aria-disabled', 'true');
+      } else {
+        goProductsBtn.classList.remove('disabled');
+        goProductsBtn.removeAttribute('aria-disabled');
+      }
+    }
     if (selectAllBox) {
       var indeterminate = count > 0 && count < total;
       try { selectAllBox.indeterminate = indeterminate; } catch (e) {}
@@ -237,6 +246,12 @@
       if (typeof window.safeNotify === 'function') {
         window.safeNotify('info', 'Preferências', 'Filtro de vendors limpo.', 2500);
       }
+      // Navegar para lista de vulnerabilidades com vendor_ids vazio para exibir 0 CVE
+      try {
+        var baseUrl = "{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}";
+        var finalUrl = baseUrl + (baseUrl.indexOf('?') === -1 ? '?' : '&') + 'vendor_ids=';
+        window.location.href = finalUrl;
+      } catch(_){}
     });
   }
   // Seleção global: inclui todos os vendors de todas as páginas de acordo com filtros atuais
@@ -264,6 +279,13 @@
         if (typeof window.safeNotify === 'function') {
           window.safeNotify('success', 'Selecionar Todos', 'Todos os vendors foram selecionados (global).', 2500);
         }
+        // Navegar para a lista de vulnerabilidades com escopo global explícito
+        try {
+          var baseUrl = "{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}";
+          var params = new URLSearchParams();
+          params.set('vendor_scope', 'all');
+          window.location.href = baseUrl + '?' + params.toString();
+        } catch(_){}
       } catch (e) {
         console && console.warn && console.warn('Falha na seleção global de vendors', e);
       }
@@ -433,14 +455,23 @@
       }
       var catalogSelect = document.getElementById('catalogTag');
       var catalogTag = catalogSelect ? catalogSelect.value : '';
-      // Redirecionar para a página de detalhes (quando houver severidade no contexto);
-      // caso contrário, página inicial. Incluir vendor_ids na URL.
-      var baseUrl = "{% if current_severity %}{{ url_for('vulnerability_ui.vulnerability_details_by_severity', severity=current_severity) }}{% else %}{{ url_for('main.index') }}{% endif %}";
-      var qs = 'vendor_ids=' + encodeURIComponent(selected.join(','));
-      var finalUrl = baseUrl + (baseUrl.indexOf('?') === -1 ? '?' : '&') + qs;
+      // Redirecionar para a lista de vulnerabilidades, incluindo vendor_ids e catalog_tag na URL
+      var baseUrl = "{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}";
+      var ids = [];
+      var names = [];
+      for (var i = 0; i < selected.length; i++) {
+        var val = String(selected[i]);
+        var n = parseInt(val, 10);
+        if (!isNaN(n)) { ids.push(String(n)); } else { if (val && val.trim()) names.push(val.trim()); }
+      }
+      var params = [];
+      if (ids.length) { params.push('vendor_ids=' + encodeURIComponent(ids.join(','))); }
+      if (names.length) { params.push('vendor_names=' + encodeURIComponent(names.join(','))); }
+      if (catalogTag) { params.push('catalog_tag=' + encodeURIComponent(catalogTag)); }
+      var finalUrl = baseUrl + (baseUrl.indexOf('?') === -1 ? '?' : '&') + params.join('&');
       // Persistir preferências do usuário no backend antes de redirecionar
       try {
-        var payload = { vendor_ids: selected.map(function (x) { var n = parseInt(x, 10); return isNaN(n) ? null : n; }).filter(function (x) { return x !== null; }) };
+        var payload = { vendor_ids: ids.map(function (x) { var n = parseInt(x, 10); return isNaN(n) ? null : n; }).filter(function (x) { return x !== null; }) };
         var prefUrl = "{{ url_for('api_v1.set_vendor_preferences') }}";
         if (navigator && typeof navigator.sendBeacon === 'function') {
           try {
@@ -466,6 +497,27 @@
           }).catch(function(_){})
         }
       } catch(_) {}
+      window.location.href = finalUrl;
+    });
+  }
+  var goProductsBtn = document.getElementById('goToProductSelectionBtn');
+  if (goProductsBtn) {
+    goProductsBtn.addEventListener('click', function(e){
+      e.preventDefault();
+      var selected = getSavedSelection() || [];
+      if (!selected.length) return;
+      var ids = [];
+      var names = [];
+      for (var i = 0; i < selected.length; i++) {
+        var val = String(selected[i]);
+        var n = parseInt(val, 10);
+        if (!isNaN(n)) { ids.push(String(n)); } else { if (val && val.trim()) names.push(val.trim()); }
+      }
+      var baseUrl = "{{ url_for('vulnerability_ui.product_selection_ui') }}";
+      var params = [];
+      if (ids.length) { params.push('vendor_ids=' + encodeURIComponent(ids.join(','))); }
+      if (names.length) { params.push('vendor_names=' + encodeURIComponent(names.join(','))); }
+      var finalUrl = baseUrl + (baseUrl.indexOf('?') === -1 ? '?' : '&') + params.join('&');
       window.location.href = finalUrl;
     });
   }

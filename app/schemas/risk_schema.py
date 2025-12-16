@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from app.extensions import db
-from app.models import risk_assessment
+from app.models.risk_assessment import RiskAssessment
 
 
 class RiskService:
@@ -14,10 +14,10 @@ class RiskService:
     def create_assessment(
         user_id: int,
         asset_id: int,
-        vulnerability_id: int,
+        vulnerability_id: str,
         risk_score: float,
         recommendation_id: Optional[int] = None
-    ) -> risk_assessment:
+    ) -> RiskAssessment:
         """
         Cria uma nova avaliação de risco vinculando ativo, vulnerabilidade e recomendação.
 
@@ -31,48 +31,52 @@ class RiskService:
         Returns:
             Instância de RiskAssessment criada.
         """
-        assessment = risk_assessment(
+        assessment = RiskAssessment(
             created_by=user_id,
             asset_id=asset_id,
             vulnerability_id=vulnerability_id,
-            recommendation_id=recommendation_id,
+            # recommendation_id não existe no modelo atual; parâmetro ignorado.
             risk_score=risk_score,
             created_at=datetime.utcnow()
         )
-        db.session.add(assessment)
-        db.session.commit()
-        return assessment
+        try:
+            db.session.add(assessment)
+            db.session.commit()
+            return assessment
+        except Exception:
+            db.session.rollback()
+            raise
 
     @staticmethod
-    def list_assessments_for_asset(asset_id: int) -> List[risk_assessment]:
+    def list_assessments_for_asset(asset_id: int) -> List[RiskAssessment]:
         """
         Retorna todas as avaliações de risco de um ativo específico.
         """
-        return risk_assessment.query.filter_by(asset_id=asset_id).all()
+        return db.session.query(RiskAssessment).filter_by(asset_id=asset_id).all()
 
     @staticmethod
-    def list_assessments_for_user(user_id: int = None) -> List[risk_assessment]:
+    def list_assessments_for_user(user_id: int = None) -> List[RiskAssessment]:
         """
         Retorna todas as avaliações de risco.
         REMOVIDO: Não filtra mais por usuário.
         """
-        return risk_assessment.query.all()
+        return db.session.query(RiskAssessment).all()
 
     @staticmethod
-    def get_assessment(assessment_id: int) -> risk_assessment:
+    def get_assessment(assessment_id: int) -> RiskAssessment:
         """
         Busca uma avaliação de risco pelo seu ID.
 
         Raises:
             ValueError: se não encontrar.
         """
-        assessment = risk_assessment.query.get(assessment_id)
+        assessment = db.session.get(RiskAssessment, assessment_id)
         if not assessment:
             raise ValueError(f"Avaliação de risco {assessment_id} não encontrada.")
         return assessment
 
     @staticmethod
-    def update_assessment(assessment_id: int, **kwargs) -> risk_assessment:
+    def update_assessment(assessment_id: int, **kwargs) -> RiskAssessment:
         """
         Atualiza campos de uma avaliação de risco.
 
@@ -86,8 +90,12 @@ class RiskService:
         for key, value in kwargs.items():
             if hasattr(assessment, key):
                 setattr(assessment, key, value)
-        db.session.commit()
-        return assessment
+        try:
+            db.session.commit()
+            return assessment
+        except Exception:
+            db.session.rollback()
+            raise
 
     @staticmethod
     def delete_assessment(assessment_id: int) -> None:
@@ -95,5 +103,9 @@ class RiskService:
         Remove uma avaliação de risco do banco.
         """
         assessment = RiskService.get_assessment(assessment_id)
-        db.session.delete(assessment)
-        db.session.commit()
+        try:
+            db.session.delete(assessment)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise

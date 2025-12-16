@@ -14,6 +14,16 @@ class ProductionConfig(BaseConfig):
     # Em produção, habilitar cache Redis por padrão (pode ser sobrescrito via env)
     REDIS_CACHE_ENABLED = os.getenv('REDIS_CACHE_ENABLED', 'true').lower() == 'true'
 
+    # Tuning de pool de conexões para cargas reais em PostgreSQL
+    # Configurável via variáveis de ambiente
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_size': int(os.getenv('DB_POOL_SIZE', '10')),
+        'max_overflow': int(os.getenv('DB_MAX_OVERFLOW', '20')),
+        'pool_timeout': int(os.getenv('DB_POOL_TIMEOUT', '30')),
+        'pool_recycle': int(os.getenv('DB_POOL_RECYCLE', '3600')),
+        'pool_pre_ping': True,
+    }
+
     @classmethod
     def validate(cls) -> None:
         # Chama a validação da classe base primeiro

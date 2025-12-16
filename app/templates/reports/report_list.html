@@ -5,10 +5,7 @@
 
 {% block meta_description %}Gerencie e visualize relatórios de cybersegurança, análises de vulnerabilidades e estudos de ambiente. Crie relatórios executivos, técnicos e de auditoria com dados em tempo real.{% endblock %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/report_list.css') }}?v=2">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/components/table.css') }}">
-{% endblock %}
+{% block extra_css %}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -113,8 +110,8 @@
                             <i class="bi bi-funnel-fill me-2 text-primary"></i>
                             Filtros Avançados
                         </h5>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#advancedFiltersBody" aria-expanded="true" aria-controls="advancedFiltersBody">
-                            <i class="bi bi-chevron-up"></i>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#advancedFiltersBody" aria-expanded="false" aria-controls="advancedFiltersBody">
+                            <i class="bi bi-chevron-down"></i>
                         </button>
                     </div>
                 </div>
@@ -128,7 +125,7 @@
                             </label>
                         </div>
                     </div>
-                    <div id="advancedFiltersBody" class="collapse show">
+                    <div id="advancedFiltersBody" class="collapse">
                         <form method="GET" action="{{ url_for('report.list_reports') }}">
                             <div class="row g-3">
                                 <div class="col-lg-3 col-md-6">
@@ -326,6 +323,13 @@
                                                    title="Visualizar Relatório">
                                                     <i class="bi bi-eye-fill"></i>
                                                 </a>
+                                                {% if report.report_type.value == 'tecnico' %}
+                                                <a href="{{ url_for('report.view_tech_report', report_id=report.id) }}"
+                                                   class="btn btn-outline-secondary btn-sm btn-modern"
+                                                   title="Relatório Técnico">
+                                                    <i class="bi bi-code-slash"></i>
+                                                </a>
+                                                {% endif %}
                                                 
                                                 {% if report.status.value in ['concluido', 'exportado'] %}
                                                     <div class="btn-group btn-group-sm" role="group">
@@ -408,5 +412,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/pages/report_list.v2.js') }}?v=1" nonce="{{ nonce }}"></script>
+  <script src="{{ url_for('static', filename='js/pages/report_list.v2.js') }}" nonce="{{ nonce }}"></script>
 {% endblock %}

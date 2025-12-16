@@ -3,7 +3,7 @@
 # Importação relativa para as extensões dentro do seu pacote project
 # Sobe 2 níveis (de models para project) e desce para extensions.extensions
 from app.extensions.db import db
-from datetime import datetime
+from datetime import datetime, timezone
 # Assume que o modelo SyncMetadata existe em project/models/sync_metadata.py
 # from utils.sync_metadata import SyncMetadata # Você pode precisar desta importação aqui se for usar SyncMetadata diretamente no modelo
 
@@ -15,7 +15,7 @@ class ApiCallLog(db.Model):
     endpoint      = db.Column(db.String(255), nullable=False)
     status_code   = db.Column(db.Integer, nullable=False)
     response_time = db.Column(db.Float, nullable=False)
-    timestamp     = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp     = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     # Garante que a FK referencia a tabela correta, mesmo se o modelo SyncMetadata não for importado aqui
     # sync_id       = db.Column(db.Integer, db.ForeignKey('sync_metadata.id'))
     # Define o relacionamento com SyncMetadata

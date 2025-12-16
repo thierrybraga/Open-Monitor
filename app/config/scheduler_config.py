@@ -66,7 +66,7 @@ class SchedulerConfig:
     
     # Configurações de performance
     BATCH_SIZE = int(os.getenv('NVD_BATCH_SIZE', '100'))
-    CONCURRENT_REQUESTS = int(os.getenv('NVD_CONCURRENT_REQUESTS', '5'))
+    CONCURRENT_REQUESTS = int(os.getenv('NVD_MAX_CONCURRENT_REQUESTS', '5'))
     
     @classmethod
     def validate_config(cls):
@@ -154,7 +154,33 @@ class SchedulerConfig:
         
         # Atualizar configurações de performance
         cls.BATCH_SIZE = int(os.getenv('NVD_BATCH_SIZE', '100'))
-        cls.CONCURRENT_REQUESTS = int(os.getenv('NVD_CONCURRENT_REQUESTS', '5'))
+        cls.CONCURRENT_REQUESTS = int(os.getenv('NVD_MAX_CONCURRENT_REQUESTS', '5'))
+        
+        # Manter compatibilidade com variável antiga, se presente
+        try:
+            legacy = os.getenv('NVD_CONCURRENT_REQUESTS')
+            if legacy is not None:
+                cls.CONCURRENT_REQUESTS = int(legacy)
+        except Exception:
+            pass
+
+    @classmethod
+    def to_dict(cls) -> dict:
+        return {
+            'INCREMENTAL_SYNC_INTERVAL_SECONDS': int(cls.INCREMENTAL_SYNC_INTERVAL.total_seconds()),
+            'FULL_SYNC_SCHEDULE': dict(cls.FULL_SYNC_SCHEDULE),
+            'MAX_INSTANCES': cls.MAX_INSTANCES,
+            'JOB_TIMEOUT_SECONDS': int(cls.JOB_TIMEOUT.total_seconds()),
+            'MAX_RETRIES': cls.MAX_RETRIES,
+            'RETRY_DELAY_SECONDS': int(cls.RETRY_DELAY.total_seconds()),
+            'LOG_LEVEL': cls.LOG_LEVEL,
+            'LOG_DIR': cls.LOG_DIR,
+            'NVD_CONFIG': dict(cls.NVD_CONFIG),
+            'ENABLE_HEALTH_CHECK': cls.ENABLE_HEALTH_CHECK,
+            'HEALTH_CHECK_INTERVAL_SECONDS': int(cls.HEALTH_CHECK_INTERVAL.total_seconds()),
+            'BATCH_SIZE': cls.BATCH_SIZE,
+            'CONCURRENT_REQUESTS': cls.CONCURRENT_REQUESTS,
+        }
         
         # Atualizar configurações de monitoramento
         cls.ENABLE_HEALTH_CHECK = os.getenv('ENABLE_HEALTH_CHECK', 'true').lower() == 'true'

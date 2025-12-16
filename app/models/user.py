@@ -1,7 +1,7 @@
 # project/models/user.py
 
 import logging # Importar logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 # Adicionado 'List', 'Optional', 'TYPE_CHECKING' à importação do typing
 from typing import Dict, Any, Optional, TYPE_CHECKING, List # CORRIGIDO: Adicionado List, Optional, TYPE_CHECKING
 import re
@@ -74,10 +74,20 @@ class User(BaseModel, UserMixin, db.Model): # Herda de BaseModel, UserMixin e db
     address: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     bio: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
     profile_picture: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # Caminho para a imagem
+    tacacs_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    tacacs_username: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    tacacs_secret: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    tacacs_server: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    tacacs_port: Mapped[int] = mapped_column(Integer, default=49, nullable=False)
+    tacacs_timeout: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
+    root_user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('users.id'), nullable=True, index=True)
+    approved_by_user_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey('users.id'), nullable=True, index=True)
+    approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    trial_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # Campos de auditoria (timestamps) - definidos explicitamente para compatibilidade
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
 
     # Relacionamentos usando Mapped[List[...]]
@@ -177,7 +187,7 @@ class User(BaseModel, UserMixin, db.Model): # Herda de BaseModel, UserMixin e db
         import secrets
         token = secrets.token_urlsafe(32)
         self.email_confirmation_token = token
-        self.email_confirmation_sent_at = datetime.utcnow()
+        self.email_confirmation_sent_at = datetime.now(timezone.utc)
         return token
 
     def confirm_email(self, token: str) -> bool:
@@ -187,8 +197,13 @@ class User(BaseModel, UserMixin, db.Model): # Herda de BaseModel, UserMixin e db
         
         # Verificar se o token não expirou (24 horas)
         if self.email_confirmation_sent_at:
-            expiration_time = self.email_confirmation_sent_at + timedelta(hours=24)
-            if datetime.utcnow() > expiration_time:
+            sent_at = self.email_confirmation_sent_at
+            if getattr(sent_at, 'tzinfo', None) is None:
+                sent_at = sent_at.replace(tzinfo=timezone.utc)
+            else:
+                sent_at = sent_at.astimezone(timezone.utc)
+            expiration_time = sent_at + timedelta(hours=24)
+            if datetime.now(timezone.utc) > expiration_time:
                 return False
         
         # Confirmar email
@@ -201,8 +216,13 @@ class User(BaseModel, UserMixin, db.Model): # Herda de BaseModel, UserMixin e db
         """Verifica se o token de confirmação expirou."""
         if not self.email_confirmation_sent_at:
             return True
-        expiration_time = self.email_confirmation_sent_at + timedelta(hours=24)
-        return datetime.utcnow() > expiration_time
+        sent_at = self.email_confirmation_sent_at
+        if getattr(sent_at, 'tzinfo', None) is None:
+            sent_at = sent_at.replace(tzinfo=timezone.utc)
+        else:
+            sent_at = sent_at.astimezone(timezone.utc)
+        expiration_time = sent_at + timedelta(hours=24)
+        return datetime.now(timezone.utc) > expiration_time
 
 
     # ---------- Recuperação de Senha ----------
@@ -211,7 +231,7 @@ class User(BaseModel, UserMixin, db.Model): # Herda de BaseModel, UserMixin e db
         import secrets
         token = secrets.token_urlsafe(32)
         self.password_reset_token = token
-        self.password_reset_sent_at = datetime.utcnow()
+        self.password_reset_sent_at = datetime.now(timezone.utc)
         return token
 
     def reset_password(self, token: str, new_password: str) -> bool:
@@ -221,8 +241,13 @@ class User(BaseModel, UserMixin, db.Model): # Herda de BaseModel, UserMixin e db
         
         # Verificar se o token não expirou (1 hora)
         if self.password_reset_sent_at:
-            expiration_time = self.password_reset_sent_at + timedelta(hours=1)
-            if datetime.utcnow() > expiration_time:
+            sent_at = self.password_reset_sent_at
+            if getattr(sent_at, 'tzinfo', None) is None:
+                sent_at = sent_at.replace(tzinfo=timezone.utc)
+            else:
+                sent_at = sent_at.astimezone(timezone.utc)
+            expiration_time = sent_at + timedelta(hours=1)
+            if datetime.now(timezone.utc) > expiration_time:
                 return False
         
         # Redefinir senha
@@ -235,8 +260,13 @@ class User(BaseModel, UserMixin, db.Model): # Herda de BaseModel, UserMixin e db
         """Verifica se o token de recuperação de senha expirou."""
         if not self.password_reset_sent_at:
             return True
-        expiration_time = self.password_reset_sent_at + timedelta(hours=1)
-        return datetime.utcnow() > expiration_time
+        sent_at = self.password_reset_sent_at
+        if getattr(sent_at, 'tzinfo', None) is None:
+            sent_at = sent_at.replace(tzinfo=timezone.utc)
+        else:
+            sent_at = sent_at.astimezone(timezone.utc)
+        expiration_time = sent_at + timedelta(hours=1)
+        return datetime.now(timezone.utc) > expiration_time
 
 
     # ---------- Serialização ----------

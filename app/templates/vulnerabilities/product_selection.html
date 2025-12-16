@@ -1,0 +1,181 @@
+{% extends "core/base.html" %}
+{% from 'core/macros.html' import render_pagination %}
+
+{% block title %}Seleção de Produtos - Open Monitor{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h4 mb-0"><i class="bi bi-box-seam me-2"></i>Seleção de Produtos</h1>
+    <a href="{{ url_for('vulnerability_ui.vendor_selection_ui') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Voltar</a>
+  </div>
+  {% if selected_vendor_names %}
+  <div class="mb-2">
+    <span class="text-muted small me-2">Escopo de vendors:</span>
+    {% for name in selected_vendor_names %}
+      <span class="badge bg-primary me-1"><i class="bi bi-building me-1"></i>{{ name }}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <form id="productSelectionForm" method="GET" action="{{ url_for('vulnerability_ui.product_selection_ui') }}">
+    <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+      <div class="input-group search-bar flex-grow-1" style="max-width:620px;">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="text" class="form-control" id="product-search" name="q" value="{{ request.args.get('q','') }}" placeholder="Buscar por nome do produto">
+        <button type="button" class="btn btn-outline-secondary" id="clearProductSearchBtn" title="Limpar"><i class="bi bi-x-circle"></i></button>
+      </div>
+      <button type="submit" class="btn btn-primary" id="applyProductFiltersBtn">Aplicar</button>
+      <button type="button" class="btn btn-outline-secondary" id="clearProductFiltersBtn">Limpar</button>
+      <button type="button" class="btn btn-success" id="applyProductSelectionBtn"><i class="bi bi-check2-circle"></i> Aplicar Seleção de Produtos</button>
+      <button type="button" class="btn btn-outline-danger" id="clearProductSelectionBtn"><i class="bi bi-x-circle"></i> Limpar Seleção</button>
+      <button type="button" class="btn btn-outline-primary" id="selectAllProductsBtn"><i class="bi bi-check-all"></i> Selecionar Todos</button>
+      <span id="selectedProductCountTop" class="small text-muted">Selecionados: 0</span>
+    </div>
+
+    {% if pagination %}
+      {% set start = ((pagination.page - 1) * pagination.per_page) + 1 if pagination.total > 0 else 0 %}
+      {% set end_calc = pagination.page * pagination.per_page %}
+      {% set end = end_calc if end_calc < pagination.total else pagination.total %}
+      <div class="results-counter" aria-live="polite">Mostrando {{ start }}–{{ end }} de {{ pagination.total }}</div>
+    {% endif %}
+
+    {% if products and products|length > 0 %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <th style="width:48px;">
+              <div class="form-check d-flex justify-content-center">
+                <input class="form-check-input" type="checkbox" id="select-all-products" aria-label="Selecionar todos os produtos visíveis">
+              </div>
+            </th>
+            <th>Produto</th>
+            <th>CVEs</th>
+          </tr>
+        </thead>
+        <tbody id="products-tbody">
+          {% for p in products %}
+          <tr class="product-row" data-product-id="{{ p.id }}" data-product-name="{{ p.name }}">
+            <td>
+              <div class="form-check d-flex justify-content-center">
+                <input class="form-check-input product-checkbox" type="checkbox" id="product-{{ p.id if p.id is not none else p.name }}" name="product_ids" value="{{ p.id if p.id is not none else p.name }}">
+              </div>
+            </td>
+            <td>
+              <label for="product-{{ p.id if p.id is not none else p.name }}" class="mb-0" style="cursor:pointer;">{{ p.name }}</label>
+            </td>
+            <td><span class="badge bg-secondary" title="{{ p.cve_count or 0 }} CVEs">{{ p.cve_count or 0 }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="d-flex justify-content-between align-items-center mt-3">
+      {% if pagination %}
+        <div class="pagination-section">
+          {{ render_pagination(pagination, 'vulnerability_ui.product_selection_ui', variant='minimal') }}
+        </div>
+      {% endif %}
+      <div class="d-flex align-items-center gap-2">
+        <span id="selectedProductCount" class="text-muted">Selecionados: 0</span>
+      </div>
+    </div>
+    {% else %}
+      <div class="alert alert-info">Nenhum produto encontrado para o escopo de vendors selecionado.</div>
+    {% endif %}
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script nonce="{{ nonce }}">
+(function(){
+  function getSavedProductSelection(){ try { var raw = localStorage.getItem('productSelection.selectedProductIds'); return raw ? JSON.parse(raw) : []; } catch(_) { return []; } }
+  function setSavedProductSelection(arr){ try { localStorage.setItem('productSelection.selectedProductIds', JSON.stringify(arr.map(function(x){ return String(x); }))); } catch(_){} }
+  function updateProductSelectedCounter(){
+    var count = document.querySelectorAll('input[name="product_ids"]:checked').length;
+    var total = document.querySelectorAll('input[name="product_ids"]').length;
+    var info = document.getElementById('selectedProductCount');
+    var infoTop = document.getElementById('selectedProductCountTop');
+    var applyBtn = document.getElementById('applyProductSelectionBtn');
+    if (info) info.textContent = 'Selecionados: ' + count + ' de ' + total;
+    if (infoTop) infoTop.textContent = 'Selecionados: ' + count + ' de ' + total;
+    var saved = getSavedProductSelection();
+    if (applyBtn) applyBtn.disabled = !(saved && saved.length);
+  }
+  var selectAll = document.getElementById('select-all-products');
+  if (selectAll) {
+    selectAll.addEventListener('change', function(e){
+      var boxes = document.querySelectorAll('input[name="product_ids"]');
+      for (var i=0;i<boxes.length;i++){ boxes[i].checked = !!e.target.checked; }
+      var ids = [];
+      var b2 = document.querySelectorAll('input[name="product_ids"]:checked');
+      for (var j=0;j<b2.length;j++){ ids.push(String(b2[j].value)); }
+      setSavedProductSelection(ids);
+      updateProductSelectedCounter();
+    });
+  }
+  var tbody = document.getElementById('products-tbody');
+  if (tbody) {
+    tbody.addEventListener('click', function(e){
+      var t = e.target || e.srcElement;
+      var row = (t.closest && t.closest('tr.product-row')) || null;
+      var cb = null;
+      if (t && t.tagName && t.tagName.toLowerCase() === 'input' && t.name === 'product_ids') cb = t;
+      else if (t && t.tagName && t.tagName.toLowerCase() === 'label' && t.htmlFor) cb = document.getElementById(t.htmlFor);
+      else if (row) cb = row.querySelector('input[name="product_ids"]');
+      if (!cb) return;
+      cb.checked = !cb.checked;
+      var saved = getSavedProductSelection();
+      var id = String(cb.value);
+      if (cb.checked) { saved.push(id); } else { saved = saved.filter(function(x){ return x !== id; }); }
+      setSavedProductSelection(saved);
+      updateProductSelectedCounter();
+    });
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    var saved = getSavedProductSelection();
+    if (saved && saved.length){
+      var boxes = document.querySelectorAll('input[name="product_ids"]');
+      for (var i=0;i<boxes.length;i++){
+        var id = String(boxes[i].value);
+        if (saved.indexOf(id) !== -1) boxes[i].checked = true;
+      }
+    }
+    updateProductSelectedCounter();
+  });
+  var applyProducts = document.getElementById('applyProductSelectionBtn');
+  if (applyProducts){
+    applyProducts.addEventListener('click', function(){
+      var saved = getSavedProductSelection();
+      if (!saved || !saved.length) return;
+      var baseUrl = "{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}";
+      var ids = [];
+      var names = [];
+      for (var i = 0; i < saved.length; i++) {
+        var val = String(saved[i]);
+        var n = parseInt(val, 10);
+        if (!isNaN(n)) { ids.push(String(n)); } else { if (val && val.trim()) names.push(val.trim()); }
+      }
+      var params = [];
+      try {
+        var vidArg = ({{ (selected_vendor_ids or [])|tojson }} || []).join(',');
+        if (vidArg) params.push('vendor_ids=' + encodeURIComponent(vidArg));
+        var vnamesArg = ({{ (selected_vendor_names or [])|tojson }} || []).join(',');
+        if (vnamesArg) params.push('vendor_names=' + encodeURIComponent(vnamesArg));
+      } catch(_){ }
+      if (ids.length) params.push('product_ids=' + encodeURIComponent(ids.join(',')));
+      if (names.length) params.push('product_names=' + encodeURIComponent(names.join(',')));
+      var url = baseUrl + (baseUrl.indexOf('?') === -1 ? '?' : '&') + params.join('&');
+      window.location.href = url;
+    });
+  }
+  var clearSel = document.getElementById('clearProductSelectionBtn');
+  if (clearSel){ clearSel.addEventListener('click', function(){ setSavedProductSelection([]); updateProductSelectedCounter(); }); }
+  var clearSearchBtn = document.getElementById('clearProductSearchBtn');
+  if (clearSearchBtn){ clearSearchBtn.addEventListener('click', function(){ var s = document.getElementById('product-search'); if (s) s.value=''; var f = document.getElementById('productSelectionForm'); if (f) { if (typeof f.requestSubmit==='function') f.requestSubmit(); else f.submit(); } }); }
+  var clearFiltersBtn = document.getElementById('clearProductFiltersBtn');
+  if (clearFiltersBtn){ clearFiltersBtn.addEventListener('click', function(){ var s = document.getElementById('product-search'); if (s) s.value=''; var f = document.getElementById('productSelectionForm'); if (f) { if (typeof f.requestSubmit==='function') f.requestSubmit(); else f.submit(); } }); }
+})();
+</script>
+{% endblock %}

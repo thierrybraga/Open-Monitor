@@ -1,5 +1,6 @@
 # settings/testing.py
 
+import os
 from .base import BaseConfig
 
 class TestingConfig(BaseConfig):
@@ -12,6 +13,20 @@ class TestingConfig(BaseConfig):
     """
     DEBUG = False
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///instance/vulnerabilities.db' # Usa o mesmo banco da configuração principal
     WTF_CSRF_ENABLED = False # Comum desativar CSRF em testes de API ou formulário
     LOG_LEVEL = 'ERROR' # Reduz o output de log durante a execução dos testes
+
+    # Bancos de teste em SQLite (isolados na pasta instance)
+    DB_FILE = str(BaseConfig.INSTANCE_PATH / 'om_test_core.sqlite')
+    PUBLIC_DB_FILE = str(BaseConfig.INSTANCE_PATH / 'om_test_public.sqlite')
+    SQLALCHEMY_DATABASE_URI = f"sqlite:///{DB_FILE}"
+    SQLALCHEMY_BINDS = {'public': f"sqlite:///{PUBLIC_DB_FILE}"}
+
+    # Opções de engine para estabilidade em testes (efeito mínimo em SQLite)
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_size': int(os.getenv('TEST_DB_POOL_SIZE', '5')),
+        'max_overflow': int(os.getenv('TEST_DB_MAX_OVERFLOW', '5')),
+        'pool_timeout': int(os.getenv('TEST_DB_POOL_TIMEOUT', '15')),
+        'pool_recycle': int(os.getenv('TEST_DB_POOL_RECYCLE', '1800')),
+        'pool_pre_ping': True,
+    }

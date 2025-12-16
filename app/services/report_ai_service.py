@@ -54,6 +54,7 @@ class ReportAIService:
             self.timeout = current_app.config.get('OPENAI_TIMEOUT', 30)
             self.max_retries = current_app.config.get('OPENAI_MAX_RETRIES', 2)
             self.backoff_base = current_app.config.get('OPENAI_RETRY_BACKOFF', 1.5)
+            self.completion_param = (current_app.config.get('LLM_COMPLETION_TOKENS_PARAM') or '').lower()
             
             if not self.api_key:
                 logger.warning("OPENAI_API_KEY não configurada - modo demo ativo")
@@ -142,12 +143,38 @@ class ReportAIService:
         start_ts = time.time()
         while attempt < max(1, int(self.max_retries)):
             try:
-                resp = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=messages,
-                    max_tokens=self.max_tokens,
-                    temperature=self.temperature
-                )
+                def _requires_max_completion_tokens(model: Optional[str]) -> bool:
+                    m = (model or '').lower()
+                    prefixes = (
+                        'gpt-5',
+                        'gpt-4.1',
+                        'gpt-4o',
+                        'o1',
+                        'o3',
+                        'o4',
+                    )
+                    return any(m.startswith(p) for p in prefixes)
+
+                kwargs: Dict[str, Any] = {
+                    "model": self.model,
+                    "messages": messages,
+                    "temperature": self.temperature,
+                }
+                requires_completion = _requires_max_completion_tokens(self.model)
+                param = getattr(self, 'completion_param', '')
+                if param == 'max_completion_tokens':
+                    kwargs["max_completion_tokens"] = self.max_tokens
+                elif param == 'max_tokens':
+                    if requires_completion:
+                        kwargs["max_completion_tokens"] = self.max_tokens
+                    else:
+                        kwargs["max_tokens"] = self.max_tokens
+                else:
+                    if requires_completion:
+                        kwargs["max_completion_tokens"] = self.max_tokens
+                    else:
+                        kwargs["max_tokens"] = self.max_tokens
+                resp = self.client.chat.completions.create(**kwargs)
                 latency = (time.time() - start_ts)
                 try:
                     usage = getattr(resp, 'usage', None)
@@ -1176,8 +1203,30 @@ Forneça análise quantitativa focada em priorização baseada em dados."""
         """Constrói prompt para análise vendor/product."""
         vendor_stats = vendor_product_data.get('vendor_statistics', {})
         product_stats = vendor_product_data.get('product_statistics', {})
+        try:
+            total_cves = int(vulnerability_data.get('total_vulnerabilities', 0) or 0)
+        except Exception:
+            total_cves = 0
+        try:
+            vendors_total = int(vendor_product_data.get('vendors', 0) or 0)
+        except Exception:
+            vendors_total = 0
+        try:
+            products_total = int(vendor_product_data.get('products', 0) or 0)
+        except Exception:
+            products_total = 0
+        try:
+            cwes_total = int(len((vulnerability_data.get('cwe_distribution') or {})))
+        except Exception:
+            cwes_total = 0
         
         return f"""**Análise de Vulnerabilidades por Vendor e Produto**
+
+**Resumo de Totais:**
+- Vendors: {vendors_total}
+- Produtos: {products_total}
+- CVEs: {total_cves}
+- CWEs: {cwes_total}
 
 **Estatísticas por Vendor:**
 {self._format_vendor_statistics(vendor_stats)}

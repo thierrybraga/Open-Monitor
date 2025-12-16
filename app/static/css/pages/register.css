@@ -45,3 +45,50 @@
   margin-top: 1.5rem;
   text-align: center;
 }
+
+/* Ajustes específicos da página de registro:
+   - Largura do card ampliada em telas médias/grandes
+   - Campos maiores e espaçamento vertical harmonizado
+*/
+
+@media (min-width: 768px) {
+  .auth-container .auth-card.auth-minimal {
+    max-width: 680px; /* melhora legibilidade sem ficar excessivo */
+  }
+}
+
+@media (max-width: 767.98px) {
+  .auth-container .auth-card.auth-minimal {
+    max-width: 100%;
+  }
+}
+
+.auth-minimal .auth-form .form-group {
+  margin-bottom: 1rem; /* espaçamento consistente entre campos */
+}
+
+.auth-minimal .auth-form .form-label {
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem; /* aproximação do label ao campo */
+}
+
+.auth-minimal .auth-form .form-control {
+  min-height: 54px; /* caixas de texto mais confortáveis */
+  font-size: 1rem;
+  padding: 0.75rem 1rem; /* aumenta área clicável e conforto visual */
+}
+
+.auth-minimal .auth-form .input-group .btn {
+  min-height: 54px; /* iguala altura ao input */
+  padding: 0.5rem 0.75rem; /* mantém botões compactos e alinhados */
+}
+
+.auth-minimal .auth-submit-btn.btn-lg {
+  min-height: 54px;
+  padding: 0.75rem 1rem;
+}
+
+.auth-minimal .form-check {
+  margin-top: 0.25rem;
+  margin-bottom: 1rem; /* reduz espaço extra abaixo do checkbox */
+}

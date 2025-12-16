@@ -1,0 +1,147 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Configurar Usuário Root{% endblock %}
+
+{% block meta_description %}Crie o usuário root da conta sem confirmação de senha e configure TACACS opcionalmente.{% endblock %}
+{% block meta_keywords %}usuário root, inicialização, TACACS, Open Monitor{% endblock %}
+{% block og_title %}Configurar Usuário Root{% endblock %}
+{% block og_description %}Inicialize a conta criando o usuário root.{% endblock %}
+
+{% block extra_head %}
+<link rel="canonical" href="{{ url_for('auth.init_root', _external=True) }}">
+<meta name="robots" content="noindex, nofollow">
+{% endblock %}
+
+{% block content %}
+<section class="auth-container auth-minimal container d-flex align-items-center justify-content-center min-vh-100">
+  <div class="auth-card auth-minimal w-100">
+    <header class="text-center mb-4">
+      <h1 class="mb-2">Criar Usuário Root</h1>
+      <p class="text-muted">Defina o usuário raiz do Open-Monitor</p>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" class="auth-form" novalidate id="init-root-form">
+      {{ form.hidden_tag() }}
+
+      <div class="form-group mb-3">
+        <label for="first_name" class="form-label required">Nome</label>
+        {{ form.first_name(class="form-control" + (" is-invalid" if form.first_name.errors else ""), id="first_name", placeholder="Digite seu nome", autocomplete="given-name") }}
+        {% if form.first_name.errors %}
+          <div class="invalid-feedback">{{ form.first_name.errors[0] }}</div>
+        {% endif %}
+      </div>
+
+      <div class="form-group mb-3">
+        <label for="last_name" class="form-label required">Sobrenome</label>
+        {{ form.last_name(class="form-control" + (" is-invalid" if form.last_name.errors else ""), id="last_name", placeholder="Digite seu sobrenome", autocomplete="family-name") }}
+        {% if form.last_name.errors %}
+          <div class="invalid-feedback">{{ form.last_name.errors[0] }}</div>
+        {% endif %}
+      </div>
+
+      <div class="form-group mb-3">
+        <label for="username" class="form-label required">Nome de usuário</label>
+        {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else ""), id="username", placeholder="Digite o usuário root", autocomplete="username") }}
+        {% if form.username.errors %}
+          <div class="invalid-feedback">{{ form.username.errors[0] }}</div>
+        {% endif %}
+        <small class="text-muted mt-1 d-block">Apenas letras, números e underscore</small>
+      </div>
+
+      <div class="form-group mb-3">
+        <label for="email" class="form-label required">E-mail</label>
+        {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), id="email", placeholder="Digite seu e-mail", autocomplete="email") }}
+        {% if form.email.errors %}
+          <div class="invalid-feedback">{{ form.email.errors[0] }}</div>
+        {% endif %}
+      </div>
+
+      <div class="form-group mb-3">
+        <label for="phone" class="form-label">Telefone (opcional)</label>
+        {{ form.phone(class="form-control" + (" is-invalid" if form.phone.errors else ""), id="phone", placeholder="(11) 99999-9999", autocomplete="tel") }}
+        {% if form.phone.errors %}
+          <div class="invalid-feedback">{{ form.phone.errors[0] }}</div>
+        {% endif %}
+      </div>
+
+      <div class="form-group mb-3">
+        <label for="password" class="form-label required">Senha</label>
+        {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), id="password", placeholder="Defina a senha do usuário root", autocomplete="new-password", minlength="8", required=True) }}
+        {% if form.password.errors %}
+          <div class="invalid-feedback">{{ form.password.errors[0] }}</div>
+        {% endif %}
+      </div>
+
+      <div class="form-group mb-3">
+        <button type="button" class="btn btn-outline-secondary w-100" id="toggle-tacacs">
+          <i class="bi bi-gear me-2"></i> Configurar TACACS
+        </button>
+      </div>
+
+      <div id="tacacs-section" class="border rounded p-3 mb-3" style="display: none;">
+        <div class="form-check mb-3">
+          {{ form.tacacs_enabled(class="form-check-input", id="tacacs_enabled") }}
+          <label class="form-check-label" for="tacacs_enabled">Habilitar TACACS</label>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            {{ form.tacacs_username(class="form-control", placeholder="Usuário TACACS", id="tacacs_username") }}
+          </div>
+          <div class="col-md-6">
+            {{ form.tacacs_secret(class="form-control", placeholder="Segredo TACACS", id="tacacs_secret") }}
+          </div>
+          <div class="col-md-6">
+            {{ form.tacacs_server(class="form-control", placeholder="Servidor TACACS", id="tacacs_server") }}
+          </div>
+          <div class="col-md-3">
+            {{ form.tacacs_port(class="form-control", placeholder="Porta (49)", id="tacacs_port") }}
+          </div>
+          <div class="col-md-3">
+            {{ form.tacacs_timeout(class="form-control", placeholder="Timeout (5)", id="tacacs_timeout") }}
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group mb-3">
+        <div class="form-check">
+          {{ form.terms_accepted(class="form-check-input", id="terms_accepted", checked=True) }}
+          <label class="form-check-label" for="terms_accepted">
+            Eu aceito os <a href="#" class="text-primary" data-bs-toggle="modal" data-bs-target="#termsModal">Termos de Uso</a> e a <a href="#" class="text-primary" data-bs-toggle="modal" data-bs-target="#privacyModal">Política de Privacidade</a>
+          </label>
+        </div>
+      </div>
+
+      <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-primary btn-lg auth-submit-btn btn-full" id="init-root-btn" aria-live="polite">
+          <span class="btn-text"><i class="bi bi-shield-lock me-2"></i> Criar Usuário Root</span>
+          <span class="btn-loading" style="display: none;">
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            Processando...
+          </span>
+        </button>
+      </div>
+    </form>
+
+    <footer class="auth-footer auth-minimal mt-5 text-center" role="contentinfo" aria-label="Ações de navegação">
+      <div class="footer-links d-flex justify-content-center align-items-center gap-3">
+        <a href="{{ url_for('main.index') }}" class="footer-link">Voltar ao início</a>
+      </div>
+    </footer>
+  </div>
+  </section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/init-root.js') }}" defer nonce="{{ nonce }}"></script>
+{% endblock %}

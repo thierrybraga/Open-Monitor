@@ -1,10 +1,13 @@
 from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey, String
 from sqlalchemy.orm import relationship
 from app.extensions import db
-from datetime import datetime
+from datetime import datetime, timezone
 
 class RiskAssessment(db.Model):
     __tablename__ = 'risk_assessment'
+    __table_args__ = (
+        db.UniqueConstraint('asset_id', 'vulnerability_id', name='uq_risk_asset_vuln'),
+    )
 
     # Primary key
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -39,7 +42,7 @@ class RiskAssessment(db.Model):
     risk_score = Column(Float, nullable=False)
 
     # Timestamp
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     asset = relationship(

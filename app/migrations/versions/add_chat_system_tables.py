@@ -8,6 +8,7 @@ Create Date: 2025-09-29 10:40:00.000000
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import sqlite
+from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM
 
 # revision identifiers, used by Alembic.
 revision = 'add_chat_system_tables'
@@ -28,8 +29,25 @@ def upgrade():
     except:
         pass
     
-    # Create chat_sessions table
-    op.create_table('chat_sessions',
+    # Ensure enum type exists on PostgreSQL
+    bind = op.get_bind()
+    try:
+        if bind.dialect.name == 'postgresql':
+            op.execute("""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'messagetype') THEN
+                    CREATE TYPE messagetype AS ENUM ('USER', 'ASSISTANT', 'SYSTEM', 'ERROR');
+                END IF;
+            END $$;
+            """)
+    except Exception:
+        pass
+
+    # Create chat_sessions table if missing
+    existing = set(sa.inspect(bind).get_table_names())
+    if 'chat_sessions' not in existing:
+        op.create_table('chat_sessions',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('title', sa.String(length=255), nullable=False),
         sa.Column('session_token', sa.String(length=64), nullable=False),
@@ -42,15 +60,16 @@ def upgrade():
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], name='fk_chat_sessions_user_id'),
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('session_token', name='uq_chat_sessions_session_token')
-    )
-    op.create_index('ix_chat_sessions_session_token', 'chat_sessions', ['session_token'], unique=True)
-    op.create_index('ix_chat_sessions_user_id', 'chat_sessions', ['user_id'], unique=False)
+        )
+        op.create_index('ix_chat_sessions_session_token', 'chat_sessions', ['session_token'], unique=True)
+        op.create_index('ix_chat_sessions_user_id', 'chat_sessions', ['user_id'], unique=False)
     
-    # Create chat_messages table
-    op.create_table('chat_messages',
+    # Create chat_messages table if missing
+    if 'chat_messages' not in existing:
+        op.create_table('chat_messages',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('content', sa.Text(), nullable=False),
-        sa.Column('message_type', sa.Enum('USER', 'ASSISTANT', 'SYSTEM', 'ERROR', name='messagetype'), nullable=False),
+        sa.Column('message_type', PG_ENUM('USER', 'ASSISTANT', 'SYSTEM', 'ERROR', name='messagetype', create_type=False), nullable=False),
         sa.Column('session_id', sa.Integer(), nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=True),
         sa.Column('token_count', sa.Integer(), nullable=True),
@@ -63,9 +82,9 @@ def upgrade():
         sa.ForeignKeyConstraint(['session_id'], ['chat_sessions.id'], name='fk_chat_messages_session_id'),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], name='fk_chat_messages_user_id'),
         sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index('ix_chat_messages_session_id', 'chat_messages', ['session_id'], unique=False)
-    op.create_index('ix_chat_messages_user_id', 'chat_messages', ['user_id'], unique=False)
+        )
+        op.create_index('ix_chat_messages_session_id', 'chat_messages', ['session_id'], unique=False)
+        op.create_index('ix_chat_messages_user_id', 'chat_messages', ['user_id'], unique=False)
 
 
 def downgrade():

@@ -1,3 +1,0 @@
-HTML lang: en-US
-og:locale: en_US
-inLanguage: en-US

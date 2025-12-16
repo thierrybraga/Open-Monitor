@@ -1,6 +1,6 @@
 import logging
 from typing import List, Dict, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import urllib.request
 import re
 from urllib.parse import urlparse
@@ -144,7 +144,7 @@ class FortinetReleaseNotesService:
         anchors = re.findall(r"<a[^>]*href=\"([^\"]+)\"[^>]*>(.*?)</a>", html, flags=re.IGNORECASE | re.DOTALL)
         items: List[Dict] = []
         seen_links = set()
-        fallback_time = datetime.utcnow()
+        fallback_time = datetime.now(timezone.utc)
 
         for idx, (href, text) in enumerate(anchors):
             try:
@@ -216,7 +216,7 @@ class FortinetReleaseNotesService:
                 continue
 
         try:
-            aggregated.sort(key=lambda i: i.get("published_at") or datetime.utcnow(), reverse=True)
+            aggregated.sort(key=lambda i: i.get("published_at") or datetime.now(timezone.utc), reverse=True)
         except Exception:
             pass
         return aggregated[:limit]

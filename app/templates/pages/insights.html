@@ -255,10 +255,7 @@
     </div>
 </div>
 
-<script nonce="{{ nonce }}">
-// Placeholder para gráficos - pode ser implementado com Chart.js
-console.log('Insights page loaded');
-</script>
+
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/pages/insights.js') }}" defer nonce="{{ nonce }}"></script>
 {% endblock %}

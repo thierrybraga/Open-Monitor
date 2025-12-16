@@ -1,0 +1,33 @@
+{# Macros de UI para padronizar badges e renderização de campos de Asset #}
+{% macro status_badge(status) %}
+  {% set s = (status or 'unknown')|lower %}
+  {% set label = (status or 'Desconhecido') %}
+  {% set cls = 'bg-secondary' %}
+  {% if s == 'active' %}
+    {% set cls = 'bg-success' %}
+  {% elif s == 'inactive' %}
+    {% set cls = 'bg-secondary' %}
+  {% elif s == 'maintenance' %}
+    {% set cls = 'bg-warning' %}
+  {% elif s == 'warning' or s == 'alerta' %}
+    {% set cls = 'bg-danger' %}
+  {% endif %}
+  <span class="status-badge badge {{ cls }}">{{ label|capitalize }}</span>
+{% endmacro %}
+
+{% macro type_badge(asset_type) %}
+  {% set t = asset_type or '' %}
+  {% if t %}
+    <span class="badge bg-secondary">{{ t }}</span>
+  {% else %}
+    <span class="text-muted">Não definido</span>
+  {% endif %}
+{% endmacro %}
+
+{% macro vendor_badge(vendor_name) %}
+  {% if vendor_name %}
+    <span class="badge bg-info text-dark">{{ vendor_name }}</span>
+  {% else %}
+    <span class="text-muted">Não informado</span>
+  {% endif %}
+{% endmacro %}

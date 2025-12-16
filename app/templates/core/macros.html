@@ -5,12 +5,19 @@
   </span>
 {% endmacro %}
 
-{% macro render_pagination(pagination, endpoint, route_severity=None, variant=None) %}
-    {# Preservar demais query params #}
-    {% set args = request.args.to_dict(flat=False) %}
+{% macro render_pagination(pagination, endpoint, route_severity=None, variant=None, extra_params=None) %}
+    {# Preservar query params como escalares para url_for #}
+    {% set args = request.args.to_dict() %}
     {% set _ = args.pop('page', None) %}
     {% if route_severity is not none %}
       {% set _ = args.pop('severity', None) %}
+    {% endif %}
+
+    {# Permitir parâmetros de rota adicionais (ex.: asset_id) #}
+    {% if extra_params %}
+      {% for k, v in extra_params.items() %}
+        {% set _ = args.update({k: (v|string)}) %}
+      {% endfor %}
     {% endif %}
 
     {# Proteção: se a paginação existir, renderizar controles; caso contrário, placeholder #}

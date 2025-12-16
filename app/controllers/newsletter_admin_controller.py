@@ -8,6 +8,7 @@ from app.services.newsletter_service import NewsletterService
 from app.services.email_service import EmailService
 from app.forms.newsletter_forms import NewsletterAdminForm
 from app.extensions import db
+from flask_login import login_required, current_user
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -21,6 +22,7 @@ newsletter_admin_bp = Blueprint(
 
 
 @newsletter_admin_bp.route('/', methods=['GET'])
+@login_required
 def admin_dashboard() -> str:
     """Newsletter admin dashboard with statistics and subscriber management."""
     logger.info("Accessing newsletter admin dashboard")
@@ -61,6 +63,7 @@ def admin_dashboard() -> str:
 
 
 @newsletter_admin_bp.route('/subscribers', methods=['GET'])
+@login_required
 def list_subscribers() -> str:
     """List all newsletter subscribers with pagination and filtering."""
     logger.info("Accessing newsletter subscribers list")
@@ -123,6 +126,7 @@ def list_subscribers() -> str:
 
 
 @newsletter_admin_bp.route('/send', methods=['GET', 'POST'])
+@login_required
 def send_newsletter() -> str:
     """Send newsletter to all active subscribers."""
     logger.info(f"Accessing send newsletter page with method: {request.method}")
@@ -155,10 +159,11 @@ def send_newsletter() -> str:
             
             for subscriber in target_subscribers:
                 try:
-                    success = email_service.send_newsletter(
-                        subscriber.email,
+                    success = email_service.send_email(
+                        [subscriber.email],
                         subject,
-                        content
+                        content,
+                        'html'
                     )
                     if success:
                         sent_count += 1
@@ -193,6 +198,7 @@ def send_newsletter() -> str:
 
 
 @newsletter_admin_bp.route('/subscriber/<int:subscriber_id>/toggle', methods=['POST'])
+@login_required
 def toggle_subscriber_status(subscriber_id: int) -> str:
     """Toggle subscriber active/inactive status."""
     logger.info(f"Toggling subscriber status for ID: {subscriber_id}")
@@ -231,6 +237,7 @@ def toggle_subscriber_status(subscriber_id: int) -> str:
 
 
 @newsletter_admin_bp.route('/export', methods=['GET'])
+@login_required
 def export_subscribers() -> str:
     """Export subscribers list as CSV."""
     logger.info("Exporting newsletter subscribers")
@@ -275,6 +282,7 @@ def export_subscribers() -> str:
 
 
 @newsletter_admin_bp.route('/api/stats', methods=['GET'])
+@login_required
 def api_stats() -> str:
     """API endpoint for newsletter statistics."""
     try:

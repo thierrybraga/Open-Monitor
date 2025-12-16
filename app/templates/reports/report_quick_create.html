@@ -438,6 +438,14 @@
                                     <div class="text-danger small">{{ form.description.errors[0] }}</div>
                                 {% endif %}
                             </div>
+
+                            <div class="col-md-6">
+                                <div class="form-floating-custom">
+                                    <label class="form-label" for="vendor_name">Vendor</label>
+                                    <input type="text" class="form-control" id="vendor_name" name="vendor_name" placeholder="Ex: Fortinet">
+                                </div>
+                                <small class="text-muted">Opcional: define o vendor para agregação por produto.</small>
+                            </div>
                             
                             <!-- Upload de CSV -->
                             <div class="col-12">
@@ -465,43 +473,60 @@
                             <small class="text-muted">(Opcional)</small>
                         </h5>
                     </div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <div class="form-check form-switch">
-                                    {{ form.include_ai_analysis(class="form-check-input") }}
-                                    {{ form.include_ai_analysis.label(class="form-check-label") }}
-                                </div>
-                                <small class="text-muted">Inclui análise inteligente e recomendações</small>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                {{ form.include_ai_analysis(class="form-check-input") }}
+                                {{ form.include_ai_analysis.label(class="form-check-label") }}
                             </div>
-                            
-                            <div class="col-md-6">
-                                <div class="form-check form-switch">
-                                    {{ form.include_charts(class="form-check-input") }}
-                                    {{ form.include_charts.label(class="form-check-label") }}
-                                </div>
-                                <small class="text-muted">Adiciona gráficos e visualizações</small>
+                            <small class="text-muted">Inclui análise inteligente e recomendações</small>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                {{ form.include_charts(class="form-check-input") }}
+                                {{ form.include_charts.label(class="form-check-label") }}
                             </div>
-                            
-                            <div class="col-md-6">
-                                <div class="form-check form-switch">
-                                    {{ form.auto_export_pdf(class="form-check-input") }}
-                                    {{ form.auto_export_pdf.label(class="form-check-label") }}
-                                </div>
-                                <small class="text-muted">Gera automaticamente versão em PDF</small>
+                            <small class="text-muted">Adiciona gráficos e visualizações</small>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                {{ form.auto_export_pdf(class="form-check-input") }}
+                                {{ form.auto_export_pdf.label(class="form-check-label") }}
                             </div>
-                            
-                            <div class="col-md-6">
-                                <div class="form-check form-switch">
-                                    {{ form.send_notification(class="form-check-input") }}
-                                    {{ form.send_notification.label(class="form-check-label") }}
-                                </div>
-                                <small class="text-muted">Notifica quando o relatório estiver pronto</small>
+                            <small class="text-muted">Gera automaticamente versão em PDF</small>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                {{ form.send_notification(class="form-check-input") }}
+                                {{ form.send_notification.label(class="form-check-label") }}
                             </div>
+                            <small class="text-muted">Notifica quando o relatório estiver pronto</small>
+                        </div>
+
+                        <!-- FortiGuide / FortiGate Release Notes -->
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                {{ form.include_fortiguide_notes(class="form-check-input", id="quick_include_fortiguide_notes") }}
+                                {{ form.include_fortiguide_notes.label(class="form-check-label", for="quick_include_fortiguide_notes") }}
+                            </div>
+                            <small class="text-muted">Inclui notas de release do FortiGate no Estudo Técnico</small>
+                        </div>
+                        <div class="col-md-6" id="quick-fortiguide-version-container" style="display: none;">
+                            {{ form.fortiguide_version.label(class="form-label") }}
+                            {{ form.fortiguide_version(class="form-select") }}
+                            {% if form.fortiguide_version.errors %}
+                                <div class="text-danger small">{{ form.fortiguide_version.errors[0] }}</div>
+                            {% endif %}
+                            <small class="text-muted">Selecione a versão FortiOS/FortiGate principal do ambiente.</small>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
         </div>
 
         <!-- Botões de Ação -->
@@ -582,7 +607,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ nonce }}">
 let selectedTemplate = null;
 let advancedVisible = false;
 
@@ -645,8 +670,8 @@ document.querySelectorAll('.quick-card').forEach(card => {
             'technical': 'tecnico',
             'estudo_tecnico': 'estudo_tecnico',
             'kpi_kri': 'kpi_kri',
-            'pentest': 'tecnico',
-            'bia': 'executivo',
+            'pentest': 'pentest',
+            'bia': 'bia',
             'compliance': 'executivo'
         };
         document.getElementById('reportType').value = reportTypeMap[selectedTemplate] || 'executivo';
@@ -683,6 +708,15 @@ document.querySelectorAll('.quick-card').forEach(card => {
             behavior: 'smooth', 
             block: 'start' 
         });
+
+        // Submeter imediatamente ao selecionar qualquer card
+        try {
+            const formEl = document.getElementById('quickReportForm');
+            const submitEvent = new Event('submit', { cancelable: true });
+            formEl.dispatchEvent(submitEvent);
+        } catch (e) {
+            // silencioso
+        }
     });
 });
 
@@ -700,6 +734,17 @@ document.getElementById('showAdvancedBtn').addEventListener('click', function() 
         advancedVisible = false;
     }
 });
+
+// FortiGuide: mostrar/esconder seleção de versão
+(function() {
+    const fgToggle = document.getElementById('quick_include_fortiguide_notes');
+    const fgContainer = document.getElementById('quick-fortiguide-version-container');
+    if (fgToggle) {
+        const updateFG = () => { if (fgContainer) fgContainer.style.display = fgToggle.checked ? 'block' : 'none'; };
+        fgToggle.addEventListener('change', updateFG);
+        updateFG();
+    }
+})();
 
 // Preview do relatório
 document.getElementById('previewBtn').addEventListener('click', function() {

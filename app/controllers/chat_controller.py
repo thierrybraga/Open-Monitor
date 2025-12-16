@@ -3,9 +3,12 @@ Chat Controller - Gerencia sessões de chat e mensagens
 """
 
 from flask import Blueprint, request, jsonify, session, current_app
+from flask.wrappers import Response
+from sqlalchemy.exc import SQLAlchemyError
+from werkzeug.exceptions import BadRequest, NotFound, InternalServerError
 from flask_login import current_user
 from sqlalchemy.exc import SQLAlchemyError
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import json
 import re
@@ -21,6 +24,26 @@ from app.utils.logging_config import get_request_logger
 # Criar blueprint
 chat_bp = Blueprint('chat', __name__, url_prefix='/api/chat')
 logger = get_request_logger()
+
+@chat_bp.errorhandler(BadRequest)
+def _handle_bad_request(e: BadRequest) -> Response:
+    return jsonify(error=str(e)), 400
+
+@chat_bp.errorhandler(NotFound)
+def _handle_not_found(e: NotFound) -> Response:
+    return jsonify(error='Not Found'), 404
+
+@chat_bp.errorhandler(SQLAlchemyError)
+def _handle_db_error(e: SQLAlchemyError) -> Response:
+    try:
+        detail = str(getattr(e, 'orig', e))
+    except Exception:
+        detail = str(e)
+    return jsonify(error='Database error', detail=detail), 500
+
+@chat_bp.errorhandler(Exception)
+def _handle_unexpected_error(e: Exception) -> Response:
+    raise InternalServerError()
 
 # Instância do serviço de chat
 chat_service = ChatService()
@@ -149,12 +172,13 @@ def create_session():
         session_token = str(uuid.uuid4())
         
         # Criar nova sessão
+        from datetime import timezone as _tz
         new_session = ChatSession(
             title=title,
             session_token=session_token,
             user_id=user_id,
             is_active=True,
-            last_activity=datetime.utcnow()
+            last_activity=datetime.now(_tz.utc)
         )
         
         db.session.add(new_session)
@@ -234,7 +258,8 @@ def update_session(session_id):
         if 'is_active' in data:
             chat_session.is_active = data['is_active']
         
-        chat_session.updated_at = datetime.utcnow()
+        from datetime import timezone as _tz
+        chat_session.updated_at = datetime.now(_tz.utc)
         db.session.commit()
         
         return jsonify({
@@ -260,13 +285,14 @@ def get_session_messages(session_id):
         # Verificar se a sessão existe e pertence ao usuário
         chat_session = ChatSession.query.filter_by(
             id=session_id,
-            user_id=user_id
+            user_id=user_id,
+            is_active=True
         ).first()
         
         if not chat_session:
             return jsonify({
                 'success': False,
-                'error': 'Sessão não encontrada'
+                'error': 'Sessão não encontrada ou inativa'
             }), 404
         
         # Buscar mensagens da sessão
@@ -371,6 +397,7 @@ def send_message(session_id):
             }), 400
         
         # Processar mensagem usando o serviço de chat
+        logger.info(f"Chat send_message: session_id={session_id}, user_id={user_id}, content_len={len(content)}")
         result = chat_service.process_message(content, session_id, user_id, metadata)
         
         if not result['success']:
@@ -391,6 +418,7 @@ def send_message(session_id):
             response_data['demo_mode'] = True
             response_data['message'] = 'Resposta gerada em modo demonstração. Configure a API OpenAI para respostas completas.'
         
+        logger.info(f"Chat send_message success: assistant_len={len(result['assistant_message'].get('content',''))}, processing_time={response_data.get('processing_time')}s")
         return jsonify(response_data), 201
         
     except Exception as e:
@@ -512,7 +540,7 @@ def delete_session(session_id):
         
         # Soft delete - marcar como inativa
         chat_session.is_active = False
-        chat_session.updated_at = datetime.utcnow()
+        chat_session.updated_at = datetime.now(timezone.utc)
         db.session.commit()
         
         logger.info(f"Sessão {session_id} excluída pelo usuário {user_id}")
@@ -607,6 +635,45 @@ def unarchive_session(session_id):
         }), 500
 
 
+@chat_bp.route('/sessions/<int:session_id>/restore', methods=['POST'])
+def restore_session(session_id):
+    """Restaurar uma sessão previamente excluída (reativar)"""
+    try:
+        user_id = session.get('temp_user_id', 1)
+
+        chat_session = ChatSession.query.filter_by(
+            id=session_id,
+            user_id=user_id,
+            is_active=False
+        ).first()
+
+        if not chat_session:
+            return jsonify({
+                'success': False,
+                'error': 'Sessão não encontrada ou já ativa'
+            }), 404
+
+        chat_session.is_active = True
+        chat_session.updated_at = datetime.now(timezone.utc)
+        db.session.commit()
+
+        logger.info(f"Sessão {session_id} restaurada pelo usuário {user_id}")
+
+        return jsonify({
+            'success': True,
+            'message': 'Sessão restaurada com sucesso',
+            'session': chat_session.to_dict()
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erro ao restaurar sessão {session_id}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Erro ao restaurar sessão'
+        }), 500
+
+
 @chat_bp.route('/sessions/bulk-delete', methods=['POST'])
 def bulk_delete_sessions():
     """Excluir múltiplas sessões"""
@@ -638,7 +705,7 @@ def bulk_delete_sessions():
         deleted_count = 0
         for chat_session in sessions:
             chat_session.is_active = False
-            chat_session.updated_at = datetime.utcnow()
+            chat_session.updated_at = datetime.now(timezone.utc)
             deleted_count += 1
         
         db.session.commit()

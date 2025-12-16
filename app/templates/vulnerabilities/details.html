@@ -6,9 +6,7 @@
 
 {% block meta_keywords %}{{ vulnerability.cve_id }}, vulnerabilidade, segurança, {{ vulnerability.base_severity | lower if vulnerability.base_severity }}, CVE, cybersecurity{% endblock %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/vulnerability-details.css') }}">
-{% endblock %}
+{% block extra_css %}{% endblock %}
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/pages/vulnerability-details.js') }}" defer nonce="{{ nonce }}"></script>
@@ -43,7 +41,7 @@
                 <p class="alert-detail"><strong>Ação Requerida:</strong> {{ vulnerability.cisa_required_action }}</p>
                 {% endif %}
                 {% if vulnerability.cisa_action_due %}
-                <p class="alert-detail"><strong>Prazo:</strong> {{ vulnerability.cisa_action_due.strftime('%d/%m/%Y') }}</p>
+                <p class="alert-detail"><strong>Prazo:</strong> {{ vulnerability.cisa_action_due|datetimeformat('%d/%m/%Y') }}</p>
                 {% endif %}
             </div>
         </div>
@@ -99,14 +97,14 @@
                     <div class="meta-chip" role="listitem">
                         <i class="bi bi-calendar-event"></i>
                         <span class="chip-label">Publicado</span>
-                        <span class="chip-value">{{ vulnerability.published_date.strftime('%d/%m/%Y') }}</span>
+                        <span class="chip-value">{{ vulnerability.published_date|datetimeformat('%d/%m/%Y') }}</span>
                     </div>
                     {% endif %}
                     {% if vulnerability.last_update %}
                     <div class="meta-chip" role="listitem">
                         <i class="bi bi-clock-history"></i>
                         <span class="chip-label">Atualizado</span>
-                        <span class="chip-value">{{ vulnerability.last_update.strftime('%d/%m/%Y') }}</span>
+                        <span class="chip-value">{{ vulnerability.last_update|datetimeformat('%d/%m/%Y') }}</span>
                     </div>
                     {% endif %}
                     {% if vulnerability.vuln_status %}
@@ -366,9 +364,9 @@
                                             {{ metric.base_severity or 'Desconhecida' }}
                                         </div>
                                     </div>
-                                    {% if metric.vector_string %}
+                                    {% if metric.base_vector %}
                                     <div class="metric-vector">
-                                        <code>{{ metric.vector_string }}</code>
+                                        <code>{{ metric.base_vector }}</code>
                                     </div>
                                     {% endif %}
                                     <div class="metric-details">
@@ -435,7 +433,7 @@
                         {% endif %}
 
                         {# Products Panel #}
-                        {% if vulnerability.version_references or vulnerability.affected_products %}
+                        {% if vulnerability.version_references or vulnerability.affected_products or fallback_versions %}
                         <div class="tab-panel" 
                              role="tabpanel" 
                              id="panel-products" 
@@ -556,7 +554,7 @@
                         {% if vulnerability.published_date %}
                         <div class="timeline-event event-info">
                             <div class="event-marker"></div>
-                            <div class="event-date">{{ vulnerability.published_date.strftime('%d/%m/%Y') }}</div>
+                            <div class="event-date">{{ vulnerability.published_date|datetimeformat('%d/%m/%Y') }}</div>
                             <div class="event-content">
                                 <h4 class="event-title">Vulnerabilidade Publicada</h4>
                                 <p class="event-description">CVE {{ vulnerability.cve_id }} foi publicado oficialmente.</p>
@@ -566,7 +564,7 @@
                         {% if vulnerability.last_update and vulnerability.last_update != vulnerability.published_date %}
                         <div class="timeline-event event-important">
                             <div class="event-marker"></div>
-                            <div class="event-date">{{ vulnerability.last_update.strftime('%d/%m/%Y') }}</div>
+                            <div class="event-date">{{ vulnerability.last_update|datetimeformat('%d/%m/%Y') }}</div>
                             <div class="event-content">
                                 <h4 class="event-title">Última Atualização</h4>
                                 <p class="event-description">Informações da vulnerabilidade foram atualizadas.</p>
@@ -576,7 +574,7 @@
                         {% if vulnerability.cisa_exploit_add %}
                         <div class="timeline-event event-critical">
                             <div class="event-marker"></div>
-                            <div class="event-date">{{ vulnerability.cisa_exploit_add.strftime('%d/%m/%Y') }}</div>
+                            <div class="event-date">{{ vulnerability.cisa_exploit_add|datetimeformat('%d/%m/%Y') }}</div>
                             <div class="event-content">
                                 <h4 class="event-title">Adicionado ao CISA KEV</h4>
                                 <p class="event-description">Vulnerabilidade foi adicionada à lista de vulnerabilidades conhecidas e exploradas.</p>

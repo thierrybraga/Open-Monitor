@@ -79,7 +79,7 @@
       {% include 'core/sidebar.html' %}
 
       {# Área de conteúdo principal - Ocupa o espaço restante horizontalmente #}
-      <main id="main-content" class="main-content flex-grow-1"> {# flex-grow-1 faz ocupar o espaço horizontal restante #}
+      <main id="main-content" class="main-content flex-grow-1">
         {# Área para mensagens de alerta do sistema (ex: offline status, flash messages) #}
         {# Pode ser posicionado fixo ou absoluto via CSS se necessário #}
         <div id="system-alerts" class="container-fluid mt-3">
@@ -97,8 +97,15 @@
                   {% endif %}
               {% endwith %}
         </div>
-        {# O conteúdo da página individual é injetado neste bloco #}
-        <div class="container-fluid"> {# container-fluid para full width content #}
+        <div class="container-fluid">
+          <nav aria-label="breadcrumb" class="mb-2">
+            <ol class="breadcrumb">
+              <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Início</a></li>
+              {% block breadcrumbs %}{% endblock %}
+            </ol>
+          </nav>
+        </div>
+        <div class="container-fluid">
           {% block content %}{% endblock %}
         </div>
       </main>
@@ -427,8 +434,8 @@
    {# Vendor Scope - Propaga vendor_ids em links de navegação #}
    <script src="{{ url_for('static', filename='js/components/vendor_scope.js') }}" defer nonce="{{ nonce }}"></script>
 
-   {# Bloco para scripts específicos de cada página #}
-   {% block extra_js %}{% endblock %}
+  {# Bloco para scripts específicos de cada página #}
+  {% block extra_js %}{% endblock %}
 
 </body>
 </html>

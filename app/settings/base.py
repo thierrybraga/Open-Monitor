@@ -24,17 +24,38 @@ class BaseConfig:
     PUBLIC_MODE = getenv_typed('PUBLIC_MODE', lambda x: x.lower() == 'true', True)
 
     # Permitir login mesmo quando PUBLIC_MODE estiver habilitado
-    LOGIN_ENABLED_IN_PUBLIC_MODE = getenv_typed('LOGIN_ENABLED_IN_PUBLIC_MODE', lambda x: x.lower() == 'true', False)
+    LOGIN_ENABLED_IN_PUBLIC_MODE = getenv_typed('LOGIN_ENABLED_IN_PUBLIC_MODE', lambda x: x.lower() == 'true', True)
 
-    # Se existir DATABASE_URL, usa; senão usa o SQLite em instance/vulnerabilities.db
+    # Caminho da pasta 'instance' na raiz do projeto (sempre disponível)
+    INSTANCE_PATH = Path(__file__).parent.parent.parent / 'instance'
+    INSTANCE_PATH.mkdir(parents=True, exist_ok=True)
+
+    # Configuração do banco principal
     _db_url = os.getenv('DATABASE_URL')
-    if _db_url:
-        SQLALCHEMY_DATABASE_URI = _db_url
-    else:
-        # assume este arquivo está em settings/, então instance/ fica dois níveis acima
-        INSTANCE_PATH = Path(__file__).parent.parent / 'instance'
-        INSTANCE_PATH.mkdir(parents=True, exist_ok=True)
-        SQLALCHEMY_DATABASE_URI = f"sqlite:///{INSTANCE_PATH / 'vulnerabilities.db'}"
+    if _db_url and _db_url.startswith('postgres://'):
+        _db_url = 'postgresql://' + _db_url[len('postgres://'):]
+    if not _db_url:
+        _db_url = (
+            f"postgresql://{os.getenv('POSTGRES_CORE_USER','postgres')}:"
+            f"{os.getenv('POSTGRES_CORE_PASSWORD','Passw0rdCore')}@"
+            f"{os.getenv('POSTGRES_CORE_HOST','postgres_core')}:5432/"
+            f"{os.getenv('POSTGRES_CORE_DB','om_core')}"
+        )
+    SQLALCHEMY_DATABASE_URI = _db_url
+
+    # Bind adicional 'public' — sempre definido com fallback seguro
+    # Sobrescreve via PUBLIC_DATABASE_URL; caso contrário, usa PostgreSQL padrão
+    _pub_db_url = os.getenv('PUBLIC_DATABASE_URL')
+    if _pub_db_url and _pub_db_url.startswith('postgres://'):
+        _pub_db_url = 'postgresql://' + _pub_db_url[len('postgres://'):]
+    if not _pub_db_url:
+        _pub_db_url = (
+            f"postgresql://{os.getenv('POSTGRES_PUBLIC_USER','postgres')}:"
+            f"{os.getenv('POSTGRES_PUBLIC_PASSWORD','Passw0rdPublic')}@"
+            f"{os.getenv('POSTGRES_PUBLIC_HOST','postgres_public')}:5432/"
+            f"{os.getenv('POSTGRES_PUBLIC_DB','om_public')}"
+        )
+    SQLALCHEMY_BINDS = {'public': _pub_db_url}
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     LOG_FILE = Path(os.getenv('LOG_FILE', 'logs/app.log'))
@@ -73,13 +94,22 @@ class BaseConfig:
     BABEL_DEFAULT_LOCALE = LOCALE
     BABEL_DEFAULT_TIMEZONE = os.getenv('BABEL_DEFAULT_TIMEZONE', 'UTC')
 
+    NEWS_REFRESH_INTERVAL_MINUTES = int(os.getenv('NEWS_REFRESH_INTERVAL_MINUTES', '1440'))
+    NEWS_FEED_SOURCES_JSON = os.getenv('NEWS_FEED_SOURCES_JSON') or (
+        '{"rss_feeds":[{"url":"https://feeds.feedburner.com/TheHackersNews","tag":"rss"},'
+        '{"url":"https://krebsonsecurity.com/feed/","tag":"rss"},'
+        '{"url":"https://www.bleepingcomputer.com/feed/","tag":"rss"},'
+        '{"url":"https://www.darkreading.com/rss.xml","tag":"rss"}],'
+        '"cybernews_categories":["general","security","malware","cyberAttack","dataBreach","vulnerability"]}'
+    )
+
     # PDF Export Configuration
     # Default engine favors 'reportlab' to avoid native dependencies in dev
     PDF_ENGINE = os.getenv('PDF_ENGINE', 'reportlab')
     # Optional wkhtmltopdf path for pdfkit engine (Windows example path)
     WKHTMLTOPDF_PATH = os.getenv('WKHTMLTOPDF_PATH')
     # Base URL used by HTML-to-PDF generators to resolve assets
-    BASE_URL = os.getenv('BASE_URL', 'http://localhost:8000')
+    BASE_URL = os.getenv('BASE_URL', 'http://localhost:4443')
     CSP = {
         'default-src': ["'self'"],
         'script-src':  [

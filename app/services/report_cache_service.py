@@ -9,7 +9,7 @@ import json
 import hashlib
 import logging
 import pickle
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Any, Optional, Union
 from dataclasses import dataclass, asdict
 from functools import wraps
@@ -34,11 +34,11 @@ class CacheEntry:
         """Verifica se a entrada expirou."""
         if self.expires_at is None:
             return False
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
     def touch(self):
         """Atualiza último acesso."""
-        self.last_accessed = datetime.utcnow()
+        self.last_accessed = datetime.now(timezone.utc)
         self.access_count += 1
 
 
@@ -77,7 +77,7 @@ class LRUCache:
                 # Calcular TTL
                 expires_at = None
                 if ttl or self.default_ttl:
-                    expires_at = datetime.utcnow() + timedelta(seconds=ttl or self.default_ttl)
+                    expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl or self.default_ttl)
                 
                 # Calcular tamanho aproximado
                 size_bytes = len(pickle.dumps(value))
@@ -86,10 +86,10 @@ class LRUCache:
                 entry = CacheEntry(
                     key=key,
                     value=value,
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now(timezone.utc),
                     expires_at=expires_at,
                     size_bytes=size_bytes,
-                    last_accessed=datetime.utcnow()
+                    last_accessed=datetime.now(timezone.utc)
                 )
                 
                 # Remover entrada existente se houver

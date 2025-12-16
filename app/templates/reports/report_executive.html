@@ -510,7 +510,7 @@
 {% block extra_js %}
 {{ super() }}
 <script src="{{ url_for('static', filename='js/components/report_charts.js') }}" defer nonce="{{ nonce }}"></script>
-<script>
+<script nonce="{{ nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     // Distribuição de Riscos usando ReportCharts
     const riskData = {

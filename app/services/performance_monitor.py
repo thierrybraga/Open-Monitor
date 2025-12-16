@@ -8,7 +8,7 @@ import asyncio
 import threading
 import time
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional, Union, Callable
 from dataclasses import dataclass, field
 from collections import defaultdict, deque
@@ -27,7 +27,7 @@ class PerformanceMetric:
     name: str
     value: float
     unit: str
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     tags: Dict[str, str] = field(default_factory=dict)
     
 @dataclass
@@ -44,7 +44,7 @@ class OperationMetrics:
     
     def finish(self, success: bool = True, error_message: Optional[str] = None):
         """Finaliza a operação e calcula a duração."""
-        self.end_time = datetime.utcnow()
+        self.end_time = datetime.now(timezone.utc)
         self.duration = (self.end_time - self.start_time).total_seconds()
         self.success = success
         self.error_message = error_message
@@ -60,7 +60,7 @@ class SystemMetrics:
     disk_io_write_mb: float
     network_sent_mb: float
     network_recv_mb: float
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 @dataclass
 class DatabaseMetrics:
@@ -73,7 +73,7 @@ class DatabaseMetrics:
     cache_hit_ratio: float
     table_sizes_mb: Dict[str, float] = field(default_factory=dict)
     index_usage: Dict[str, float] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 class PerformanceMonitor:
     """
@@ -88,7 +88,7 @@ class PerformanceMonitor:
     - Exportação de dados para análise
     """
     
-    def __init__(self, collection_interval: int = 30, max_history: int = 1000):
+    def __init__(self, collection_interval: int = 30, max_history: int = 1000, app: Optional[Any] = None):
         """
         Inicializa o monitor de performance.
         
@@ -98,6 +98,7 @@ class PerformanceMonitor:
         """
         self.collection_interval = collection_interval
         self.max_history = max_history
+        self.app = app
         
         # Armazenamento de métricas
         self.system_metrics_history = deque(maxlen=max_history)
@@ -236,19 +237,31 @@ class PerformanceMonitor:
     def _collect_database_metrics(self) -> DatabaseMetrics:
         """Coleta métricas do banco de dados."""
         try:
-            with db.engine.connect() as conn:
-                # Detectar tipo do banco
-                dialect = db.engine.dialect.name.lower()
-                
-                if 'postgresql' in dialect:
-                    return self._collect_postgresql_metrics(conn)
-                elif 'mysql' in dialect:
-                    return self._collect_mysql_metrics(conn)
-                elif 'sqlite' in dialect:
-                    return self._collect_sqlite_metrics(conn)
-                else:
-                    return self._collect_generic_metrics(conn)
-                    
+            if self.app:
+                from flask import current_app
+                # Garantir contexto da aplicação ao acessar db.engine
+                with self.app.app_context():
+                    with db.engine.connect() as conn:
+                        dialect = db.engine.dialect.name.lower()
+                        if 'postgresql' in dialect:
+                            return self._collect_postgresql_metrics(conn)
+                        elif 'mysql' in dialect:
+                            return self._collect_mysql_metrics(conn)
+                        elif 'sqlite' in dialect:
+                            return self._collect_sqlite_metrics(conn)
+                        else:
+                            return self._collect_generic_metrics(conn)
+            else:
+                with db.engine.connect() as conn:
+                    dialect = db.engine.dialect.name.lower()
+                    if 'postgresql' in dialect:
+                        return self._collect_postgresql_metrics(conn)
+                    elif 'mysql' in dialect:
+                        return self._collect_mysql_metrics(conn)
+                    elif 'sqlite' in dialect:
+                        return self._collect_sqlite_metrics(conn)
+                    else:
+                        return self._collect_generic_metrics(conn)
         except Exception as e:
             logger.error(f"Erro ao coletar métricas do banco: {e}")
             return DatabaseMetrics(
@@ -408,7 +421,7 @@ class PerformanceMonitor:
         """Context manager para rastrear uma operação."""
         operation = OperationMetrics(
             operation_name=operation_name,
-            start_time=datetime.utcnow(),
+            start_time=datetime.now(timezone.utc),
             tags=tags or {}
         )
         
@@ -444,7 +457,7 @@ class PerformanceMonitor:
     
     def get_performance_report(self, hours: int = 24) -> Dict[str, Any]:
         """Gera relatório de performance."""
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
         
         with self._lock:
             # Métricas do sistema
@@ -472,7 +485,7 @@ class PerformanceMonitor:
         # Calcular estatísticas
         report = {
             'period_hours': hours,
-            'generated_at': datetime.utcnow().isoformat(),
+            'generated_at': datetime.now(timezone.utc).isoformat(),
             'system_metrics': self._analyze_system_metrics(recent_system_metrics),
             'database_metrics': self._analyze_database_metrics(recent_db_metrics),
             'operations': self._analyze_operations(recent_operations),

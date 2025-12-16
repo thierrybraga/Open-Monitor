@@ -4,10 +4,7 @@
 
 {% block meta_description %}Visualize relatório de cybersegurança: {{ report.title }}. Análise detalhada de vulnerabilidades, riscos e recomendações de segurança.{% endblock %}
 
-{% block extra_css %}
-<link href="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.css" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/reports.css') }}">
-{% endblock %}
+{% block extra_css %}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -125,7 +122,7 @@
                         </div>
                     {% endif %}
                     
-                    <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
+                    <button type="button" class="btn btn-outline-secondary" onclick="printReport()">
                         <i class="bi bi-printer me-1"></i>
                         Imprimir
                     </button>
@@ -159,7 +156,18 @@
     </div>
 
     <!-- Conteúdo do Relatório -->
-    {% if report.status.value == 'concluido' and report.content %}
+    {% if report.content %}
+        {% if report.status.value == 'falhou' %}
+        <div class="alert alert-warning d-flex align-items-center" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <div>
+                Houve uma falha na geração automática. Conteúdo padrão foi exibido.
+                {% if report.report_metadata and report.report_metadata.error_message %}
+                    <br><small class="text-muted">Detalhes: {{ report.report_metadata.error_message }}</small>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
         
         <!-- Resumo Executivo -->
         {% if report.content.executive_summary %}
@@ -202,6 +210,35 @@
         </div>
         {% endif %}
 
+        {% if report.content.enums_table %}
+        <div class="section-card" id="totals-summary">
+            <div class="section-header">
+                <h3 class="mb-0">
+                    <i class="bi bi-clipboard-data me-2"></i>
+                    Resumo de Totais
+                </h3>
+            </div>
+            <div class="section-content">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Métrica</th>
+                                <th class="text-end">Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Vendors</td><td class="text-end">{{ report.content.enums_table.vendors_total }}</td></tr>
+                            <tr><td>Produtos</td><td class="text-end">{{ report.content.enums_table.products_total }}</td></tr>
+                            <tr><td>CVEs</td><td class="text-end">{{ report.content.enums_table.cves_total }}</td></tr>
+                            <tr><td>CWEs</td><td class="text-end">{{ report.content.enums_table.cwes_total }}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Gráficos e Visualizações -->
         {% if report.content.charts %}
         <div class="section-card" id="charts">
@@ -231,6 +268,101 @@
                 </div>
                 {% endfor %}
                 </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if report.content.cvss_analysis %}
+        <div class="section-card" id="cvss-analysis">
+            <div class="section-header">
+                <h3 class="mb-0">
+                    <i class="bi bi-shield-lock me-2"></i>
+                    Análise de CVSS
+                </h3>
+            </div>
+            <div class="section-content">
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value text-info">{{ report.content.cvss_analysis.stats.mean or 0 }}</div>
+                            <div class="metric-label">Média</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value text-success">{{ report.content.cvss_analysis.stats.min or 0 }}</div>
+                            <div class="metric-label">Mínimo</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value text-danger">{{ report.content.cvss_analysis.stats.max or 0 }}</div>
+                            <div class="metric-label">Máximo</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <div class="metric-value text-primary">{{ report.content.cvss_analysis.stats.count or 0 }}</div>
+                            <div class="metric-label">Amostras</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <h5>Versões CVSS</h5>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="metric-card">
+                                    <div class="metric-value">{{ report.content.cvss_analysis.versions.v2 or 0 }}</div>
+                                    <div class="metric-label">CVSS v2</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="metric-card">
+                                    <div class="metric-value">{{ report.content.cvss_analysis.versions.v3_0 or 0 }}</div>
+                                    <div class="metric-label">CVSS v3.0</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="metric-card">
+                                    <div class="metric-value">{{ report.content.cvss_analysis.versions.v3_1 or 0 }}</div>
+                                    <div class="metric-label">CVSS v3.1</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="metric-card">
+                                    <div class="metric-value">{{ report.content.cvss_analysis.versions.v4_0 or 0 }}</div>
+                                    <div class="metric-label">CVSS v4.0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% if report.content.cvss_analysis.ranges and report.content.cvss_analysis.ranges|length > 0 %}
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5>Distribuição por Faixas de Score</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Faixa</th>
+                                        <th class="text-end">Quantidade</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in report.content.cvss_analysis.ranges %}
+                                    <tr>
+                                        <td>{{ item.range }}</td>
+                                        <td class="text-end">{{ item.count }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
         {% endif %}
@@ -401,7 +533,22 @@
         </div>
         {% endif %}
 
-    {% elif report.status.value == 'gerando' %}
+        <!-- Estudo Técnico (IA) -->
+        {% if report.ai_analysis and report.ai_analysis.technical_study %}
+        <div class="section-card" id="technical-study">
+            <div class="section-header">
+                <h3 class="mb-0">
+                    <i class="bi bi-robot me-2"></i>
+                    Estudo Técnico
+                </h3>
+            </div>
+            <div class="section-content">
+                {{ (report.ai_analysis.technical_study.markdown or report.ai_analysis.technical_study) | safe }}
+            </div>
+        </div>
+        {% endif %}
+
+    {% elif not report.content and report.status.value == 'gerando' %}
         <!-- Estado de Processamento -->
         <div class="section-card">
             <div class="section-content text-center py-5">
@@ -421,7 +568,7 @@
             </div>
         </div>
 
-    {% elif report.status.value == 'falhou' %}
+    {% elif not report.content and report.status.value == 'falhou' %}
         <!-- Estado de Erro -->
         <div class="section-card">
             <div class="section-content text-center py-5">
@@ -468,7 +615,7 @@
 
 {% block extra_js %}
 
-<script>
+<script nonce="{{ nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     // Lazy loading para gráficos
     if ('IntersectionObserver' in window) {
@@ -508,7 +655,7 @@ document.addEventListener('DOMContentLoaded', function() {
     generateFloatingToc();
     
     // Auto-refresh para relatórios em processamento
-    {% if report.status.value == 'processing' %}
+    {% if report.status.value == 'gerando' %}
         setTimeout(function() {
             location.reload();
         }, 30000); // Refresh a cada 30 segundos

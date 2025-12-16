@@ -2,92 +2,34 @@
 {% set footer_has_utility = true %}
 {% from 'core/macros.html' import render_pagination %}
 
-{% block title %}Vulnerabilidades {{ severity_display }} - Open Monitor{% endblock %}
+{% set severity_pt_map = {
+  'CRITICAL': 'Crítica',
+  'HIGH': 'Alta',
+  'MEDIUM': 'Média',
+  'LOW': 'Baixa'
+} %}
+{% set severity_display_pt = severity_pt_map.get(severity, severity_display) %}
 
-{% block meta_description %}Análise detalhada das vulnerabilidades {{ (severity_display|default('unknown'))|lower }} da última semana. Estatísticas, gráficos e informações completas sobre segurança.{% endblock %}
+{% block title %}Vulnerabilidades {{ severity_display_pt }} - Open Monitor{% endblock %}
 
-{% block meta_keywords %}vulnerabilidades {{ (severity_display|default('unknown'))|lower }}, segurança, CVE, CVSS, análise semanal{% endblock %}
+{% block meta_description %}Análise detalhada das vulnerabilidades {{ (severity_display_pt|default('Desconhecida'))|lower }} da última semana. Estatísticas, gráficos e informações completas sobre segurança.{% endblock %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/severity-details.css') }}">
-{% endblock %}
+{% block meta_keywords %}vulnerabilidades {{ (severity_display_pt|default('desconhecida'))|lower }}, segurança, CVE, CVSS, análise semanal{% endblock %}
+
+{% block extra_css %}{% endblock %}
 
 {% block extra_js %}
-<script nonce="{{ nonce }}">
-    window.chartData = {
-        daily: {{ weekly_stats.daily_distribution | tojson }},
-        cvss: {{ weekly_stats.cvss_distribution | tojson }},
-        cvssAllSeverity: {{ cvss_all_severity | tojson }},
-        cvssGlobal: {{ weekly_cvss_all | tojson }},
-        products: {{ weekly_stats.top_products | tojson }},
-        // Contagens globais por severidade (todas as vulnerabilidades)
-        severity_counts: {{ general_counts | tojson }}
-    };
-
-    window.severityConfig = {
-        severity: '{{ severity|lower }}',
-        display: '{{ severity_display }}',
-        vendorIds: {{ (selected_vendor_ids or []) | tojson }},
-        vendorNames: {{ (selected_vendor_names or []) | tojson }}
-    };
+<script type="application/json" id="severity-config" nonce="{{ nonce }}">
+{
+  "severity": "{{ severity|lower }}",
+  "display": "{{ severity_display_pt }}",
+  "vendorIds": {{ (selected_vendor_ids or []) | tojson }},
+  "vendorNames": {{ (selected_vendor_names or []) | tojson }}
+}
 </script>
-<script nonce="{{ nonce }}">
-  (function() {
-    try {
-      // Check for modern JS support (class/const/arrow)
-      new Function('class A{}; const x=1; let y=2; (()=>{})()')();
-      var s = document.createElement('script');
-      s.src = "{{ url_for('static', filename='js/features/vulnerability-charts.js') }}";
-      s.defer = true;
-      s.setAttribute('nonce', "{{ nonce }}");
-      document.body.appendChild(s);
-    } catch (e) {
-      var s = document.createElement('script');
-      s.src = "{{ url_for('static', filename='js/features/vulnerability-charts.legacy.js') }}";
-      s.defer = true;
-      s.setAttribute('nonce', "{{ nonce }}");
-      document.body.appendChild(s);
-    }
-  })();
-</script>
-
-<script nonce="{{ nonce }}">
-  (function() {
-    try {
-      new Function('const x=1;')();
-      var s = document.createElement('script');
-      s.src = "{{ url_for('static', filename='js/features/vulnerabilities.js') }}";
-      s.defer = true;
-      s.setAttribute('nonce', "{{ nonce }}");
-      document.body.appendChild(s);
-    } catch (e) {
-      var s = document.createElement('script');
-      s.src = "{{ url_for('static', filename='js/features/vulnerabilities.legacy.js') }}";
-      s.defer = true;
-      s.setAttribute('nonce', "{{ nonce }}");
-      document.body.appendChild(s);
-    }
-  })();
-</script>
-<script nonce="{{ nonce }}">
-  (function() {
-    try {
-      // Check for modern JS support (class/const/arrow)
-      new Function('class A{}; const x=1; let y=2; (()=>{})()')();
-      var s = document.createElement('script');
-      s.src = "{{ url_for('static', filename='js/features/vulnerability-details-table.js') }}";
-      s.defer = true;
-      s.setAttribute('nonce', "{{ nonce }}");
-      document.body.appendChild(s);
-    } catch (e) {
-      var s = document.createElement('script');
-      s.src = "{{ url_for('static', filename='js/features/vulnerability-details-table.legacy.js') }}";
-      s.defer = true;
-      s.setAttribute('nonce', "{{ nonce }}");
-      document.body.appendChild(s);
-    }
-  })();
-</script>
+<script src="{{ url_for('static', filename='js/features/severity-config.js') }}" defer nonce="{{ nonce }}"></script>
+<script src="{{ url_for('static', filename='js/features/vulnerability-charts.js') }}" defer nonce="{{ nonce }}"></script>
+<script src="{{ url_for('static', filename='js/features/vulnerability-details-table.js') }}" defer nonce="{{ nonce }}"></script>
 {% endblock %}
 
 {% block content %}
@@ -104,7 +46,7 @@
                         </a>
                     </li>
                     <li class="breadcrumb-item active" aria-current="page">
-                        Vulnerabilidades {{ severity_display or 'UNKNOWN' }}
+                        Vulnerabilidades {{ severity_display_pt or 'Desconhecida' }}
                     </li>
                 </ol>
             </nav>
@@ -114,11 +56,11 @@
                 <div class="page-title-group">
                     <h1>
                         <i class="bi bi-shield-exclamation me-2"></i>
-                        Vulnerabilidades {{ severity_display or 'UNKNOWN' }}
+                        Vulnerabilidades {{ severity_display_pt or 'Desconhecida' }}
                     </h1>
                     <div class="mt-2">
                         <span class="severity-badge {{ (severity|default('unknown'))|lower }}" title="Severidade">
-                            {{ severity_display or 'UNKNOWN' }}
+                            {{ severity_display_pt or 'Desconhecida' }}
                         </span>
                     </div>
                     <p class="page-subtitle">
@@ -139,15 +81,20 @@
                         <a href="{{ url_for('vulnerability_ui.vendor_selection_ui', severity=severity, vendor_ids=(selected_vendor_ids|join(',')) if selected_vendor_ids else '') }}" class="ms-2 small">alterar</a>
                     </div>
                     {% endif %}
+                    <div class="text-muted small d-flex align-items-center gap-2 mt-2" aria-live="polite">
+                        <i class="bi bi-clock" aria-hidden="true"></i>
+                        <span>Atualizado:</span>
+                        <span id="last-update">—</span>
+                    </div>
                 </div>
                 
                 <div class="d-flex gap-2">
                     <!-- Removido botão duplicado de densidade no header -->
-                    <button id="exportBtn" class="btn btn-light" aria-label="Exportar CSV">
+                    <button id="exportBtn" class="btn btn-light" aria-label="Exportar dados da semana" data-bs-toggle="tooltip" title="Exportar dados da semana" onclick="exportData()">
                         <i class="bi bi-download"></i> Exportar
                     </button>
                     <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}?severity={{ severity }}{% if selected_vendor_ids %}&vendor_ids={{ selected_vendor_ids | join(',') }}{% endif %}" 
-                       class="btn btn-light" id="viewAllBtn">
+                       class="btn btn-light" id="viewAllBtn" data-bs-toggle="tooltip" title="Ver todas as vulnerabilidades">
                         <i class="bi bi-list"></i> Ver Todas
                     </a>
                 </div>
@@ -166,7 +113,7 @@
         </div>
         {% endif %}
         <!-- Quick Navigation -->
-        <nav class="quick-nav" aria-label="Navegação rápida">
+        <nav class="quick-nav page-quick-nav" aria-label="Navegação rápida">
             <div class="d-flex justify-content-between align-items-center py-2">
                 <ul class="nav mb-0">
                     <li class="nav-item">
@@ -223,7 +170,7 @@
                     <div class="stat-label">
                         <i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i> Novas Vulnerabilidades
                         <span class="badge bg-light text-dark ms-2" data-bs-toggle="tooltip" title="Severidade atual filtrada">
-                            {{ severity_display }}
+                            {{ severity_display_pt }}
                         </span>
                         {% if selected_vendor_map or selected_vendor_names %}
                         <span class="badge bg-light text-dark ms-2" title="Filtrado por vendor">Vendor</span>
@@ -368,7 +315,7 @@
             <div class="chart-card">
                 <div class="chart-card-header">
                     <h3>Top 10 Produtos Afetados</h3>
-                    <p class="mb-0">Produtos mais vulneráveis da severidade {{ severity_display }}</p>
+                    <p class="mb-0">Produtos mais vulneráveis da severidade {{ severity_display_pt }}</p>
                 </div>
                 <div class="chart-card-body">
                     {% set _products = weekly_stats.top_products %}
@@ -419,8 +366,8 @@
                         <input type="text" 
                                id="tableSearch" 
                                class="form-control" 
-                               placeholder="CVE-ID, Vendor ou Produto... ({{ severity_display }})"
-                               aria-label="Buscar vulnerabilidades {{ (severity_display|default('Desconhecida'))|lower }}">
+                               placeholder="CVE-ID, Vendor ou Produto... ({{ severity_display_pt }})"
+                               aria-label="Buscar vulnerabilidades {{ (severity_display_pt|default('Desconhecida'))|lower }}">
                     </div>
                     
                     <!-- Vendor Filter (limitado aos vendors selecionados) -->
@@ -477,7 +424,7 @@
             <div class="table-section">
                 <div class="table-action-bar">
                     <div class="action-left">
-                        <span class="text-muted">Mostrando <span id="showingCount">{{ vulnerabilities|length }}</span> de {{ vulnerabilities|length }}</span>
+                        <span class="text-muted">Mostrando <span id="showingCount" aria-live="polite">{{ vulnerabilities|length }}</span> de {{ vulnerabilities|length }}</span>
                     </div>
                     <div class="action-right d-flex gap-2">
                         <button id="densityToggle" class="btn btn-light" aria-label="Alternar densidade da tabela" aria-pressed="false">
@@ -496,13 +443,13 @@
                     <table class="table table-hover">
                         <thead>
                             <tr>
-                                <th scope="col" class="sortable" data-sort="cve" aria-sort="none">CVE-ID</th>
+                                <th scope="col" class="sortable" data-sort="cve" aria-sort="none" role="button" tabindex="0" aria-controls="vulnTable">CVE-ID</th>
                                 <th scope="col">Descrição</th>
-                                <th scope="col" class="sortable" data-sort="vendor" aria-sort="none">Vendor</th>
+                                <th scope="col" class="sortable" data-sort="vendor" aria-sort="none" role="button" tabindex="0" aria-controls="vulnTable">Vendor</th>
                                 <th scope="col">Produto</th>
                                 <!-- Adicionada coluna CVSS -->
-                                <th scope="col" class="sortable" data-sort="cvss" aria-sort="none">CVSS</th>
-                                <th scope="col" class="sortable" data-sort="date" aria-sort="none">Publicado</th>
+                                <th scope="col" class="sortable" data-sort="cvss" aria-sort="none" role="button" tabindex="0" aria-controls="vulnTable">CVSS</th>
+                                <th scope="col" class="sortable" data-sort="date" aria-sort="none" role="button" tabindex="0" aria-controls="vulnTable">Publicado</th>
                                 <th scope="col">Patch</th>
                             </tr>
                         </thead>
@@ -596,7 +543,7 @@
             </div>
             {% endif %}
         </section>
-    </div>
+</div>
 </div>
 {% endblock %}
 
@@ -616,5 +563,18 @@
         }
       });
     });
+
+    // Preservar vendor_scope=all no botão "Ver Todas"
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const scope = params.get('vendor_scope');
+      const btn = document.getElementById('viewAllBtn');
+      if (scope === 'all' && btn && btn.href) {
+        const u = new URL(btn.href, window.location.origin);
+        u.searchParams.set('vendor_scope', 'all');
+        u.searchParams.delete('vendor_ids');
+        btn.href = u.toString();
+      }
+    } catch (e) {}
   })();
 </script>

@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeTooltips();
     initializeAjaxSubmissions();
     initializePasswordCancel();
+    initializeTacacsSettings();
 });
 
 /**
@@ -722,4 +723,30 @@ function submitAssetForm(jsonPayload, assetForm) {
     console.error('Error:', error);
     showAlert('Ocorreu um erro ao salvar o ativo', 'error');
   });
+}
+
+function initializeTacacsSettings() {
+    var btn = document.getElementById('saveTacacsBtn');
+    if (!btn) return;
+    btn.addEventListener('click', function() {
+        var payload = {
+            enabled: !!(document.getElementById('tacacsEnabled') && document.getElementById('tacacsEnabled').checked),
+            username: (document.getElementById('tacacsUsername') && document.getElementById('tacacsUsername').value) || '',
+            secret: (document.getElementById('tacacsSecret') && document.getElementById('tacacsSecret').value) || '',
+            server: (document.getElementById('tacacsServer') && document.getElementById('tacacsServer').value) || '',
+            port: parseInt((document.getElementById('tacacsPort') && document.getElementById('tacacsPort').value) || '49'),
+            timeout: parseInt((document.getElementById('tacacsTimeout') && document.getElementById('tacacsTimeout').value) || '5')
+        };
+        fetch('/api/v1/user/tacacs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }).then(function(r){ return r.json(); }).then(function() {
+            try {
+                var el = document.getElementById('tacacsModal');
+                var m = bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el);
+                if (m) m.hide();
+            } catch(_) {}
+        }).catch(function(){});
+    });
 }

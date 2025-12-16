@@ -1,8 +1,12 @@
-from sqlalchemy import Column, Integer, String, Date, ForeignKey
+from sqlalchemy import Column, Integer, String, Date, ForeignKey, UniqueConstraint, Index
 from app.extensions.db import db
 
 class Product(db.Model):
     __tablename__ = 'product'
+    __table_args__ = (
+        UniqueConstraint('vendor_id', 'name', name='uq_product_vendor_name'),
+        Index('ix_product_type', 'type'),
+    )
 
     # Primary Key
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -17,6 +21,8 @@ class Product(db.Model):
 
     # Product details
     name = Column(String(255), nullable=False)
+    # Optional type/category for taxonomy (e.g., "Switch", "Firewall", "OS")
+    type = Column(String(100), nullable=True)
 
     # Relationships
     vendor = db.relationship(
@@ -33,6 +39,10 @@ class Product(db.Model):
     )
     affected_products = db.relationship(
         'AffectedProduct', back_populates='product',
+        cascade='all, delete-orphan'
+    )
+    asset_products = db.relationship(
+        'AssetProduct', back_populates='product',
         cascade='all, delete-orphan'
     )
 

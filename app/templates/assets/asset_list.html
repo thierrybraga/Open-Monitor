@@ -8,6 +8,7 @@
 
 {% block content %}
 <div class="container-fluid py-4 fade-in">
+  {% import 'core/asset_macros.html' as assetui %}
   <!-- Page Header -->
   <header class="page-header mb-5">
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
@@ -66,6 +67,9 @@
               <i class="bi bi-diagram-3 me-1"></i>Tipo
             </th>
             <th>
+              <i class="bi bi-building me-1"></i>Fornecedor
+            </th>
+            <th>
               <i class="bi bi-globe me-1"></i>IP
             </th>
             <th>
@@ -96,31 +100,15 @@
                   </div>
                 </div>
               </td>
+              <td>{{ assetui.type_badge(asset.asset_type_safe) }}</td>
               <td>
-                {% if asset.vendor and asset.vendor.name %}
-                  <span class="badge bg-secondary">{{ asset.vendor.name }}</span>
-                {% else %}
-                  <span class="text-muted">N/A</span>
-                {% endif %}
+                {{ assetui.vendor_badge(asset.vendor.name if asset.vendor else None) }}
               </td>
               <td><code>{{ asset.ip_address }}</code></td>
               <td><span class="text-muted">N/A</span></td>
               <td><span class="text-muted">{{ asset.owner.username if asset.owner else 'N/A' }}</span></td>
               <td>
-                {% set _status = (asset.status or 'unknown') %}
-                {% set _badge = 'bg-secondary' %}
-                {% if _status|lower == 'active' %}
-                  {% set _badge = 'bg-success' %}
-                {% elif _status|lower == 'inactive' %}
-                  {% set _badge = 'bg-secondary' %}
-                {% elif _status|lower == 'maintenance' %}
-                  {% set _badge = 'bg-warning' %}
-                {% elif _status|lower == 'warning' %}
-                  {% set _badge = 'bg-danger' %}
-                {% else %}
-                  {% set _badge = 'bg-secondary' %}
-                {% endif %}
-                <span class="status-badge badge {{ _badge }}">{{ _status|capitalize }}</span>
+                {{ assetui.status_badge(asset.status) }}
               </td>
               <td>
                 <div class="btn-group" role="group" aria-label="Ações">
@@ -130,6 +118,7 @@
                   <a href="{{ url_for('asset.edit_asset', asset_id=asset.id) }}" class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" title="Editar">
                     <i class="bi bi-pencil"></i>
                   </a>
+                  {% if asset.owner and asset.owner.id == current_user.id %}
                   <button class="btn btn-sm btn-outline-danger delete-asset-btn"
                           data-asset-id="{{ asset.id }}"
                           data-asset-name="{{ asset.name }}"
@@ -137,6 +126,11 @@
                           data-bs-toggle="tooltip" title="Excluir">
                     <i class="bi bi-trash"></i>
                   </button>
+                  {% else %}
+                  <button class="btn btn-sm btn-outline-secondary" disabled data-bs-toggle="tooltip" title="Somente o proprietário pode excluir">
+                    <i class="bi bi-lock"></i>
+                  </button>
+                  {% endif %}
                 </div>
               </td>
             </tr>
@@ -145,23 +139,42 @@
       </table>
     </div>
 
-    <!-- Pagination (placeholder static) -->
+    <!-- Paginação -->
     <div class="d-flex justify-content-between align-items-center mt-3">
       <div>
-        <span class="text-muted">Mostrando <span id="current-range">1-{{ assets|length }}</span> de <span id="total-assets">{{ assets|length }}</span> ativos</span>
+        {% if pagination %}
+          {% set start_idx = ((page - 1) * per_page) + 1 %}
+          {% set end_idx = ((page - 1) * per_page) + (assets|length) %}
+          <span class="text-muted">
+            Mostrando <span id="current-range">{{ start_idx }}-{{ end_idx }}</span>
+            de <span id="total-assets">{{ pagination.total }}</span> ativos
+          </span>
+        {% else %}
+          <span class="text-muted">Mostrando <span id="current-range">1-{{ assets|length }}</span> de <span id="total-assets">{{ assets|length }}</span> ativos</span>
+        {% endif %}
       </div>
       <div class="pagination-controls">
-        <div class="d-flex align-items-center">
-          <button class="pagination-btn" id="prev-page" disabled>
-            <i class="bi bi-arrow-left"></i>
-          </button>
-          <div class="mx-2">
-            Página <span id="current-page">1</span> de <span id="total-pages">2</span>
+        {% if pagination %}
+          <nav aria-label="Paginação de ativos">
+            <ul class="pagination mb-0">
+              <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
+                <a class="page-link" href="{{ url_for('asset.list_assets', page=(page-1), per_page=per_page, vendor_ids=(selected_vendor_ids|join(',')) if selected_vendor_ids else None) }}" aria-label="Anterior">
+                  <span aria-hidden="true">&laquo;</span>
+                </a>
+              </li>
+              <li class="page-item disabled"><a class="page-link" href="#">Página {{ page }} de {{ pagination.pages }}</a></li>
+              <li class="page-item {{ 'disabled' if not pagination.has_next }}">
+                <a class="page-link" href="{{ url_for('asset.list_assets', page=(page+1), per_page=per_page, vendor_ids=(selected_vendor_ids|join(',')) if selected_vendor_ids else None) }}" aria-label="Próxima">
+                  <span aria-hidden="true">&raquo;</span>
+                </a>
+              </li>
+            </ul>
+          </nav>
+        {% else %}
+          <div class="d-flex align-items-center">
+            <div class="mx-2">Página <span id="current-page">1</span></div>
           </div>
-          <button class="pagination-btn" id="next-page">
-            <i class="bi bi-arrow-right"></i>
-          </button>
-        </div>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -221,7 +234,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ nonce }}">
 // Asset management functionality
 // Executa após o DOM estar pronto para garantir que base.js esteja carregado
 
@@ -261,6 +274,23 @@ document.addEventListener('DOMContentLoaded', function() {
   var deleteForm = document.getElementById('delete-asset-form');
   var assetNameElement = document.getElementById('asset-name-to-delete');
   var currentAssetId = null;
+  var cancelBtn = modalEl ? modalEl.querySelector('button[data-bs-dismiss="modal"]') : null;
+  var closeBtn = modalEl ? modalEl.querySelector('.btn-close') : null;
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', function(){ if (deleteModal && deleteModal.hide) deleteModal.hide(); });
+  }
+  if (closeBtn) {
+    closeBtn.addEventListener('click', function(){ if (deleteModal && deleteModal.hide) deleteModal.hide(); });
+  }
+  if (modalEl) {
+    modalEl.addEventListener('shown.bs.modal', function(){
+      modalEl.style.pointerEvents = 'auto';
+      modalEl.style.zIndex = '1055';
+      var scrim = document.querySelector('.sidebar-scrim');
+      if (scrim) { scrim.classList.remove('visible'); }
+    });
+    modalEl.addEventListener('hidden.bs.modal', function(){ modalEl.style.pointerEvents = ''; modalEl.style.zIndex = ''; var backs = document.querySelectorAll('.modal-backdrop'); Array.prototype.forEach.call(backs, function(b){ if (b && b.parentNode) b.parentNode.removeChild(b); }); });
+  }
   
   Array.prototype.forEach.call(deleteButtons, function(button){
     button.addEventListener('click', function() {
@@ -271,7 +301,9 @@ document.addEventListener('DOMContentLoaded', function() {
       
       if (assetNameElement) assetNameElement.textContent = assetName;
       if (deleteForm) deleteForm.action = deleteUrl;
-      
+      var backs = document.querySelectorAll('.modal-backdrop');
+      Array.prototype.forEach.call(backs, function(b){ if (b && b.parentNode) b.parentNode.removeChild(b); });
+      if (modalEl) { modalEl.style.zIndex = '1055'; modalEl.style.pointerEvents = 'auto'; }
       if (deleteModal && deleteModal.show) deleteModal.show();
     });
   });
@@ -298,18 +330,40 @@ document.addEventListener('DOMContentLoaded', function() {
           credentials: 'same-origin',
           headers: {
             'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-Token': csrfToken,
-            'X-CSRFToken': csrfToken
+            'X-Requested-With': 'XMLHttpRequest'
           },
           body: formData
         });
 
         var contentType = (res.headers.get('content-type') || '').toLowerCase();
         var isJson = contentType.indexOf('application/json') !== -1;
-        var data = isJson ? (await res.json().catch(function(){ return {}; })) : {};
+        var data = {};
+        var textBody = '';
+        if (isJson) {
+          try { data = await res.json(); } catch(_) { data = {}; }
+        } else {
+          try { textBody = await res.text(); } catch(_) { textBody = ''; }
+        }
         if (!res.ok) {
-          throw new Error(data.message || ('Falha ao excluir ativo (status ' + res.status + ')'));
+          var msg = (data && data.message) ? data.message : '';
+          var csrfDetected = false;
+          if (!msg && textBody) {
+            try {
+              if (/csrf/i.test(textBody)) {
+                msg = 'Falha de CSRF ao excluir. Atualizando a página...';
+                csrfDetected = true;
+              }
+            } catch(_) {}
+          }
+          if (csrfDetected) {
+            if (deleteModal && deleteModal.hide) { deleteModal.hide(); }
+            if (typeof window.safeNotify === 'function') {
+              window.safeNotify('warning', null, msg, 2500);
+            }
+            setTimeout(function(){ window.location.reload(); }, 1200);
+            return;
+          }
+          throw new Error(msg || ('Falha ao excluir ativo (status ' + res.status + ')'));
         }
 
         // Fechar modal

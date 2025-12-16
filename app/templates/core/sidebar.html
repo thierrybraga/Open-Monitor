@@ -90,9 +90,9 @@
 
       {# Assets Link #}
       <li class="sidebar-item">
-        <a href="{{ url_for('main.assets') }}"
-           class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2 {% if request.endpoint == 'main.assets' %}active{% endif %}"
-           {% if request.endpoint == 'main.assets' %}aria-current="page"{% endif %}
+        <a href="{{ url_for('asset.list_assets') }}"
+           class="sidebar-link d-flex align-items-center gap-2 rounded-md px-3 py-2 {% if request.endpoint == 'asset.list_assets' %}active{% endif %}"
+           {% if request.endpoint == 'asset.list_assets' %}aria-current="page"{% endif %}
            title="Gerenciar Assets"
            data-bs-toggle="tooltip" data-bs-placement="right">
           <i class="bi bi-server fs-5"></i>
@@ -151,7 +151,7 @@
 
 
       {# Dynamic 'Other' Section #}
-      {% set static_endpoints = ['index', 'monitoring', 'analytics', 'chat', 'newsletter', 'search', 'account', 'settings', 'assets', 'insights'] %}
+      {% set static_endpoints = ['index', 'monitoring', 'analytics', 'chat', 'newsletter', 'search', 'account', 'settings', 'assets', 'insights', 'terms'] %}
       {% set dynamic_items = nav_items|rejectattr('endpoint', 'in', static_endpoints)|list if nav_items else [] %}
 
       {% if dynamic_items %}

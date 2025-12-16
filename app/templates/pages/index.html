@@ -1,405 +1,293 @@
-{% extends "core/base.html" %}
-{% set footer_has_utility = true %}
-{% set footer_show_microcopy = true %}
-
-{% block title %}Dashboard - Open Monitor{% endblock %}
-
-{% block meta_description %}Dashboard de segurança em tempo real. Monitore vulnerabilidades críticas, métricas de segurança e status do sistema de forma centralizada e intuitiva.{% endblock %}
-
-{% block meta_keywords %}dashboard, segurança, monitoramento, vulnerabilidades, métricas, tempo real, sistema de segurança, análise{% endblock %}
-
-{% block extra_css %}
-{# Removido: CSS de página já importado via main.css #}
-{% endblock %}
+{% extends 'core/base.html' %}
+{% block title %}Início{% endblock %}
+{% block meta_description %}Painel inicial com resumo e vulnerabilidades recentes.{% endblock %}
 
 {% block content %}
-<div class="dashboard-container">
-    <!-- Skip link para acessibilidade -->
-    <a href="#vulnerabilities-table" class="skip-link">Pular para vulnerabilidades recentes</a>
-
-    <!-- Header do Dashboard -->
-    <div class="dashboard-header">
-        <h1 class="dashboard-title">Dashboard de Segurança</h1>
-        <p class="dashboard-subtitle">Visão geral das vulnerabilidades e status do sistema</p>
+<section class="container py-4">
+  <header class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+    <div>
+      <h1 class="h3 mb-1"><i class="bi bi-house me-2"></i>Início</h1>
+      <p class="text-muted small">Resumo do ambiente e últimas vulnerabilidades</p>
     </div>
-    <!-- Hero removido conforme solicitação -->
-    
-    <!-- Cards de Métricas -->
-    <div class="metric-cards">
-        <div class="metric-card critical">
-            <div class="metric-card-header">
-                <h3 class="metric-card-title">Vulnerabilidades Críticas</h3>
-                <div class="metric-card-icon">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                </div>
-            </div>
-            <div class="metric-card-value">{{ critical_count | default(0) }}</div>
-            <p class="metric-card-description">Requerem atenção imediata{% if selected_vendor_map and selected_vendor_map|length > 0 %} nos vendors selecionados{% endif %}</p>
-            <div class="metric-card-weekly">
-                <span class="weekly-badge critical">
-                    <i class="bi bi-calendar-week"></i>
-                    +{{ weekly_critical | default(0) }} esta semana{% if selected_vendor_map and selected_vendor_map|length > 0 %} (vendors selecionados){% endif %}
-                </span>
-            </div>
-            <div class="metric-card-footer">
-                <a href="{{ url_for('vulnerability_ui.vulnerability_details_by_severity', severity='critical') }}" class="metric-card-link">
-                    Ver detalhes <i class="bi bi-arrow-right"></i>
-                </a>
-            </div>
-        </div>
-        
-        <div class="metric-card high">
-            <div class="metric-card-header">
-                <h3 class="metric-card-title">Vulnerabilidades Altas</h3>
-                <div class="metric-card-icon">
-                    <i class="bi bi-exclamation-circle-fill"></i>
-                </div>
-            </div>
-            <div class="metric-card-value">{{ high_count | default(0) }}</div>
-            <p class="metric-card-description">Prioridade alta para correção{% if selected_vendor_map and selected_vendor_map|length > 0 %} nos vendors selecionados{% endif %}</p>
-            <div class="metric-card-weekly">
-                <span class="weekly-badge high">
-                    <i class="bi bi-calendar-week"></i>
-                    +{{ weekly_high | default(0) }} esta semana{% if selected_vendor_map and selected_vendor_map|length > 0 %} (vendors selecionados){% endif %}
-                </span>
-            </div>
-            <div class="metric-card-footer">
-                <a href="{{ url_for('vulnerability_ui.vulnerability_details_by_severity', severity='high') }}" class="metric-card-link">
-                    Ver detalhes <i class="bi bi-arrow-right"></i>
-                </a>
-            </div>
-        </div>
-        
-        <div class="metric-card medium">
-            <div class="metric-card-header">
-                <h3 class="metric-card-title">Vulnerabilidades Médias</h3>
-                <div class="metric-card-icon">
-                    <i class="bi bi-info-circle-fill"></i>
-                </div>
-            </div>
-            <div class="metric-card-value">{{ medium_count | default(0) }}</div>
-            <p class="metric-card-description">Monitoramento contínuo{% if selected_vendor_map and selected_vendor_map|length > 0 %} nos vendors selecionados{% endif %}</p>
-            <div class="metric-card-weekly">
-                <span class="weekly-badge medium">
-                    <i class="bi bi-calendar-week"></i>
-                    +{{ weekly_medium | default(0) }} esta semana{% if selected_vendor_map and selected_vendor_map|length > 0 %} (vendors selecionados){% endif %}
-                </span>
-            </div>
-            <div class="metric-card-footer">
-                <a href="{{ url_for('vulnerability_ui.vulnerability_details_by_severity', severity='medium') }}" class="metric-card-link">
-                    Ver detalhes <i class="bi bi-arrow-right"></i>
-                </a>
-            </div>
-        </div>
-        
-        <div class="metric-card total">
-            <div class="metric-card-header">
-                <h3 class="metric-card-title">Total de Vulnerabilidades</h3>
-                <div class="metric-card-icon">
-                    <i class="bi bi-shield-exclamation"></i>
-                </div>
-            </div>
-            <div class="metric-card-value">{{ total_count | default(0) }}</div>
-            <p class="metric-card-description">Todas as vulnerabilidades{% if selected_vendor_map and selected_vendor_map|length > 0 %} nos vendors selecionados{% endif %}</p>
-            <div class="metric-card-weekly">
-                <span class="weekly-badge total">
-                    <i class="bi bi-calendar-week"></i>
-                    +{{ weekly_total | default(0) }} esta semana{% if selected_vendor_map and selected_vendor_map|length > 0 %} (vendors selecionados){% endif %}
-                </span>
-            </div>
-            <div class="metric-card-footer">
-                <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}" class="metric-card-link">
-                    Ver todas <i class="bi bi-arrow-right"></i>
-                </a>
-            </div>
-        </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-sm btn-outline-primary" href="{{ url_for('main.analytics') }}">
+        <i class="bi bi-bar-chart me-1"></i>Analytics
+      </a>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}">
+        <i class="bi bi-shield"></i>Vulnerabilidades
+      </a>
     </div>
-            
+  </header>
 
-    
-    <!-- Ações Rápidas -->
-    <div class="quick-actions-section">
-        <div class="section-header">
-            <h2 class="section-title">Ações Rápidas</h2>
-            <p class="section-subtitle">Acesso direto às principais funcionalidades</p>
+  {% if sync_in_progress %}
+  <div class="alert alert-warning d-flex align-items-center" role="alert">
+    <i class="bi bi-arrow-repeat me-2"></i>
+    <div>
+      Base da NVD sincronizando. Os valores serão exibidos após a conclusão.
+      {% if current_user.is_authenticated and current_user.is_admin %}
+      <div class="mt-2">
+        <div class="progress" style="height: 8px;">
+          <div id="sync-progress-bar" class="progress-bar" role="progressbar" style="width: 0%" aria-valuemin="0" aria-valuemax="100"></div>
         </div>
-        
-        <div class="quick-actions-grid">
-            <a href="{{ url_for('main.search') }}" class="quick-action-card">
-                <div class="quick-action-icon search">
-                    <i class="bi bi-search"></i>
-                </div>
-                <div class="quick-action-content">
-                    <h3 class="quick-action-title">Buscar Vulnerabilidades</h3>
-                    <p class="quick-action-description">Pesquise por CVEs específicos ou filtros avançados</p>
-                </div>
-                <div class="quick-action-arrow">
-                    <i class="bi bi-arrow-right"></i>
-                </div>
-            </a>
-            
-            <!-- Novo: Adicionar Ativo -->
-            <a href="{{ url_for('asset.create_asset') }}" class="quick-action-card">
-                <div class="quick-action-icon add-asset">
-                    <i class="bi bi-plus-circle"></i>
-                </div>
-                <div class="quick-action-content">
-                    <h3 class="quick-action-title">Adicionar Ativo</h3>
-                    <p class="quick-action-description">Cadastre rapidamente um novo ativo de TI</p>
-                </div>
-                <div class="quick-action-arrow">
-                    <i class="bi bi-arrow-right"></i>
-                </div>
-            </a>
-
-            
-            <a href="{{ url_for('asset.list_assets') }}" class="quick-action-card">
-                <div class="quick-action-icon assets">
-                    <i class="bi bi-hdd-stack"></i>
-                </div>
-                <div class="quick-action-content">
-                    <h3 class="quick-action-title">Gerenciar Assets</h3>
-                    <p class="quick-action-description">Visualize e gerencie seus ativos de TI</p>
-                </div>
-                <div class="quick-action-arrow">
-                    <i class="bi bi-arrow-right"></i>
-                </div>
-            </a>
-            
-            <a href="{{ url_for('monitoring.monitoring_home') }}" class="quick-action-card">
-                <div class="quick-action-icon monitoring">
-                    <i class="bi bi-activity"></i>
-                </div>
-                <div class="quick-action-content">
-                    <h3 class="quick-action-title">Monitoramento</h3>
-                    <p class="quick-action-description">Configure regras de monitoramento</p>
-                </div>
-                <div class="quick-action-arrow">
-                    <i class="bi bi-arrow-right"></i>
-                </div>
-            </a>
-            
-            <!-- Novo: Selecionar Vendors -->
-            <a href="{{ url_for('vulnerability_ui.vendor_selection_ui') }}" class="quick-action-card">
-                <div class="quick-action-icon vendor-select">
-                    <i class="bi bi-building"></i>
-                </div>
-                <div class="quick-action-content">
-                    <h3 class="quick-action-title">Selecionar Vendors</h3>
-                    <p class="quick-action-description">Escolha fornecedores para monitorar vulnerabilidades</p>
-                </div>
-                <div class="quick-action-arrow">
-                    <i class="bi bi-arrow-right"></i>
-                </div>
-            </a>
-
-            <a href="{{ url_for('main.analytics') }}" class="quick-action-card">
-                <div class="quick-action-icon analytics">
-                    <i class="bi bi-graph-up"></i>
-                </div>
-                <div class="quick-action-content">
-                    <h3 class="quick-action-title">Analytics</h3>
-                    <p class="quick-action-description">Análise de tendências e estatísticas</p>
-                </div>
-                <div class="quick-action-arrow">
-                    <i class="bi bi-arrow-right"></i>
-                </div>
-            </a>
-            
-
-        </div>
+        <div class="small text-muted mt-1" id="sync-progress-text">CVE 0/0</div>
+      </div>
+      {% endif %}
     </div>
-            
-    <!-- Vulnerabilidades Recentes -->
-    <div class="recent-vulnerabilities-section">
-        <div class="section-header">
-            <h2 class="section-title">Vulnerabilidades Recentes</h2>
-            <p class="section-subtitle">Últimas vulnerabilidades identificadas no sistema</p>
-            <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}" class="section-action">
-                Ver todas <i class="bi bi-arrow-right"></i>
-            </a>
-            {% if selected_vendor_map and selected_vendor_map|length > 0 %}
-            <div class="mt-2" aria-label="Vendors selecionados">
-                <span class="text-muted me-2">Escopo:</span>
-                {% for v in selected_vendor_map %}
-                    <span class="badge bg-secondary me-1" title="Vendor selecionado">{{ (v.name or 'Vendor')|title }}</span>
-                {% endfor %}
-            </div>
-            {% endif %}
-        </div>
-        
-        <div class="vulnerabilities-table-container">
-            {% if vulnerabilities %}
-                <div class="vulnerabilities-table">
-                    <div class="table-responsive">
-                        <table class="table table-hover" id="vulnerabilities-table" aria-label="Lista de vulnerabilidades recentes">
-                            <caption class="sr-only">Vulnerabilidades recentes: CVE, severidade, descrição, data de publicação, pontuação CVSS e ações.</caption>
-                            <thead>
-                                <tr>
-                                    <th scope="col" class="sortable text-nowrap" data-sort="cve_id" tabindex="0" role="columnheader" aria-sort="none" aria-label="CVE - Clique para ordenar">
-                                        CVE <i class="fas fa-sort sort-icon text-muted" aria-hidden="true"></i>
-                                    </th>
-                                    <th scope="col" class="sortable text-nowrap" data-sort="severity" tabindex="0" role="columnheader" aria-sort="none" aria-label="Severidade - Clique para ordenar">
-                                        Severidade <i class="fas fa-sort sort-icon text-muted" aria-hidden="true"></i>
-                                    </th>
-                                    <th scope="col" class="d-none d-md-table-cell text-nowrap">Vendor</th>
-                                    <th scope="col" class="d-none d-md-table-cell" style="min-width: 250px;">Descrição</th>
-                                    <th scope="col" class="sortable text-nowrap" data-sort="published_date" tabindex="0" role="columnheader" aria-sort="none" aria-label="Publicado - Clique para ordenar">
-                                        Publicado <i class="fas fa-sort sort-icon text-muted" aria-hidden="true"></i>
-                                    </th>
-                                    <th scope="col" class="sortable text-nowrap" data-sort="cvss_score" tabindex="0" role="columnheader" aria-sort="none" aria-label="CVSS - Clique para ordenar">
-                                        CVSS <i class="fas fa-sort sort-icon text-muted" aria-hidden="true"></i>
-                                    </th>
-                                    <th scope="col" class="text-nowrap text-center">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for vuln in vulnerabilities %}
-                                <tr>
-                                    <th scope="row">
-                                        {% if vuln.references and vuln.references|length > 0 %}
-                                            <a href="{{ vuln.references[0].url }}" target="_blank" rel="noopener noreferrer" class="cve-link" aria-label="Abrir referência {{ vuln.cve_id }} em nova aba">
-                                                <span class="cve-badge">{{ vuln.cve_id }}</span>
-                                            </a>
-                                        {% else %}
-                                            <span class="cve-badge">{{ vuln.cve_id }}</span>
-                                        {% endif %}
-                                    </th>
-                                    <td>
-                                        <span class="severity-badge {{ (vuln.base_severity | lower) | replace('/', '\/') }}" title="Severidade: {{ vuln.base_severity if vuln.base_severity != 'N/A' else 'Não Avaliado' }}">
-                                            <i class="bi bi-{{ 'exclamation-triangle-fill' if vuln.base_severity == 'CRITICAL' else 'exclamation-circle-fill' if vuln.base_severity == 'HIGH' else 'info-circle-fill' if vuln.base_severity == 'MEDIUM' else 'check-circle-fill' if vuln.base_severity == 'LOW' else 'question-circle-fill' }}"></i>
-                                            {{ vuln.base_severity if vuln.base_severity != 'N/A' else 'Não Avaliado' }}
-                                        </span>
-                                    </td>
-                                    <td class="d-none d-md-table-cell">
-                                        {% set vendor_name = 'N/A' %}
-                                        {% if vuln.nvd_vendors_data and vuln.nvd_vendors_data|length > 0 %}
-                                            {% set first_vendor = vuln.nvd_vendors_data[0] %}
-                                            {% if first_vendor is string %}
-                                                {% set vendor_name = first_vendor %}
-                                            {% elif first_vendor is mapping %}
-                                                {% set vendor_name = first_vendor.get('name') or first_vendor.get('vendor') or first_vendor.get('vendor_name') or 'N/A' %}
-                                            {% endif %}
-                                        {% endif %}
-                                        <span class="text-truncate d-inline-block" title="Vendor">{{ vendor_name or 'N/A' }}</span>
-                                    </td>
-                                    <td class="d-none d-md-table-cell">
-                                        <p class="vulnerability-description mb-0" title="{{ vuln.description | default('Sem descrição disponível') }}">{{ vuln.description | default('Sem descrição disponível') | truncate(120) }}</p>
-                                    </td>
-                                    <td>
-                                        <span class="date-text">{{ vuln.published_date | datetimeformat('%d/%m/%Y') if vuln.published_date else 'N/A' }}</span>
-                                    </td>
-                                    <td>
-                                        {% if vuln.cvss_score and vuln.cvss_score > 0 %}
-                                            <span class="cvss-score {{ 'critical' if vuln.cvss_score >= 9.0 else 'high' if vuln.cvss_score >= 7.0 else 'medium' if vuln.cvss_score >= 4.0 else 'low' }}" title="Pontuação CVSS: {{ '%.1f' | format(vuln.cvss_score) }}" aria-label="Pontuação CVSS {{ '%.1f' | format(vuln.cvss_score) }}">
-                                                {{ "%.1f" | format(vuln.cvss_score) }}
-                                            </span>
-                                        {% else %}
-                                            <span class="cvss-score unknown" title="Pontuação CVSS: Não Avaliado" aria-label="Pontuação CVSS não avaliada">N/A</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="text-center">
-                                        <a href="{{ url_for('vulnerability_ui.vulnerability_details', cve_id=vuln.cve_id) }}" class="btn btn-sm btn-outline-primary" title="Ver detalhes" aria-label="Ver detalhes de {{ vuln.cve_id }}">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                
-                <!-- Pagination Controls - Padrão Analytics -->
-                {% if page and total_pages and total_pages > 1 %}
-                <div class="d-flex justify-content-between align-items-center mt-3">
-                    <div class="pagination-controls">
-                        {% if page > 1 %}
-                            <a href="{{ url_for('main.index', page=page-1) }}" class="btn btn-sm btn-outline-primary">
-                                <i class="fas fa-chevron-left"></i> Anterior
-                            </a>
-                        {% else %}
-                            <button class="btn btn-sm btn-outline-primary" disabled>
-                                <i class="fas fa-chevron-left"></i> Anterior
-                            </button>
-                        {% endif %}
-                        <span class="mx-3">
-                            Página <span>{{ page }}</span> de <span>{{ total_pages }}</span>
-                        </span>
-                        {% if page < total_pages %}
-                            <a href="{{ url_for('main.index', page=page+1) }}" class="btn btn-sm btn-outline-primary">
-                                Próxima <i class="fas fa-chevron-right"></i>
-                            </a>
-                        {% else %}
-                            <button class="btn btn-sm btn-outline-primary" disabled>
-                                Próxima <i class="fas fa-chevron-right"></i>
-                            </button>
-                        {% endif %}
-                    </div>
-                    <div class="page-size-controls">
-                        <label for="vulnerabilities-page-size" class="form-label mb-0 me-2">Itens por página:</label>
-                        <select class="form-select form-select-sm" id="vulnerabilities-page-size" style="width: auto;">
-                            <option value="5" {{ 'selected' if (per_page|default(10)) == 5 else '' }}>5</option>
-                            <option value="10" {{ 'selected' if (per_page|default(10)) == 10 else '' }}>10</option>
-                            <option value="20" {{ 'selected' if (per_page|default(10)) == 20 else '' }}>20</option>
-                            <option value="50" {{ 'selected' if (per_page|default(10)) == 50 else '' }}>50</option>
-                        </select>
-                    </div>
-                </div>
-                {% endif %}
-            {% else %}
-                <div class="empty-state">
-                    <div class="empty-state-icon">
-                        <i class="bi bi-shield-check"></i>
-                    </div>
-                    <h3 class="empty-state-title">Nenhuma vulnerabilidade encontrada</h3>
-                    <p class="empty-state-description">Não há vulnerabilidades registradas no momento. Isso é uma boa notícia!</p>
-                    <a href="{{ url_for('vulnerability_ui.create_vulnerability_ui') }}" class="empty-state-action">
-                        <i class="bi bi-plus-circle"></i> Adicionar vulnerabilidade
-                    </a>
-                </div>
-            {% endif %}
-        </div>
+  </div>
+  {% endif %}
+
+  <div class="card mb-4">
+    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+      <h2 class="h6 mb-0">Ações Rápidas</h2>
     </div>
-</div>
-{% endblock %}
+    <div class="card-body p-3">
+      <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-sm btn-primary" href="{{ url_for('report.quick_create_report') }}">
+          <i class="bi bi-flash me-1"></i>Gerar Relatório Rápido
+        </a>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('report.create_report') }}">
+          <i class="bi bi-file-earmark-plus me-1"></i>Relatório Técnico
+        </a>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('vulnerability_ui.vendor_selection_ui') }}">
+          <i class="bi bi-filter me-1"></i>Selecionar Vendors
+        </a>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}">
+          <i class="bi bi-shield me-1"></i>Abrir Vulnerabilidades
+        </a>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('main.analytics') }}">
+          <i class="bi bi-bar-chart me-1"></i>Analytics
+        </a>
+      </div>
+    </div>
+  </div>
 
-{% block extra_js %}
-<!-- Chart.js CDN -->
+  {% if selected_vendor_map and selected_vendor_map|length > 0 %}
+  <div class="mb-3">
+    <span class="text-muted small me-2">Escopo de vendors selecionado:</span>
+    {% for v in selected_vendor_map %}
+      <span class="badge bg-primary me-1"><i class="bi bi-building me-1"></i>{{ v.name }}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('Chart.js disponível:', typeof Chart !== 'undefined');
-        
-        // Carregar dashboard.js após Chart.js estar disponível
-        if (typeof Chart !== 'undefined') {
-            const dashboardScript = document.createElement('script');
-            dashboardScript.src = '{{ url_for("static", filename="js/pages/dashboard.js") }}';
-            dashboardScript.onload = function() {
-                console.log('Dashboard.js carregado com sucesso');
-            };
-            dashboardScript.onerror = function() {
-                console.error('Erro ao carregar dashboard.js');
-            };
-            document.head.appendChild(dashboardScript);
-        } else {
-            console.error('Chart.js não está disponível');
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <a class="card h-100 text-decoration-none" href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}{% if selected_vendor_ids %}?vendor_ids={{ selected_vendor_ids | join(',') }}{% endif %}">
+        <div class="card-body">
+          <div class="small text-muted">Total</div>
+          <div id="count-total" class="fs-4 fw-semibold text-primary">{{ total_count }}</div>
+        </div>
+      </a>
+    </div>
+    <div class="col-6 col-md-3">
+      <a class="card h-100 text-decoration-none" href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}?severity=CRITICAL{% if selected_vendor_ids %}&vendor_ids={{ selected_vendor_ids | join(',') }}{% endif %}">
+        <div class="card-body">
+          <div class="small text-muted">Crítico</div>
+          <div id="count-critical" class="fs-4 fw-semibold text-danger">{{ critical_count }}</div>
+        </div>
+      </a>
+    </div>
+    <div class="col-6 col-md-3">
+      <a class="card h-100 text-decoration-none" href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}?severity=HIGH{% if selected_vendor_ids %}&vendor_ids={{ selected_vendor_ids | join(',') }}{% endif %}">
+        <div class="card-body">
+          <div class="small text-muted">Alto</div>
+          <div id="count-high" class="fs-4 fw-semibold text-warning">{{ high_count }}</div>
+        </div>
+      </a>
+    </div>
+    <div class="col-6 col-md-3">
+      <a class="card h-100 text-decoration-none" href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}?severity=MEDIUM{% if selected_vendor_ids %}&vendor_ids={{ selected_vendor_ids | join(',') }}{% endif %}">
+        <div class="card-body">
+          <div class="small text-muted">Médio</div>
+          <div id="count-medium" class="fs-4 fw-semibold text-success">{{ medium_count }}</div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+      <h2 class="h6 mb-0">Atividade semanal</h2>
+      <small class="text-muted">Últimos 7 dias</small>
+    </div>
+    <div class="card-body p-3">
+      <div class="row g-3">
+        <div class="col-6 col-md-3">
+          <div class="small text-muted">Total</div>
+          <div id="weekly-total" class="fw-semibold">{{ weekly_total }}</div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="small text-muted">Crítico</div>
+          <div id="weekly-critical" class="fw-semibold text-danger">{{ weekly_critical }}</div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="small text-muted">Alto</div>
+          <div id="weekly-high" class="fw-semibold text-warning">{{ weekly_high }}</div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="small text-muted">Médio</div>
+          <div id="weekly-medium" class="fw-semibold text-success">{{ weekly_medium }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+      <h2 class="h6 mb-0">Vulnerabilidades recentes</h2>
+      <div class="text-muted small">Página {{ page }} de {{ total_pages }}</div>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead>
+            <tr>
+              <th>CVE/Título</th>
+              <th>Severidade</th>
+              <th>CVSS</th>
+              <th>Publicado</th>
+              <th>Detalhes</th>
+            </tr>
+          </thead>
+          <tbody id="recent-vulns-body">
+            {% for v in vulnerabilities %}
+            <tr>
+              <td>
+                <a href="{{ url_for('vulnerability_ui.vulnerability_details', cve_id=v.cve_id) }}">{{ v.cve_id }}</a>
+                <div class="text-muted small">{{ (v.summary or v.description or '')[:90] }}{% if (v.summary or v.description or '')|length > 90 %}...{% endif %}</div>
+              </td>
+              <td>
+                {% set sev = (v.base_severity or 'LOW')|lower %}
+                <span class="badge bg-{{ 'danger' if sev=='critical' else 'warning' if sev=='high' else 'info' if sev=='medium' else 'success' }}">{{ (v.base_severity or 'LOW') }}</span>
+              </td>
+              <td>{{ v.cvss_score or '-' }}</td>
+              <td>{{ v.published_date.strftime('%d/%m/%Y') if v.published_date else '-' }}</td>
+              <td>
+                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('vulnerability_ui.vulnerability_details', cve_id=v.cve_id) }}">
+                  <i class="bi bi-box-arrow-up-right"></i> Ver detalhes
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center">
+      <div>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('main.index', page=page-1, per_page=per_page) }}" {% if page <= 1 %}aria-disabled="true" class="disabled"{% endif %}>
+          <i class="bi bi-chevron-left"></i> Anterior
+        </a>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('main.index', page=page+1, per_page=per_page) }}" {% if page >= total_pages %}aria-disabled="true" class="disabled"{% endif %}>
+          Próxima <i class="bi bi-chevron-right"></i>
+        </a>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <label for="per-page" class="form-label small mb-0">Itens por página</label>
+        <select id="per-page" class="form-select form-select-sm" onchange="location.href='{{ url_for('main.index') }}?page=1&per_page='+this.value">
+          <option value="10" {% if per_page==10 %}selected{% endif %}>10</option>
+          <option value="20" {% if per_page==20 %}selected{% endif %}>20</option>
+          <option value="50" {% if per_page==50 %}selected{% endif %}>50</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  
+</section>
+{% if sync_in_progress %}
+<script nonce="{{ nonce }}">
+document.addEventListener('DOMContentLoaded', function(){
+  var isAdmin = {{ 'true' if current_user.is_authenticated and current_user.is_admin else 'false' }};
+  if(!isAdmin){
+    try { setTimeout(function(){ window.location.href='/loading'; }, 500); } catch(_) {}
+  }
+  var __syncMaxPct = 0, __syncMaxCur = 0, __syncMaxTot = 0, __syncMaxSaved = 0;
+  function updateAdminProgress(){
+    try {
+      var getProg = (typeof window.getSyncProgress==='function') ? window.getSyncProgress() : (fetch('/api/v1/sync/progress').then(function(r){return r.json()}).then(function(j){ return (typeof window.normalizeSyncProgressPayload==='function'? window.normalizeSyncProgressPayload(j) : j); }));
+      getProg.then(function(prog){
+        var bar=document.getElementById('sync-progress-bar');
+        var txt=document.getElementById('sync-progress-text');
+        var cur=(typeof prog.current==='number')? prog.current : null;
+        var tot=(typeof prog.total==='number')? prog.total : null;
+        var pct=(typeof prog.percentage==='number')? prog.percentage : null;
+        var status = prog && prog.status ? String(prog.status).toLowerCase() : null;
+        var savingCount = (typeof prog.saving_count==='number') ? prog.saving_count : null;
+        var savedCount = (savingCount && savingCount>0) ? savingCount : (typeof cur==='number' ? cur : null);
+        if (typeof pct==='number') { if (pct < __syncMaxPct) { pct = __syncMaxPct; } else { __syncMaxPct = pct; } } else { pct = __syncMaxPct; }
+        if (typeof cur==='number') { if (cur < __syncMaxCur) { cur = __syncMaxCur; } else { __syncMaxCur = cur; } } else { cur = __syncMaxCur; }
+        if (typeof tot==='number') { if (tot < __syncMaxTot) { tot = __syncMaxTot; } else { __syncMaxTot = tot; } } else { tot = __syncMaxTot; }
+        if (savedCount !== null) { if (savedCount < __syncMaxSaved) { savedCount = __syncMaxSaved; } else { __syncMaxSaved = savedCount; } } else { savedCount = __syncMaxSaved || null; }
+        var label = (status==='saving')? 'Gravando' : ((status==='processing')? 'Processando' : 'Sincronização');
+        var pctText = (typeof pct==='number' ? Number(pct).toFixed(2) : '0');
+        if(bar){
+          var p=(pct||0);
+          bar.style.width=p+'%';
+          bar.setAttribute('aria-valuenow', p);
+          try { bar.classList.remove('bg-primary','bg-info','bg-warning','bg-danger','bg-success'); bar.classList.add(status==='saving'?'bg-warning':'bg-success'); } catch(_){}
         }
-    });
-
-    // Controlar mudança de itens por página
-    document.addEventListener('DOMContentLoaded', function() {
-        const pageSizeSelect = document.getElementById('vulnerabilities-page-size');
-        if (pageSizeSelect) {
-            pageSizeSelect.addEventListener('change', function() {
-                const params = new URLSearchParams(window.location.search);
-                params.set('per_page', this.value);
-                params.set('page', 1);
-                window.location.search = params.toString();
-            });
+        if(txt){ txt.textContent=label+': '+pctText+'% · CVE '+cur+'/'+(tot||0)+(prog && prog.last_cve_id ? ' ('+prog.last_cve_id+')' : '') + (savedCount!==null ? ' · Gravados: '+savedCount : ''); }
+      }).catch(function(){});
+    } catch(_) {}
+  }
+  function renderOverview(data){
+    try {
+      var counts=data.counts||{};
+      var weekly=data.weekly||{};
+      var vulns=data.vulnerabilities||[];
+      var setText=function(id,val){var el=document.getElementById(id); if(el){el.textContent=(val||0);} };
+      setText('count-total', counts.total);
+      setText('count-critical', counts.critical);
+      setText('count-high', counts.high);
+      setText('count-medium', counts.medium);
+      setText('weekly-total', weekly.total);
+      setText('weekly-critical', weekly.critical);
+      setText('weekly-high', weekly.high);
+      setText('weekly-medium', weekly.medium);
+      var tbody=document.getElementById('recent-vulns-body');
+      if(tbody){
+        var html='';
+        for(var i=0;i<vulns.length;i++){
+          var v=vulns[i];
+          var sev=(v.base_severity||'LOW').toLowerCase();
+          var sevClass=(sev==='critical'?'danger':(sev==='high'?'warning':(sev==='medium'?'info':'success')));
+          var summary=((v.summary||v.description||'')||'');
+          var short=summary.substring(0,90)+(summary.length>90?'...':'');
+          html+=
+            '<tr>'+
+            '<td><a href="'+(v.details_url||('#'))+'">'+(v.cve_id||'-')+'</a>'+
+            '<div class="text-muted small">'+short+'</div></td>'+
+            '<td><span class="badge bg-'+sevClass+'">'+(v.base_severity||'LOW')+'</span></td>'+
+            '<td>'+(v.cvss_score!=null?v.cvss_score:'-')+'</td>'+
+            '<td>'+(v.published_date?new Date(v.published_date).toLocaleDateString(): '-')+'</td>'+
+            '<td><a class="btn btn-sm btn-outline-primary" href="'+(v.details_url||('#'))+'"><i class="bi bi-box-arrow-up-right"></i> Ver detalhes</a></td>'+
+            '</tr>';
         }
-    });
+        tbody.innerHTML=html;
+      }
+    } catch(_) {}
+  }
+  function pollOverview(){
+    var params=new URLSearchParams(window.location.search);
+    var page=params.get('page')||'1';
+    var per_page=params.get('per_page')||'10';
+    var vendor_ids=params.get('vendor_ids')||'';
+    var url='/api/v1/home/overview?page='+encodeURIComponent(page)+'&per_page='+encodeURIComponent(per_page);
+    if(vendor_ids){ url+='&vendor_ids='+encodeURIComponent(vendor_ids); }
+    fetch(url).then(function(r){return r.json()}).then(function(data){
+      if(data && data.sync_in_progress===false){
+        renderOverview(data);
+        clearInterval(timer);
+      }
+    }).catch(function(){});
+  }
+  var timer=setInterval(function(){
+    pollOverview();
+    updateAdminProgress();
+  }, 10000);
+  pollOverview();
+  updateAdminProgress();
+});
 </script>
-<script src="{{ url_for('static', filename='js/features/vulnerabilities.js') }}" defer nonce="{{ nonce }}"></script>
-<script src="{{ url_for('static', filename='js/components/card-navigation.js') }}" defer nonce="{{ nonce }}"></script>
+{% endif %}
 {% endblock %}

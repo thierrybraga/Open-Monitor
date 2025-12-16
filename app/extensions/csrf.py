@@ -16,25 +16,23 @@ def init_csrf(app: Flask) -> None:
         raise RuntimeError(f"CSRF initialization failed: {e}") from e
 
 def exempt_api_blueprints(app: Flask) -> None:
-    """Exempts API blueprints from CSRF protection."""
     try:
         logger.debug(f"Available blueprints: {list(app.blueprints.keys())}")
-        # Exempt API blueprints from CSRF protection
-        api_blueprints = ['chatbot', 'chat']  # Blueprints específicos para exemption
+        api_blueprints = {'chatbot', 'chat'}
         for blueprint_name, blueprint in app.blueprints.items():
-            logger.debug(f"Checking blueprint: {blueprint_name}")
-            if 'api' in blueprint_name.lower() or blueprint_name in api_blueprints:
-                # Exempt the entire blueprint
+            bp_prefix = getattr(blueprint, 'url_prefix', '') or ''
+            is_api = ('api' in blueprint_name.lower()) or bp_prefix.startswith('/api') or (blueprint_name in api_blueprints)
+            if is_api:
                 csrf.exempt(blueprint)
-                logger.debug(f"Blueprint '{blueprint_name}' exempted from CSRF protection.")
-                
-                # Also exempt all view functions in the blueprint
                 for endpoint, view_func in app.view_functions.items():
                     if endpoint.startswith(f"{blueprint_name}."):
                         csrf.exempt(view_func)
-                        logger.debug(f"View function '{endpoint}' exempted from CSRF protection.")
             else:
-                logger.debug(f"Blueprint '{blueprint_name}' not exempted (no 'api' in name).")
+                logger.debug(f"Blueprint '{blueprint_name}' not exempted")
+        specific_endpoints = {'auth.check_availability', 'asset.delete_asset'}
+        for endpoint, view_func in app.view_functions.items():
+            if endpoint in specific_endpoints:
+                csrf.exempt(view_func)
     except Exception as e:
         logger.error("Failed to exempt API blueprints from CSRF protection.", exc_info=True)
         raise RuntimeError(f"CSRF exemption failed: {e}") from e

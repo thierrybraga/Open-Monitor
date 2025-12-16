@@ -2,10 +2,7 @@
 
 {% block title %}Chat - Open Monitor{% endblock %}
 
-{% block extra_css %}
-{# Removido: CSS de página já importado via main.css #}
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-{% endblock %}
+{% block extra_css %}{% endblock %}
 
 {% block content %}
 <!-- Mobile Overlay -->
@@ -96,6 +93,12 @@
                         Comandos
                     </button>
                 </div>
+            </div>
+            <div id="streamingIndicator" class="d-none text-center py-3">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Streaming em andamento...</span>
+                </div>
+                <p class="mt-2 text-muted">Recebendo resposta...</p>
             </div>
         </div>
 
@@ -203,5 +206,8 @@
 {% endblock %}
 
 {% block extra_js %}
+<script nonce="{{ nonce }}">
+    window.OPENAI_STREAMING = {{ OPENAI_STREAMING|tojson }};
+</script>
 <script src="{{ url_for('static', filename='js/pages/chat.js') }}" defer nonce="{{ nonce }}"></script>
 {% endblock %}

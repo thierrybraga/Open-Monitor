@@ -32,8 +32,11 @@ _package_path: Path = Path(__file__).parent
 # (e.g., 'Open-Monitor.models').
 # Para garantir que o prefixo seja sempre correto (Open-Monitor.models),
 # podemos usar o __name__ que é 'Open-Monitor.models' se o app for carregado corretamente.
-for finder, module_name, is_pkg in pkgutil.walk_packages([str(_package_path)], prefix=f"{__package__}."): # <-- CORRIGIDO AQUI
+for finder, module_name, is_pkg in pkgutil.walk_packages([str(_package_path)], prefix=f"{__package__}."):
     if module_name == __name__:
+        continue
+    if module_name.endswith('.severity_metric'):
+        logger.debug(f"Skipping deprecated model module: {module_name}")
         continue
     try:
         importlib.import_module(module_name)

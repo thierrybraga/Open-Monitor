@@ -1,6 +1,6 @@
 # models/chat_session.py
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, List
 from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, ForeignKey
 from sqlalchemy.orm import relationship, Mapped, mapped_column
@@ -36,11 +36,11 @@ class ChatSession(BaseModel):
     
     # Metadados da sessão
     context_data: Mapped[str] = mapped_column(Text, nullable=True)  # JSON string para contexto
-    last_activity: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    last_activity: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     
     # Colunas de auditoria (explícitas para garantir que sejam reconhecidas)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
     
     # Relacionamentos
     user: Mapped["User"] = relationship("User", back_populates="chat_sessions")
@@ -80,20 +80,20 @@ class ChatSession(BaseModel):
     
     def update_activity(self):
         """Atualiza o timestamp da última atividade."""
-        self.last_activity = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.last_activity = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(timezone.utc)
     
     def deactivate(self):
         """Desativa a sessão."""
         self.is_active = False
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
     
     def archive(self):
         """Arquiva a sessão."""
         self.is_archived = True
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
     
     def unarchive(self):
         """Desarquiva a sessão."""
         self.is_archived = False
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)

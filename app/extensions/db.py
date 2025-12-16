@@ -16,30 +16,50 @@ def init_db(app: Flask) -> None:
         # Apply SQLite PRAGMA optimizations and ensure helpful indexes
         with app.app_context():
             try:
-                engine = db.engine
-                if 'sqlite' in engine.name:
-                    logger.debug("Configuring SQLite PRAGMAs...")
+                # Configurar PRAGMAs para o engine principal
+                core_engine = db.engine
+                if 'sqlite' in core_engine.name:
+                    logger.debug("Configuring SQLite PRAGMAs for core engine...")
 
-                    # Apply PRAGMA settings on each new DB-API connection
-                    @event.listens_for(engine, "connect")
-                    def set_sqlite_pragmas(dbapi_connection, connection_record):
+                    @event.listens_for(core_engine, "connect")
+                    def set_sqlite_pragmas_core(dbapi_connection, connection_record):
                         try:
                             cursor = dbapi_connection.cursor()
                             cursor.execute("PRAGMA journal_mode=WAL")
+                            cursor.execute("PRAGMA busy_timeout=5000")
                             cursor.execute("PRAGMA synchronous=NORMAL")
                             cursor.execute("PRAGMA temp_store=MEMORY")
-                            # Negative cache_size sets size in KB; -10000 ~= 10MB
                             cursor.execute("PRAGMA cache_size=-10000")
                             cursor.execute("PRAGMA foreign_keys=ON")
                             cursor.close()
                         except Exception:
-                            # Don't hard-fail if PRAGMAs cannot be applied; log and continue
-                            logger.warning("Failed to apply SQLite PRAGMAs on connect.")
+                            logger.warning("Failed to apply SQLite PRAGMAs on core connect.")
 
-                    # Index management moved to Alembic migrations for consistency
-                    logger.debug("Skipping runtime index creation; handled by migrations.")
-                else:
-                    logger.debug("Non-SQLite engine detected; skipping PRAGMAs.")
+                # Configurar PRAGMAs para o bind 'public' (se existir)
+                try:
+                    public_engine = db.get_engine(app, bind='public')
+                except Exception:
+                    public_engine = None
+
+                if public_engine and 'sqlite' in public_engine.name:
+                    logger.debug("Configuring SQLite PRAGMAs for public engine...")
+
+                    @event.listens_for(public_engine, "connect")
+                    def set_sqlite_pragmas_public(dbapi_connection, connection_record):
+                        try:
+                            cursor = dbapi_connection.cursor()
+                            cursor.execute("PRAGMA journal_mode=WAL")
+                            cursor.execute("PRAGMA busy_timeout=5000")
+                            cursor.execute("PRAGMA synchronous=NORMAL")
+                            cursor.execute("PRAGMA temp_store=MEMORY")
+                            cursor.execute("PRAGMA cache_size=-10000")
+                            cursor.execute("PRAGMA foreign_keys=ON")
+                            cursor.close()
+                        except Exception:
+                            logger.warning("Failed to apply SQLite PRAGMAs on public connect.")
+
+                # Index management moved to Alembic migrations for consistency
+                logger.debug("Skipping runtime index creation; handled by migrations.")
             except Exception as e:
                 logger.warning(f"DB engine not available for PRAGMA/index setup: {e}")
     except Exception as e:

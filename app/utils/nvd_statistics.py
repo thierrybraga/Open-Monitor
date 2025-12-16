@@ -5,6 +5,7 @@ Fornece informações sobre contagem de CVEs, status de sincronização e métri
 """
 
 import requests
+import os
 import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, Tuple
@@ -24,8 +25,13 @@ class NVDStatistics:
     """
     
     def __init__(self):
-        self.nvd_base_url = "https://services.nvd.nist.gov/rest/json/cves/2.0"
-        self.timeout = 30
+        self.nvd_base_url = os.getenv('NVD_API_BASE', 'https://services.nvd.nist.gov/rest/json/cves/2.0')
+        self.api_key = os.getenv('NVD_API_KEY')
+        try:
+            self.timeout = int(os.getenv('NVD_REQUEST_TIMEOUT', '30'))
+        except Exception:
+            self.timeout = 30
+        self.user_agent = os.getenv('NVD_USER_AGENT', 'Open-Monitor/1.0')
     
     def get_nvd_total_count(self) -> Optional[int]:
         """
@@ -37,27 +43,49 @@ class NVDStatistics:
         try:
             terminal_feedback.info("🔍 Consultando total de CVEs na NVD...")
             
-            # Fazer uma consulta com resultsPerPage=1 para obter apenas o totalResults
-            params = {
-                'resultsPerPage': 1,
-                'startIndex': 0
-            }
-            
-            response = requests.get(
-                self.nvd_base_url,
-                params=params,
-                timeout=self.timeout,
-                headers={'User-Agent': 'Open-Monitor/1.0'}
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                total_results = data.get('totalResults', 0)
-                terminal_feedback.success(f"📊 Total de CVEs na NVD: {total_results:,}")
-                return total_results
-            else:
-                terminal_feedback.error(f"❌ Erro ao consultar NVD: HTTP {response.status_code}")
-                return None
+            # Consultar com janela de publicação ampla para obter totalResults confiável
+            from datetime import timezone as _tz, timedelta as _td
+            now = datetime.now(_tz.utc)
+            earliest = datetime(1999, 1, 1, tzinfo=_tz.utc)
+            total_results_sum = 0
+
+            headers = {'User-Agent': self.user_agent}
+            if self.api_key:
+                headers['apiKey'] = self.api_key
+
+            cursor = earliest
+            while cursor <= now:
+                window_end = min(cursor + _td(days=120), now)
+                params = {
+                    'resultsPerPage': 1,
+                    'startIndex': 0,
+                    'pubStartDate': cursor.isoformat(timespec='milliseconds').replace('+00:00', 'Z'),
+                    'pubEndDate': window_end.isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+                }
+                try:
+                    response = requests.get(
+                        self.nvd_base_url,
+                        params=params,
+                        timeout=self.timeout,
+                        headers=headers
+                    )
+                    if response.status_code == 200:
+                        data = response.json()
+                        total_results_sum += int(data.get('totalResults', 0) or 0)
+                    elif response.status_code == 404:
+                        # Janela inválida (excedeu limite ou sem dados); avançar
+                        pass
+                    else:
+                        terminal_feedback.error(f"❌ Erro HTTP {response.status_code} ao consultar janela {cursor} → {window_end}")
+                except requests.RequestException as e:
+                    terminal_feedback.error(f"❌ Erro de conexão com NVD na janela {cursor} → {window_end}: {str(e)}")
+                except Exception as e:
+                    terminal_feedback.error(f"❌ Erro inesperado ao consultar janela {cursor} → {window_end}: {str(e)}")
+                # Avança 1 segundo para evitar reprocessar o mesmo registro no limite inclusivo
+                cursor = window_end + _td(seconds=1)
+
+            terminal_feedback.success(f"📊 Total de CVEs na NVD (somatório por janelas): {total_results_sum:,}")
+            return total_results_sum
                 
         except requests.RequestException as e:
             terminal_feedback.error(f"❌ Erro de conexão com NVD: {str(e)}")

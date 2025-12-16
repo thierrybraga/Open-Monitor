@@ -13,7 +13,7 @@ from app.extensions import db
 # Importação do modelo User
 from app.models.user import User
 # Importação dos formulários
-from app.forms.auth_form import LoginForm, RegisterForm
+from app.forms.auth_form import LoginForm, RegisterForm, RootInitForm
 from app.extensions import login_manager
 from app.utils.security import (
     rate_limiter, get_client_ip, log_security_event, 
@@ -53,7 +53,16 @@ def login() -> str: # Adicionado type hinting (retorna string - HTML renderizado
         # e informar ao usuário que login está desabilitado.
         form = LoginForm()
         flash('Login desabilitado no modo público.', 'info')
-        return render_template('auth/login.html', form=form)
+        try:
+            from app.models.sync_metadata import SyncMetadata
+            first_done_meta = db.session.query(SyncMetadata).filter_by(key='nvd_first_sync_completed').first()
+            status_meta = db.session.query(SyncMetadata).filter_by(key='nvd_sync_progress_status').first()
+            first_done_val = (first_done_meta.value or '').strip().lower() if first_done_meta and first_done_meta.value else ''
+            status_val = str(status_meta.value or '').strip().lower() if status_meta and status_meta.value is not None else ''
+            sync_in_progress = (first_done_val not in ('1','true','yes')) or (status_val in ('processing','saving'))
+        except Exception:
+            sync_in_progress = False
+        return render_template('auth/login.html', form=form, sync_in_progress=sync_in_progress)
 
     form = LoginForm()
 
@@ -93,18 +102,19 @@ def login() -> str: # Adicionado type hinting (retorna string - HTML renderizado
             record_successful_login(user.id, user.username)
             
             AuthErrorHandler.handle_success('login', user=user)
-
-            # Redirecionar para a próxima página se houver, caso contrário, para o index
+            try:
+                from app.models.sync_metadata import SyncMetadata
+                first_done_meta = db.session.query(SyncMetadata).filter_by(key='nvd_first_sync_completed').first()
+                first_done_val = (first_done_meta.value or '').strip().lower() if first_done_meta and first_done_meta.value else ''
+                if first_done_val not in ('1','true','yes'):
+                    return redirect(url_for('main.loading'))
+            except Exception:
+                pass
             next_page = request.args.get('next')
-            # Validar next_page para evitar Open Redirect: garantir que o host seja o mesmo
-            # ou que a URL seja relativa. urlparse retorna netloc (rede location)
-            # Se netloc existe E é diferente do host da requisição, é externo.
             if next_page and urlparse(next_page).netloc != '' and urlparse(next_page).netloc != urlparse(request.host_url).netloc:
-                 logger.warning(f"Detected external redirect attempt: {next_page}. Redirecting to index.")
                  next_page = url_for('main.index')
-            elif not next_page: # Se não há next_page, ir para index
+            elif not next_page:
                  next_page = url_for('main.index')
-
             return redirect(next_page)
 
         # Credenciais inválidas
@@ -114,7 +124,16 @@ def login() -> str: # Adicionado type hinting (retorna string - HTML renderizado
     elif request.method == 'POST': # Flashar erros apenas em POST quando validação falha
          AuthErrorHandler.flash_form_errors(form)
 
-    return render_template('auth/login.html', form=form)
+    try:
+        from app.models.sync_metadata import SyncMetadata
+        first_done_meta = db.session.query(SyncMetadata).filter_by(key='nvd_first_sync_completed').first()
+        status_meta = db.session.query(SyncMetadata).filter_by(key='nvd_sync_progress_status').first()
+        first_done_val = (first_done_meta.value or '').strip().lower() if first_done_meta and first_done_meta.value else ''
+        status_val = str(status_meta.value or '').strip().lower() if status_meta and status_meta.value is not None else ''
+        sync_in_progress = (first_done_val not in ('1','true','yes')) or (status_val in ('processing','saving'))
+    except Exception:
+        sync_in_progress = False
+    return render_template('auth/login.html', form=form, sync_in_progress=sync_in_progress)
 
 
 @auth_bp.route('/logout', methods=['POST']) # A rota logout DEVE ser POST por segurança
@@ -170,31 +189,46 @@ def register() -> str: # Adicionado type hinting
             # A validação de senha deve ocorrer no formulário ou no modelo
             user.set_password(form.password.data) # Define a senha usando o método do modelo
             
-            # Definir usuário como inativo até confirmação do email
-            user.is_active = False
-            
-            # Gerar token de confirmação
-            confirmation_token = user.generate_confirmation_token()
+            first_user = (db.session.query(User).count() == 0)
+            if first_user:
+                return redirect(url_for('auth.init_root'))
+            else:
+                user.is_active = False
+                confirmation_token = user.generate_confirmation_token()
+                try:
+                    from datetime import datetime, timedelta, timezone
+                    user.trial_expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+                except Exception:
+                    user.trial_expires_at = None
 
             # Salvar usuário no banco de dados
             db.session.add(user)
+            try:
+                root = db.session.query(User).filter_by(is_admin=True).first()
+            except Exception:
+                root = None
+            if root:
+                try:
+                    user.root_user_id = root.id
+                except Exception:
+                    pass
             db.session.commit()
             
-            # Enviar email de confirmação
-            try:
-                from app.services.email_service import EmailService
-                email_service = EmailService()
-                confirmation_url = url_for('auth.confirm_email', token=confirmation_token, _external=True)
-                
-                if email_service.send_email_confirmation(user.email, user.username, confirmation_url):
-                    flash('Registro realizado com sucesso! Verifique seu email para ativar sua conta.', 'success')
-                else:
+            if not first_user:
+                try:
+                    from app.services.email_service import EmailService
+                    email_service = EmailService()
+                    confirmation_url = url_for('auth.confirm_email', token=confirmation_token, _external=True)
+                    if email_service.send_email_confirmation(user.email, user.username, confirmation_url):
+                        flash('Registro realizado com sucesso! Verifique seu email para ativar sua conta.', 'success')
+                    else:
+                        flash('Conta criada, mas houve um problema ao enviar o email de confirmação. Entre em contato com o suporte.', 'warning')
+                except Exception as e:
+                    logger.error(f"Erro ao enviar email de confirmação: {e}")
                     flash('Conta criada, mas houve um problema ao enviar o email de confirmação. Entre em contato com o suporte.', 'warning')
-            except Exception as e:
-                logger.error(f"Erro ao enviar email de confirmação: {e}")
-                flash('Conta criada, mas houve um problema ao enviar o email de confirmação. Entre em contato com o suporte.', 'warning')
-            
-            return redirect(url_for('main.index'))
+                return redirect(url_for('main.index'))
+            else:
+                return redirect(url_for('auth.init_root'))
 
         except Exception as e:
             # Usar o tratamento centralizado de erros
@@ -207,6 +241,221 @@ def register() -> str: # Adicionado type hinting
 
 
     return render_template('auth/register.html', form=form)
+
+
+@auth_bp.route('/init-root', methods=['GET', 'POST'])
+@require_rate_limit(max_attempts=3, window_minutes=10)
+def init_root() -> str:
+    if (
+        db.session.query(User).filter((User.is_active == True) & (User.password_hash.isnot(None))).count() > 0
+        or db.session.query(User).filter(User.is_admin == True).count() > 0
+    ):
+        return redirect(url_for('main.index'))
+    form = RootInitForm()
+    if form.validate_on_submit():
+        try:
+            try:
+                from sqlalchemy import inspect, text
+                insp = inspect(db.engine)
+                cols = {c['name'] for c in insp.get_columns('users')}
+                if 'root_user_id' not in cols:
+                    try:
+                        db.session.execute(text('ALTER TABLE users ADD COLUMN root_user_id INTEGER'))
+                        db.session.commit()
+                    except Exception:
+                        db.session.rollback()
+            except Exception:
+                pass
+            username = sanitize_input(form.username.data, 50)
+            email = sanitize_input(form.email.data, 255)
+            first_name = sanitize_input(form.first_name.data, 50)
+            last_name = sanitize_input(form.last_name.data, 50)
+            phone = sanitize_input(form.phone.data, 20) if form.phone.data else None
+            user = User(
+                username=username,
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                phone=phone
+            )
+            user.set_password(form.password.data)
+            user.is_active = True
+            user.email_confirmed = True
+            user.email_confirmation_token = None
+            user.email_confirmation_sent_at = None
+            user.is_admin = True
+            if form.tacacs_enabled.data:
+                user.tacacs_enabled = True
+                user.tacacs_username = sanitize_input(form.tacacs_username.data or '') or None
+                user.tacacs_secret = sanitize_input(form.tacacs_secret.data or '') or None
+                user.tacacs_server = sanitize_input(form.tacacs_server.data or '') or None
+                try:
+                    user.tacacs_port = int((form.tacacs_port.data or '49').strip())
+                except Exception:
+                    user.tacacs_port = 49
+                try:
+                    user.tacacs_timeout = int((form.tacacs_timeout.data or '5').strip())
+                except Exception:
+                    user.tacacs_timeout = 5
+            db.session.add(user)
+            db.session.commit()
+            try:
+                user.root_user_id = user.id
+                db.session.commit()
+            except Exception:
+                pass
+            try:
+                from app.models.sync_metadata import SyncMetadata
+                from sqlalchemy import text
+                from flask import current_app
+                entries = [
+                    ('system:root_user_id', str(user.id)),
+                    ('system:root_username', user.username or ''),
+                    ('system:root_email', user.email or ''),
+                    ('system:default_vendor_scope', 'all')
+                ]
+                if getattr(user, 'tacacs_enabled', False):
+                    entries.extend([
+                        ('system:tacacs_enabled', '1'),
+                        ('system:tacacs_username', user.tacacs_username or ''),
+                        ('system:tacacs_secret', user.tacacs_secret or ''),
+                        ('system:tacacs_server', user.tacacs_server or ''),
+                        ('system:tacacs_port', str(user.tacacs_port)),
+                        ('system:tacacs_timeout', str(user.tacacs_timeout)),
+                    ])
+                entries.append(('require_root_setup', 'false'))
+                try:
+                    core_user = user.username or 'root'
+                    core_pass = form.password.data
+                    pub_user = core_user
+                    pub_pass = core_pass
+                    entries.extend([
+                        ('system:db_core_user', core_user),
+                        ('system:db_core_password', core_pass),
+                        ('system:db_public_user', pub_user),
+                        ('system:db_public_password', pub_pass)
+                    ])
+                    try:
+                        db.session.execute(text(f"DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{core_user}') THEN CREATE ROLE {core_user} LOGIN PASSWORD '{core_pass}'; END IF; END $$;"))
+                    except Exception:
+                        pass
+                    try:
+                        core_db = current_app.config.get('POSTGRES_CORE_DB', 'openmonitor_core') or 'openmonitor_core'
+                        db.session.execute(text(f"GRANT ALL PRIVILEGES ON DATABASE \"{core_db}\" TO {core_user};"))
+                    except Exception:
+                        pass
+                    try:
+                        db.session.execute(text(f"GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO {core_user};"))
+                        db.session.execute(text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO {core_user};"))
+                    except Exception:
+                        pass
+                    try:
+                        pub_engine = db.get_engine(current_app, bind='public')
+                        with pub_engine.connect() as conn:
+                            conn.execute(text(f"DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{pub_user}') THEN CREATE ROLE {pub_user} LOGIN PASSWORD '{pub_pass}'; END IF; END $$;"))
+                            pub_db = current_app.config.get('POSTGRES_PUBLIC_DB', 'openmonitor_public') or 'openmonitor_public'
+                            conn.execute(text(f"GRANT ALL PRIVILEGES ON DATABASE \"{pub_db}\" TO {pub_user};"))
+                            conn.execute(text(f"GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO {pub_user};"))
+                            conn.execute(text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO {pub_user};"))
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+                for k, v in entries:
+                    sm = db.session.query(SyncMetadata).filter_by(key=k).first()
+                    if sm:
+                        sm.value = v
+                    else:
+                        sm = SyncMetadata(key=k, value=v)
+                        db.session.add(sm)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+            try:
+                login_user(user, remember=False)
+            except Exception:
+                pass
+            try:
+                from app.models.sync_metadata import SyncMetadata
+                status_meta = db.session.query(SyncMetadata).filter_by(key='nvd_sync_progress_status').first()
+                status_val = (status_meta.value or '').strip().lower() if status_meta and status_meta.value else ''
+                if status_val not in ('processing','saving'):
+                    if not status_meta:
+                        status_meta = SyncMetadata(key='nvd_sync_progress_status', value='processing')
+                        db.session.add(status_meta)
+                    else:
+                        status_meta.value = 'processing'
+                    current_meta = db.session.query(SyncMetadata).filter_by(key='nvd_sync_progress_current').first()
+                    if not current_meta:
+                        current_meta = SyncMetadata(key='nvd_sync_progress_current', value='0')
+                        db.session.add(current_meta)
+                    else:
+                        current_meta.value = '0'
+                    sched_meta = db.session.query(SyncMetadata).filter_by(key='nvd_first_sync_scheduled').first()
+                    if not sched_meta:
+                        sched_meta = SyncMetadata(key='nvd_first_sync_scheduled', value='1')
+                        db.session.add(sched_meta)
+                    else:
+                        sched_meta.value = '1'
+                    db.session.commit()
+
+                    import threading, asyncio
+                    from flask import current_app
+                    from app.jobs.enhanced_nvd_fetcher import EnhancedNVDFetcher
+                    app_obj = current_app._get_current_object()
+                    def _run_sync():
+                        try:
+                            import os
+                            workers_raw = os.getenv('OM_SYNC_WORKERS','10')
+                            try:
+                                max_workers = int(workers_raw)
+                            except Exception:
+                                max_workers = 10
+                            fetcher = EnhancedNVDFetcher(app=app_obj, max_workers=max_workers, enable_cache=True)
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                            try:
+                                mode = str(os.getenv('OM_SYNC_MODE','pipeline')).strip().lower()
+                                loop.run_until_complete(fetcher.sync_nvd(full=True, max_pages=None, use_parallel=(mode != 'sequential')))
+                            finally:
+                                loop.close()
+                        except Exception:
+                            try:
+                                sm = db.session.query(SyncMetadata).filter_by(key='nvd_sync_progress_status').first()
+                                if sm:
+                                    sm.value = 'idle'
+                                db.session.commit()
+                            except Exception:
+                                db.session.rollback()
+                    threading.Thread(target=_run_sync, daemon=True).start()
+            except Exception:
+                pass
+            try:
+                inst = current_app.instance_path
+                os.makedirs(inst, exist_ok=True)
+                env_path = os.path.join(inst, 'docker.env')
+                core_host = os.getenv('POSTGRES_CORE_HOST', 'postgres_core')
+                core_db = os.getenv('POSTGRES_CORE_DB', 'openmonitor_core')
+                pub_host = os.getenv('POSTGRES_PUBLIC_HOST', 'postgres_public')
+                pub_db = os.getenv('POSTGRES_PUBLIC_DB', 'openmonitor_public')
+                with open(env_path, 'w', encoding='utf-8') as f:
+                    f.write(f"POSTGRES_CORE_USER={user.username}\n")
+                    f.write(f"POSTGRES_CORE_PASSWORD={form.password.data}\n")
+                    f.write(f"POSTGRES_CORE_HOST={core_host}\n")
+                    f.write(f"POSTGRES_CORE_DB={core_db}\n")
+                    f.write(f"POSTGRES_PUBLIC_USER={user.username}\n")
+                    f.write(f"POSTGRES_PUBLIC_PASSWORD={form.password.data}\n")
+                    f.write(f"POSTGRES_PUBLIC_HOST={pub_host}\n")
+                    f.write(f"POSTGRES_PUBLIC_DB={pub_db}\n")
+            except Exception:
+                pass
+            flash('Usuário root criado e ativado.', 'success')
+            return redirect(url_for('main.loading'))
+        except Exception as e:
+            AuthErrorHandler.handle_register_error(e, form.username.data, db.session)
+    elif request.method == 'POST':
+        AuthErrorHandler.flash_form_errors(form)
+    return render_template('auth/init_root.html', form=form)
 
 
 @auth_bp.route('/check-availability', methods=['POST'])
@@ -275,16 +524,13 @@ def confirm_email(token):
         
         # Confirmar email
         if user.confirm_email(token):
-            user.is_active = True  # Ativar conta após confirmação
             db.session.commit()
-            
             log_security_event(
                 'email_confirmed',
                 user_id=user.id,
                 details={'email': user.email}
             )
-            
-            flash('Email confirmado com sucesso! Sua conta está ativa.', 'success')
+            flash('Email confirmado com sucesso! Aguarde aprovação do administrador.', 'success')
         else:
             flash('Token de confirmação expirado. Solicite um novo email de confirmação.', 'error')
         
@@ -445,11 +691,91 @@ def reset_password(token):
                 return redirect(url_for('main.index'))
             else:
                 flash('Erro ao redefinir senha. Token pode ter expirado.', 'error')
-                return redirect(url_for('auth.forgot_password'))
-        
+        return redirect(url_for('auth.forgot_password'))
+
         return render_template('auth/reset_password.html', token=token)
         
     except Exception as e:
         logger.error(f"Erro na redefinição de senha: {e}")
         flash('Erro interno. Tente novamente mais tarde.', 'error')
         return redirect(url_for('auth.forgot_password'))
+
+
+@auth_bp.route('/pending-users')
+@login_required
+def pending_users():
+    if not getattr(current_user, 'is_admin', False):
+        return redirect(url_for('main.index'))
+    users = db.session.query(User).filter((User.is_active == False)).order_by(User.created_at.asc()).all()
+    return render_template('auth/pending_users.html', users=users)
+
+
+@auth_bp.route('/approve-user/<int:user_id>', methods=['POST'])
+@login_required
+def approve_user(user_id: int):
+    if not getattr(current_user, 'is_admin', False):
+        return redirect(url_for('main.index'))
+    try:
+        user = db.session.query(User).get(user_id)
+        if user and not user.is_active:
+            from datetime import datetime, timezone
+            user.is_active = True
+            try:
+                user.approved_by_user_id = int(current_user.id)
+            except Exception:
+                user.approved_by_user_id = None
+            try:
+                user.approved_at = datetime.now(timezone.utc)
+            except Exception:
+                user.approved_at = None
+            try:
+                from app.extensions.middleware import audit_log
+                audit_log('approve_user', 'user', str(user.id), {'approved_by': int(current_user.id)})
+            except Exception:
+                pass
+            db.session.commit()
+            flash('Usuário aprovado com sucesso.', 'success')
+        else:
+            flash('Usuário inválido ou já aprovado.', 'warning')
+    except Exception:
+        db.session.rollback()
+        flash('Erro ao aprovar usuário.', 'error')
+    return redirect(url_for('auth.pending_users'))
+
+@auth_bp.route('/approved-users', methods=['GET'])
+@login_required
+def approved_users():
+    if not getattr(current_user, 'is_admin', False):
+        return redirect(url_for('main.index'))
+    try:
+        approver_id = request.args.get('approver_id', '').strip()
+        approver = None
+        if approver_id.isdigit():
+            approver = int(approver_id)
+        else:
+            try:
+                root = db.session.query(User).filter(User.is_admin == True).order_by(User.id.asc()).first()
+                approver = int(root.id) if root else None
+            except Exception:
+                approver = None
+        q = db.session.query(User).filter(User.is_active == True)
+        if approver:
+            q = q.filter(User.approved_by_user_id == approver)
+        rows = q.order_by(User.approved_at.desc().nullslast(), User.created_at.desc()).all()
+        payload = [
+            {
+                'id': int(u.id),
+                'username': u.username,
+                'email': u.email,
+                'approved_by_user_id': int(u.approved_by_user_id) if u.approved_by_user_id else None,
+                'approved_at': (u.approved_at.isoformat() if u.approved_at else None),
+                'root_user_id': int(u.root_user_id) if u.root_user_id else None,
+            }
+            for u in rows
+        ]
+        from flask import jsonify
+        return jsonify({'success': True, 'users': payload}), 200
+    except Exception as e:
+        from flask import jsonify
+        logger.error(f"Erro ao listar usuários aprovados: {e}")
+        return jsonify({'success': False, 'error': 'Erro interno'}), 500

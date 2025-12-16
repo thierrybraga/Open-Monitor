@@ -60,6 +60,42 @@ class ChatManager {
                 this.sendQuickMessage(quickBtn.dataset.message, e);
             }
         });
+
+        const newBtn = document.getElementById('new-chat-btn');
+        if (newBtn) {
+            newBtn.addEventListener('click', () => this.createNewSession());
+        }
+
+        const editTitleBtn = document.getElementById('edit-title-btn');
+        if (editTitleBtn) {
+            editTitleBtn.addEventListener('click', () => this.showEditTitleModal());
+        }
+
+        const saveTitleBtn = document.getElementById('save-title-btn');
+        if (saveTitleBtn) {
+            saveTitleBtn.addEventListener('click', () => this.saveTitle());
+        }
+
+        const deleteChatBtn = document.getElementById('delete-chat-btn');
+        if (deleteChatBtn) {
+            deleteChatBtn.addEventListener('click', () => this.showDeleteModal(this.currentSessionId));
+        }
+
+        const exportChatBtn = document.getElementById('export-chat-btn');
+        if (exportChatBtn) {
+            exportChatBtn.addEventListener('click', () => this.exportChat());
+        }
+
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+        if (confirmDeleteBtn) {
+            confirmDeleteBtn.addEventListener('click', () => this.deleteSession(this.currentSessionId));
+        }
+
+        this.restoreState();
+        this.loadSessions();
+
+        this.restoreState();
+        this.loadSessions();
     }
 
     showAttachmentsPreview() {
@@ -503,6 +539,7 @@ class ChatManager {
                 this.sessions.unshift(data.session);
                 this.renderSessions();
                 this.selectSession(data.session.id);
+                this.currentSessionId = data.session && data.session.id;
                 this.showNotification('Nova conversa criada', 'success');
                 
                 // Reset state
@@ -554,6 +591,7 @@ class ChatManager {
         if (this.currentSessionId === sessionId) return;
 
         this.currentSessionId = sessionId;
+        this.saveState();
         const session = this.sessions.find(s => s.id === sessionId);
         
         if (!session) return;
@@ -592,6 +630,9 @@ class ChatManager {
     }
 
     async loadMessages(sessionId) {
+        if (!sessionId || Number.isNaN(Number(sessionId))) {
+            return;
+        }
         try {
             const response = await fetch(`/api/chat/sessions/${sessionId}/messages`);
             const data = await response.json();
@@ -704,6 +745,15 @@ class ChatManager {
                 await this.createNewSession();
                 // Aguardar um pouco para garantir que a sessão foi criada
                 await new Promise(resolve => setTimeout(resolve, 100));
+                if (!this.currentSessionId) {
+                    const first = this.sessions && this.sessions[0];
+                    if (first && first.id) {
+                        this.currentSessionId = first.id;
+                    } else {
+                        this.showNotification('Erro ao preparar conversa', 'error');
+                        return;
+                    }
+                }
             } catch (error) {
                 this.showNotification('Erro ao criar nova conversa', 'error');
                 return;
@@ -728,8 +778,11 @@ class ChatManager {
             this.updateCharCount();
             this.autoResizeTextarea();
             
-            // Show enhanced typing indicator
-            this.showTypingIndicator();
+            if (window.OPENAI_STREAMING) {
+                this.showStreamingIndicator();
+            } else {
+                this.showTypingIndicator();
+            }
 
             const metadata = this.buildAttachmentMetadata();
 
@@ -738,15 +791,24 @@ class ChatManager {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                 },
                 body: JSON.stringify({ content, metadata })
             });
 
             const data = await response.json();
 
-            if (data.success) {
-                // Add assistant response
+            if (data && data.success && data.assistant_message) {
                 this.addMessageToUI(data.assistant_message);
+                this.updateSessionLastActivity(this.currentSessionId);
+                this.showNotification('Mensagem enviada', 'success');
+            } else if (data && data.content) {
+                this.addMessageToUI({
+                    id: Date.now(),
+                    content: data.content,
+                    message_type: 'assistant',
+                    created_at: new Date().toISOString()
+                });
                 // Update session in list
                 this.updateSessionLastActivity(this.currentSessionId);
                 this.showNotification('Mensagem enviada', 'success');
@@ -758,6 +820,7 @@ class ChatManager {
             this.showNotification('Erro ao enviar mensagem', 'error');
         } finally {
             this.hideTypingIndicator();
+            this.hideStreamingIndicator();
             this.state.isSending = false;
             this.setFormEnabled(true);
             this.messageInput.focus();
@@ -860,6 +923,20 @@ class ChatManager {
         }
     }
 
+    showStreamingIndicator() {
+        const el = document.getElementById('streamingIndicator');
+        if (el) {
+            el.classList.remove('d-none');
+        }
+    }
+
+    hideStreamingIndicator() {
+        const el = document.getElementById('streamingIndicator');
+        if (el) {
+            el.classList.add('d-none');
+        }
+    }
+
     setFormEnabled(enabled) {
         this.messageInput.disabled = !enabled;
         this.sendBtn.disabled = !enabled;
@@ -946,54 +1023,54 @@ class ChatManager {
         }
     }
 
-    showDeleteModal(sessionId = null) {
-        // Use o sessionId passado ou o currentSessionId
-        const targetSessionId = sessionId || this.currentSessionId;
-        if (!targetSessionId) return;
+    showDeleteModal(sessionId) {
+        const session = this.sessions.find(s => s.id === sessionId);
+        if (!sessionId || !session) return;
         
-        // Armazenar o ID da sessão a ser deletada
-        this.sessionToDelete = targetSessionId;
-        
-    const modal = window.getModalInstance(document.getElementById('delete-chat-modal'));
-        modal.show();
+        this.createModal({
+            title: 'Excluir Conversa',
+            content: `
+                <div class="delete-modal-content">
+                    <div class="warning-icon">
+                        <i class="bi bi-exclamation-triangle"></i>
+                    </div>
+                    <p>Tem certeza que deseja excluir a conversa <strong>"${this.escapeHtml(session.title)}"</strong>?</p>
+                    <p class="text-muted">Esta ação não pode ser desfeita.</p>
+                </div>
+            `,
+            actions: [
+                {
+                    text: 'Cancelar',
+                    class: 'btn-secondary',
+                    action: () => this.closeModal()
+                },
+                {
+                    text: 'Excluir',
+                    class: 'btn-danger',
+                    action: () => this.deleteSession(sessionId)
+                }
+            ]
+        });
     }
 
-    async deleteSession() {
-        const sessionIdToDelete = this.sessionToDelete || this.currentSessionId;
-        if (!sessionIdToDelete) return;
-
+    async deleteSession(sessionId) {
         try {
-            const response = await fetch(`/api/chat/sessions/${sessionIdToDelete}`, {
-                method: 'DELETE'
-            });
-
+            this.closeModal();
+            const response = await fetch(`/api/chat/sessions/${sessionId}`, { method: 'DELETE' });
             const data = await response.json();
-
             if (data.success) {
-                // Remove from local data
-                this.sessions = this.sessions.filter(s => s.id !== sessionIdToDelete);
-                
-                // Se a sessão deletada era a atual, resetar UI
-                if (sessionIdToDelete === this.currentSessionId) {
+                this.sessions = this.sessions.filter(s => s.id !== sessionId);
+                if (sessionId === this.currentSessionId) {
                     this.currentSessionId = null;
                     this.resetChatArea();
                 }
-                
                 this.renderSessions();
-                
-                // Close modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('delete-chat-modal'));
-                modal.hide();
-                
-                // Limpar a variável
-                this.sessionToDelete = null;
-                
-                this.showNotification('Conversa excluída', 'success');
+                this.showNotification('Conversa excluída com sucesso', 'success');
             } else {
-                this.showNotification('Erro ao excluir conversa', 'error');
+                this.showNotification(data.error || 'Erro ao excluir conversa', 'error');
             }
         } catch (error) {
-            console.error('Erro ao deletar conversa:', error);
+            console.error('Erro ao excluir sessão:', error);
             this.showNotification('Erro ao excluir conversa', 'error');
         }
     }

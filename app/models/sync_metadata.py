@@ -1,7 +1,7 @@
 # project/models/sync_metadata.py
 
 from sqlalchemy import Column, Integer, String, DateTime
-from datetime import datetime
+from datetime import datetime, timezone
 from app.extensions import db
 
 class SyncMetadata(db.Model):
@@ -15,7 +15,7 @@ class SyncMetadata(db.Model):
     key           = Column(String(100), nullable=False, unique=True)
     value         = Column(String(255), nullable=True)
     status        = Column(String(50), nullable=True, default='pending')
-    last_modified = Column(DateTime, nullable=True, default=datetime.utcnow)
+    last_modified = Column(DateTime, nullable=True, default=lambda: datetime.now(timezone.utc))
     sync_type     = Column(String(20), nullable=True)
 
     # relacionamento com ApiCallLog

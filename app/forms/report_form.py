@@ -142,6 +142,23 @@ class ReportConfigForm(FlaskForm):
         default=True,
         render_kw={'checked': True}
     )
+
+    # Integração FortiGuide (FortiGate Release Notes)
+    include_fortiguide_notes = BooleanField(
+        'Incluir FortiGuide Release Notes (FortiGate)',
+        default=False
+    )
+
+    fortiguide_versions = MultiCheckboxField(
+        'Versões FortiGate',
+        validators=[Optional()],
+        choices=[
+            ('7.0', '7.0'),
+            ('7.2', '7.2'),
+            ('7.4', '7.4')
+        ],
+        render_kw={'class': 'fortiguide-options'}
+    )
     
     # Tipos de análise de IA
     ai_analysis_types = MultiCheckboxField(
@@ -151,6 +168,7 @@ class ReportConfigForm(FlaskForm):
             ('executive_summary', 'Resumo Executivo'),
             ('business_impact', 'Análise de Impacto no Negócio'),
             ('technical_analysis', 'Análise Técnica'),
+            ('technical_study', 'Estudo Técnico'),
             ('remediation_plan', 'Plano de Remediação'),
             ('cisa_kev_analysis', 'Análise CISA KEV'),
             ('epss_analysis', 'Análise EPSS'),
@@ -470,4 +488,22 @@ class QuickReportForm(FlaskForm):
         'Notificar quando o relatório estiver pronto',
         default=False,
         render_kw={'class': 'form-check-input'}
+    )
+
+    # Integração FortiGuide (simplificada)
+    include_fortiguide_notes = BooleanField(
+        'Incluir FortiGuide Release Notes (FortiGate)',
+        default=False,
+        render_kw={'class': 'form-check-input'}
+    )
+
+    fortiguide_version = SelectField(
+        'Versão FortiGate',
+        validators=[Optional()],
+        choices=[
+            ('7.0', '7.0'),
+            ('7.2', '7.2'),
+            ('7.4', '7.4')
+        ],
+        default='7.4'
     )

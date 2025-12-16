@@ -42,8 +42,18 @@ class DashboardCharts {
     }
 
     // --- Helpers de vendor_ids (URL tem prioridade; fallback localStorage) ---
+    isGlobalScope() {
+        try {
+            const params = new URLSearchParams(window.location.search || '');
+            return (String(params.get('vendor_scope') || '').trim().toLowerCase() === 'all');
+        } catch (_) {
+            return false;
+        }
+    }
     getVendorIdsFromUrl() {
         try {
+            // Se escopo global estiver ativo, ignorar vendor_ids
+            if (this.isGlobalScope()) return [];
             const params = new URLSearchParams(window.location.search || '');
             const multi = params.getAll('vendor_ids');
             let ids = [];
@@ -90,6 +100,10 @@ class DashboardCharts {
 
     buildVendorParam(prefix = '?') {
         try {
+            // Em escopo global, padronizar query para vendor_scope=all
+            if (this.isGlobalScope()) {
+                return `${prefix}vendor_scope=all`;
+            }
             const urlVendorIds = this.getVendorIdsFromUrl();
             const effectiveIds = (urlVendorIds && urlVendorIds.length)
                 ? urlVendorIds

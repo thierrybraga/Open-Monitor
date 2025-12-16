@@ -4,6 +4,14 @@
 
 {% block extra_css %}
 {{ super() }}
+<style>
+.vulnerability-content { display: none; }
+.vulnerability-content.show { display: block; }
+.collapsible-content { display: none; }
+.collapsible-content.show { display: block; }
+.toggle-icon { transition: transform 0.2s ease; }
+.toggle-icon.rotated { transform: rotate(180deg); }
+</style>
 
 {% endblock %}
 
@@ -149,7 +157,12 @@
                                     <table class="technical-table">
                                         <tr>
                                             <th>CVE ID</th>
-                                            <td>{{ vuln.cve_id or 'N/A' }}</td>
+                                            <td>
+                                                {{ vuln.cve_id or 'N/A' }}
+                                                {% if vuln.risk_report_url %}
+                                                    <a href="{{ vuln.risk_report_url }}" class="btn btn-sm btn-outline-primary ms-2" target="_blank">Relatório de Risco</a>
+                                                {% endif %}
+                                            </td>
                                         </tr>
                                         <tr>
                                             <th>CWE</th>
@@ -451,7 +464,7 @@
 
 {% block extra_js %}
 {{ super() }}
-<script>
+<script nonce="{{ nonce }}">
 function toggleVulnerability(id) {
     const content = document.getElementById(id);
     const icon = document.getElementById('icon-' + id);

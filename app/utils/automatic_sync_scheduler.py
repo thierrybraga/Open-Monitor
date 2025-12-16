@@ -500,13 +500,14 @@ class AutomaticSyncScheduler:
             if not self.app:
                 self.app = create_app()
             with self.app.app_context():
+                from datetime import timezone as _tz
                 ok, _ = upsert_sync_metadata(
                     session=None,
                     key="nvd_last_sync",
                     value=safe_error,
                     status="error",
                     sync_type=sync_type,
-                    last_modified=datetime.utcnow(),
+                    last_modified=datetime.now(_tz.utc),
                 )
                 if not ok:
                     raise RuntimeError("Upsert de erro de SyncMetadata falhou")

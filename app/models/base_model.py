@@ -65,12 +65,33 @@ class BaseModel(db.Model):
 
     def to_dict(self, include_relationships: bool = False) -> Dict[str, Any]:
         """
-        Converte colunas em dict. Relacionamentos só se include_relationships=True.
+        Converte colunas em dict de forma resiliente a colunas ausentes.
+        Relacionamentos só se include_relationships=True.
         """
         data: Dict[str, Any] = {}
+        try:
+            from sqlalchemy import inspect as sa_inspect
+            from app.extensions.db import db as _db
+            inspector = sa_inspect(_db.engine)
+            existing = { (c.get('name') or '') for c in inspector.get_columns(self.__table__.name) }
+        except Exception:
+            existing = { c.name for c in self.__table__.columns }
+
         for col in self.__table__.columns:
-            v = getattr(self, col.name)
-            data[col.name] = v.isoformat() if isinstance(v, datetime) else v
+            # Se a coluna não existir fisicamente na tabela, retornar None sem tentar carregar
+            if col.name not in existing:
+                data[col.name] = None
+                continue
+            try:
+                # Evitar carregamento preguiçoso desnecessário: tentar pegar valor já carregado
+                if col.name in self.__dict__:
+                    v = self.__dict__.get(col.name)
+                else:
+                    v = getattr(self, col.name)
+                data[col.name] = v.isoformat() if isinstance(v, datetime) else v
+            except Exception:
+                # Em caso de erro ao acessar atributo (coluna ausente/deferred), retornar None
+                data[col.name] = None
 
         if include_relationships:
             for rel in self.__mapper__.relationships:

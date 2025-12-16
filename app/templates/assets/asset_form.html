@@ -97,6 +97,29 @@
             </div>
           </div>
 
+          {% if has_asset_type_col %}
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="asset_type" class="form-label">
+                  <i class="bi bi-tag me-1"></i>
+                  Tipo do Ativo
+                </label>
+                {% if form.asset_type is defined %}
+                {{ form.asset_type(class="form-control" + (" is-invalid" if form.asset_type.errors else ""), id="asset_type", placeholder="Ex: Servidor, Switch, Firewall") }}
+                {% if form.asset_type.errors %}
+                  <div class="invalid-feedback">
+                    {{ form.asset_type.errors[0] }}
+                  </div>
+                {% endif %}
+                {% else %}
+                <input type="text" id="asset_type" class="form-control" placeholder="Ex: Servidor, Switch, Firewall" disabled>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
           <div class="row">
             <div class="col-md-6">
             {% if form.hostname is defined %}
@@ -186,21 +209,14 @@
                 </label>
                 {% if form.vendor_name is defined %}
                 <div class="position-relative">
-                  {{ form.vendor_name(class="form-control" + (" is-invalid" if form.vendor_name.errors else ""), id="vendor_name", placeholder="Ex: Microsoft, Cisco, Oracle, etc.", autocomplete="off") }}
+                  {# Select fixo: somente Cisco/Fortinet #}
+                  <select class="form-select{{ ' is-invalid' if form.vendor_name.errors else '' }}" id="vendor_name" name="vendor_name" required>
+                    <option value="" disabled {{ 'selected' if not form.vendor_name.data }}>Selecione...</option>
+                    <option value="cisco" {{ 'selected' if (form.vendor_name.data and form.vendor_name.data|lower == 'cisco') }}>Cisco</option>
+                    <option value="fortinet" {{ 'selected' if (form.vendor_name.data and form.vendor_name.data|lower == 'fortinet') }}>Fortinet</option>
+                  </select>
                   {{ form.vendor_id(id="vendor_id") }}
-                  <!-- Clear vendor selection button -->
-                  <button type="button" class="btn btn-sm btn-outline-secondary position-absolute top-0 end-0 mt-2 me-2" id="vendor_clear" aria-label="Limpar fornecedor">
-                    <i class="bi bi-x-circle"></i>
-                  </button>
-
-                  <!-- Suggestions listbox -->
-                  <div id="vendor_suggestions" class="list-group position-absolute w-100 d-none" style="z-index:1060; top:100%; left:0;" role="listbox" aria-label="Sugestões de fornecedor">
-                    <div id="vendor_loading" class="list-group-item d-flex align-items-center" hidden>
-                      <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                      Buscando fornecedores...
-                    </div>
-                  </div>
-                  <small class="form-text text-muted">Digite para buscar; selecione uma sugestão ou informe um novo nome. Se não existir, será criado automaticamente ao salvar.</small>
+                  <small class="form-text text-muted">Selecione o fornecedor: Fortinet ou Cisco.</small>
                   <div id="vendor_status" class="visually-hidden" aria-live="polite"></div>
                   {% if form.vendor_name.errors %}
                     <div class="invalid-feedback">
@@ -209,7 +225,113 @@
                   {% endif %}
                 </div>
                 {% else %}
-                <input type="text" class="form-control" id="vendor_name" name="vendor_name" placeholder="Ex: Microsoft, Cisco, Oracle, etc." disabled>
+                <select id="vendor_name" class="form-select" name="vendor_name" disabled>
+                  <option>Selecione</option>
+                </select>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Product selection tied to selected vendor -->
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="product_name" class="form-label">
+                  <i class="bi bi-box-seam me-1"></i>
+                  Produto (do fornecedor)
+                </label>
+                <div class="position-relative">
+                  <select id="product_select" class="form-select">
+                    <option value="" selected disabled>Selecione um produto</option>
+                  </select>
+                  <input id="product_query" type="text" class="form-control form-control-sm mt-2" placeholder="Buscar produto (incremental)..." autocomplete="off">
+                  {{ form.product_id(id="product_id") }}
+                  {% if form.product_name is defined %}
+                  {{ form.product_name(class="d-none", id="product_name") }}
+                  {% endif %}
+                  <small class="form-text text-muted">Selecione um produto do fornecedor para correlacionar CVEs.</small>
+                  <small id="product_status" class="form-text text-muted"></small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Correlation metadata: model, OS, version -->
+          <div class="row">
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="model_name" class="form-label">
+                  <i class="bi bi-cpu me-1"></i>
+                  Modelo
+                </label>
+                {% if form.model_name is defined %}
+                {{ form.model_name(class="form-control" + (" is-invalid" if form.model_name.errors else ""), id="model_name", placeholder="Ex: Windows Server 2019, Catalyst 2960", list="model_list") }}
+                <datalist id="model_list"></datalist>
+                {% if form.model_name.errors %}
+                  <div class="invalid-feedback">
+                    {{ form.model_name.errors[0] }}
+                  </div>
+                {% endif %}
+                {% else %}
+                <input type="text" class="form-control" id="model_name" name="model_name" placeholder="Ex: Windows Server 2019, Catalyst 2960" disabled>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="operating_system" class="form-label">
+                  <i class="bi bi-hdd-network me-1"></i>
+                  Sistema Operacional
+                  <i class="bi bi-info-circle ms-1 text-muted" tabindex="0" data-bs-toggle="tooltip" title="Sugestões: Windows, Linux, macOS, Cisco IOS, NX-OS, ASA, FortiOS, Junos, ESXi, AIX, Solaris."></i>
+                </label>
+                {% if form.operating_system is defined %}
+                {{ form.operating_system(class="form-control" + (" is-invalid" if form.operating_system.errors else ""), id="operating_system", placeholder="Ex: Windows, Linux, IOS, NX-OS", list="os_list") }}
+                {% else %}
+                <input type="text" class="form-control" id="operating_system" name="operating_system" placeholder="Ex: Windows, Linux, IOS, NX-OS" disabled>
+                {% endif %}
+                <datalist id="os_list">
+                  <option value="Windows"></option>
+                  <option value="Linux"></option>
+                  <option value="macOS"></option>
+                  <option value="Android"></option>
+                  <option value="iOS"></option>
+                  <option value="Cisco IOS"></option>
+                  <option value="NX-OS"></option>
+                  <option value="ASA"></option>
+                  <option value="FortiOS"></option>
+                  <option value="Junos"></option>
+                  <option value="FreeBSD"></option>
+                  <option value="VMware ESXi"></option>
+                  <option value="AIX"></option>
+                  <option value="Solaris"></option>
+                </datalist>
+                {% if form.operating_system is defined and form.operating_system.errors %}
+                  <div class="invalid-feedback">
+                    {{ form.operating_system.errors[0] }}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="installed_version" class="form-label">
+                  <i class="bi bi-tag me-1"></i>
+                  Versão Instalada
+                  <i class="bi bi-info-circle ms-1 text-muted" tabindex="0" data-bs-toggle="tooltip" title="Use números/letras/pontos/traços/parênteses. Ex: 10.0.17763, 15.2(2)E9."></i>
+                </label>
+                {% if form.installed_version is defined %}
+                {{ form.installed_version(class="form-control" + (" is-invalid" if form.installed_version.errors else ""), id="installed_version", placeholder="Ex: 10.0.17763, 15.2(2)E9", list="version_list") }}
+                <datalist id="version_list"></datalist>
+                {% else %}
+                <input type="text" class="form-control" id="installed_version" name="installed_version" placeholder="Ex: 10.0.17763, 15.2(2)E9" list="version_list" disabled>
+                <datalist id="version_list"></datalist>
+                {% endif %}
+                <small class="form-text text-muted">Aceita formatos comuns (sem caracteres especiais como @, #, %).</small>
+                {% if form.installed_version is defined and form.installed_version.errors %}
+                  <div class="invalid-feedback">
+                    {{ form.installed_version.errors[0] }}
+                  </div>
                 {% endif %}
               </div>
             </div>
@@ -248,12 +370,348 @@
       </div>
     </div>
   </div>
+
+  <script nonce="{{ nonce }}">
+    (function(){
+      const vendorInput = document.getElementById('vendor_name');
+      const vendorIdInput = document.getElementById('vendor_id');
+      const productInput = document.getElementById('product_name');
+      const productIdInput = document.getElementById('product_id');
+      const suggBox = document.getElementById('product_suggestions');
+      const loadingItem = document.getElementById('product_loading');
+      const productStatusEl = document.getElementById('product_status');
+      const productQueryInput = document.getElementById('product_query');
+
+      function clearProductSelection(){
+        if (productInput) productInput.value = '';
+        if (productIdInput) productIdInput.value = '';
+        hideSuggestions();
+      }
+
+      function showSuggestions(){
+        if (suggBox) suggBox.classList.remove('d-none');
+      }
+      function hideSuggestions(){
+        if (suggBox) suggBox.classList.add('d-none');
+      }
+      function setLoading(loading){
+        if (!loadingItem) return;
+        loadingItem.hidden = !loading;
+      }
+
+      function updateProductStatus(text){ if (productStatusEl) productStatusEl.textContent = text || ''; }
+
+      async function fetchProducts(vendorId, q){
+        if (!vendorId) return [];
+        const url = new URL(`/api/products/vendors/${vendorId}`, window.location.origin);
+        url.searchParams.set('limit', '500');
+        if (q && q.trim()) url.searchParams.set('q', q.trim());
+        const res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) return [];
+        const data = await res.json().catch(() => []);
+        return Array.isArray(data?.items) ? data.items : [];
+      }
+
+      async function fetchProductsByVendorName(vendorName, q){
+        if (!vendorName) return [];
+        const url = new URL(`/api/products/vendors/by-name/${encodeURIComponent(vendorName)}`, window.location.origin);
+        url.searchParams.set('limit', '500');
+        if (q && q.trim()) url.searchParams.set('q', q.trim());
+        const res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) return [];
+        const data = await res.json().catch(() => []);
+        return Array.isArray(data?.items) ? data.items : [];
+      }
+
+      // Resolve vendor_id using search API for robust matching
+      async function resolveVendorIdByName(vendorName){
+        const name = (vendorName || '').trim();
+        if (!name) return null;
+        try {
+          const url = new URL('/api/v1/vendors', window.location.origin);
+          url.searchParams.set('q', name);
+          url.searchParams.set('limit', '1');
+          const res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+          if (!res.ok) return null;
+          const json = await res.json().catch(() => ({}));
+          const items = Array.isArray(json?.data) ? json.data : [];
+          return items.length ? items[0].id : null;
+        } catch (_) {
+          return null;
+        }
+      }
+
+      function renderSuggestions(items){
+        if (!suggBox) return;
+        suggBox.innerHTML = '';
+        const frag = document.createDocumentFragment();
+        if (!items.length){
+          const empty = document.createElement('div');
+          empty.className = 'list-group-item text-muted';
+          empty.textContent = 'Nenhum produto encontrado para o fornecedor.';
+          frag.appendChild(empty);
+        } else {
+          items.forEach(item => {
+            const el = document.createElement('button');
+            el.type = 'button';
+            el.className = 'list-group-item list-group-item-action';
+            el.setAttribute('role', 'option');
+            el.textContent = `${item.name}`;
+            el.addEventListener('click', () => {
+              productInput.value = item.name || '';
+              productIdInput.value = String(item.id || '');
+              hideSuggestions();
+              try { if (item && item.id) { window.loadProductMetadata && window.loadProductMetadata(String(item.id)); } } catch (e) { /* noop */ }
+              // Heurística Fortinet: definir OS com base no nome do produto
+              try {
+                const vName = (vendorInput?.value || '').trim().toLowerCase();
+                if (vName === 'fortinet' && osInput && (!osInput.value || osInput.value.trim() === '')){
+                  const pName = (item.name || '').toLowerCase();
+                  let inferred = 'FortiOS';
+                  if (pName.startsWith('fortiweb')) inferred = 'FortiWeb';
+                  else if (pName.startsWith('fortiproxy')) inferred = 'FortiProxy';
+                  else if (pName.startsWith('fortimanager')) inferred = 'FortiManager';
+                  else if (pName.startsWith('fortianalyzer')) inferred = 'FortiAnalyzer';
+                  else if (pName.startsWith('fortiadc')) inferred = 'FortiADC';
+                  else if (pName.startsWith('fortiswitch') || pName.startsWith('fortiap')) inferred = 'FortiOS';
+                  osInput.value = inferred;
+                }
+              } catch (_) { /* noop */ }
+            });
+            frag.appendChild(el);
+          });
+        }
+        // prepend loading item
+        if (loadingItem) frag.prepend(loadingItem);
+        suggBox.appendChild(frag);
+        showSuggestions();
+      }
+
+      let debounceTimer = null;
+      function onProductInput(){
+        const vendorId = (vendorIdInput?.value || '').trim();
+        const query = (productInput?.value || '').trim();
+        productIdInput.value = '';
+        if (!vendorId){
+          const vendorName = (vendorInput?.value || '').trim();
+          if (!vendorName){
+            updateProductStatus('Selecione um fornecedor para listar produtos.');
+            hideSuggestions();
+            return;
+          }
+          updateProductStatus('Buscando produtos pelo nome do fornecedor...');
+          setLoading(true);
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(async () => {
+            try {
+              const items = await fetchProductsByVendorName(vendorName, query);
+              renderSuggestions(items);
+              updateProductStatus(items.length ? `${items.length} produto(s) encontrados` : 'Nenhum produto encontrado');
+            } catch (e) {
+              hideSuggestions();
+              updateProductStatus('Falha ao buscar produtos');
+            } finally {
+              setLoading(false);
+            }
+          }, 250);
+          return;
+        }
+        setLoading(true);
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(async () => {
+          try {
+            const items = await fetchProducts(vendorId, query);
+            renderSuggestions(items);
+            updateProductStatus(items.length ? `${items.length} produto(s) encontrados` : 'Nenhum produto encontrado');
+          } catch (e) {
+            hideSuggestions();
+            updateProductStatus('Falha ao buscar produtos');
+          } finally {
+            setLoading(false);
+          }
+        }, 250);
+      }
+
+      // Substituído por select: eventos de mudança para atualizar IDs
+      const productSelect = document.getElementById('product_select');
+      function populateProductSelect(items){
+        if (!productSelect) return;
+        productSelect.innerHTML = '';
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = '';
+        defaultOpt.textContent = 'Selecione um produto';
+        defaultOpt.disabled = true;
+        defaultOpt.selected = true;
+        productSelect.appendChild(defaultOpt);
+        items.forEach(item => {
+          const opt = document.createElement('option');
+          opt.value = String(item.id || '');
+          opt.textContent = item.name || String(item.id || '');
+          productSelect.appendChild(opt);
+        });
+      }
+
+      function setProductLoading(loading){
+        if (!productSelect) return;
+        productSelect.disabled = !!loading;
+        if (loading){
+          productSelect.innerHTML = '';
+          const opt = document.createElement('option');
+          opt.value = '';
+          opt.textContent = 'Carregando...';
+          opt.disabled = true;
+          opt.selected = true;
+          productSelect.appendChild(opt);
+        }
+      }
+
+      function rankProducts(items, q){
+        if (!q) return items;
+        const query = q.toLowerCase();
+        const starts = []; const contains = []; const others = [];
+        items.forEach(item => {
+          const name = (item.name || '').toLowerCase();
+          if (name.startsWith(query)) starts.push(item);
+          else if (name.includes(query)) contains.push(item);
+          else others.push(item);
+        });
+        return [...starts, ...contains, ...others];
+      }
+
+      async function loadAllProductsForVendorId(vendorId, q){
+        updateProductStatus('Carregando produtos...');
+        setProductLoading(true);
+        try {
+          let items = await fetchProducts(vendorId, q || null);
+          if (q && q.trim()) items = rankProducts(items, q);
+          populateProductSelect(items);
+          updateProductStatus(items.length ? `${items.length} produtos carregados.` : 'Nenhum produto encontrado.');
+        } catch (e) {
+          updateProductStatus('Falha ao carregar produtos.');
+        } finally {
+          setProductLoading(false);
+        }
+      }
+
+      async function loadAllProductsForVendorName(vendorName, q){
+        updateProductStatus('Carregando produtos...');
+        setProductLoading(true);
+        try {
+          let items = await fetchProductsByVendorName(vendorName, q || null);
+          if (q && q.trim()) items = rankProducts(items, q);
+          populateProductSelect(items);
+          updateProductStatus(items.length ? `${items.length} produtos carregados.` : 'Nenhum produto encontrado.');
+        } catch (e) {
+          updateProductStatus('Falha ao carregar produtos.');
+        } finally {
+          setProductLoading(false);
+        }
+      }
+
+      productSelect?.addEventListener('change', (ev) => {
+        const sel = ev.target;
+        if (!sel) return;
+        const pid = sel.value;
+        const pname = sel.options[sel.selectedIndex]?.text || '';
+        const pidInput = document.getElementById('product_id');
+        const pnameInput = document.getElementById('product_name');
+        if (pidInput) pidInput.value = String(pid || '');
+        if (pnameInput) pnameInput.value = pname;
+        try { if (pid) { window.loadProductMetadata && window.loadProductMetadata(String(pid)); } } catch (e) { /* noop */ }
+      });
+
+      // Defaults para Fortinet: OS FortiOS, placeholders livres
+      const osInput = document.getElementById('operating_system');
+      const versionInput = document.getElementById('installed_version');
+      const modelInput = document.getElementById('model_name');
+      const osPlaceholderDefault = osInput?.getAttribute('placeholder') || '';
+      const versionPlaceholderDefault = versionInput?.getAttribute('placeholder') || '';
+      const modelPlaceholderDefault = modelInput?.getAttribute('placeholder') || '';
+
+      function applyFortinetDefaults(){
+        // Não alterar valores do usuário; apenas placeholders sugeridos
+        if (versionInput) versionInput.setAttribute('placeholder', 'Livre');
+        if (modelInput) modelInput.setAttribute('placeholder', 'Todas versões');
+      }
+      function resetDefaults(){
+        if (osInput) osInput.setAttribute('placeholder', osPlaceholderDefault);
+        if (versionInput) versionInput.setAttribute('placeholder', versionPlaceholderDefault);
+        if (modelInput) modelInput.setAttribute('placeholder', modelPlaceholderDefault);
+      }
+
+      function onVendorChanged(){
+        const name = (vendorInput?.value || '').trim().toLowerCase();
+        if (name === 'fortinet'){
+          applyFortinetDefaults();
+        } else {
+          resetDefaults();
+        }
+        clearProductSelection();
+      }
+
+      // Ao mudar fornecedor, aplicar defaults, resolver vendor_id e carregar lista de produtos
+      vendorInput?.addEventListener('change', async () => {
+        onVendorChanged();
+        if (productQueryInput) productQueryInput.value = '';
+        const vName = (vendorInput?.value || '').trim().toLowerCase();
+        if (!vName) return;
+        const vid = await resolveVendorIdByName(vName);
+        if (vid) {
+          if (vendorIdInput) vendorIdInput.value = String(vid);
+          loadAllProductsForVendorId(vid);
+          try { window.loadVendorMetadata && window.loadVendorMetadata(String(vid)); } catch (_) { /* noop */ }
+        } else {
+          // Fallback: carregar por nome se não conseguir resolver o ID
+          loadAllProductsForVendorName(vName);
+        }
+      });
+
+      // Busca incremental por produto (q digitado)
+      let queryDebounceTimer = null;
+      productQueryInput?.addEventListener('input', () => {
+        const q = (productQueryInput.value || '').trim();
+        const vid = (vendorIdInput?.value || '').trim();
+        const vName = (vendorInput?.value || '').trim().toLowerCase();
+        setProductLoading(true);
+        updateProductStatus(q ? `Buscando por "${q}"...` : 'Carregando produtos...');
+        clearTimeout(queryDebounceTimer);
+        queryDebounceTimer = setTimeout(async () => {
+          try {
+            if (vid) {
+              await loadAllProductsForVendorId(vid, q);
+            } else if (vName) {
+              await loadAllProductsForVendorName(vName, q);
+            } else {
+              populateProductSelect([]);
+              updateProductStatus('Selecione um fornecedor para buscar produtos.');
+            }
+          } finally {
+            setProductLoading(false);
+          }
+        }, 250);
+      });
+
+      const initialVendor = (vendorInput?.value || '').trim().toLowerCase();
+      if (initialVendor) {
+        onVendorChanged();
+        resolveVendorIdByName(initialVendor).then(vid => {
+          if (vid) {
+            if (vendorIdInput) vendorIdInput.value = String(vid);
+            loadAllProductsForVendorId(vid);
+            try { window.loadVendorMetadata && window.loadVendorMetadata(String(vid)); } catch (_) {}
+          } else {
+            loadAllProductsForVendorName(initialVendor);
+          }
+        });
+      }
+    })();
+  </script>
 </div>
 
 <!-- Toast Container -->
 <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1055;"></div>
 
-<script>
+<script nonce="{{ nonce }}">
 // Form validation and submission
 document.addEventListener('DOMContentLoaded', function() {
   var form = document.getElementById('asset-form');
@@ -309,6 +767,50 @@ document.addEventListener('DOMContentLoaded', function() {
     ipInput.addEventListener('input', function() { if (ipInput.classList.contains('is-invalid')) updateIpValidation(); });
   }
 
+  // Installed version validation (allow digits, letters, dots, dashes, parentheses)
+  var versionInput = document.getElementById('installed_version');
+  function isValidVersion(v) {
+    if (!v) return true; // optional
+    const pattern = /^[A-Za-z0-9\.\-\(\)]+$/;
+    return v.length >= 2 && pattern.test(v);
+  }
+  function updateVersionValidation() {
+    if (!versionInput) return;
+    const value = (versionInput.value || '').trim();
+    if (!value) { versionInput.classList.remove('is-invalid','is-valid'); return; }
+    const valid = isValidVersion(value);
+    if (!valid) {
+      versionInput.classList.add('is-invalid');
+      versionInput.classList.remove('is-valid');
+      let feedback = versionInput.parentNode.querySelector('.invalid-feedback');
+      if (!feedback) {
+        feedback = document.createElement('div');
+        feedback.className = 'invalid-feedback';
+        versionInput.parentNode.appendChild(feedback);
+      }
+      feedback.textContent = 'Formato inválido. Use números/letras/pontos/traços/parênteses.';
+    } else {
+      versionInput.classList.remove('is-invalid');
+      versionInput.classList.add('is-valid');
+    }
+  }
+  if (versionInput) {
+    versionInput.addEventListener('blur', updateVersionValidation);
+    versionInput.addEventListener('input', function(){ if (versionInput.classList.contains('is-invalid')) updateVersionValidation(); });
+  }
+
+  // Initialize tooltips for info icons
+  try {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+      if (window.bootstrap && typeof window.bootstrap.Tooltip === 'function') {
+        new window.bootstrap.Tooltip(tooltipTriggerEl);
+      } else if (typeof $ !== 'undefined' && typeof $.fn.tooltip === 'function') {
+        $(tooltipTriggerEl).tooltip();
+      }
+    });
+  } catch (e) { /* noop */ }
+
   // Real-time validation feedback
   if (form) {
     var inputs = form.querySelectorAll('input, select, textarea');
@@ -342,6 +844,8 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Vendor remote suggestions and selection
+  // Desativado: bloco antigo de sugestões (envolvido por if(false))
+  if (false) {
   var vendorInput = document.getElementById('vendor_name');
   var vendorIdInput = document.getElementById('vendor_id');
   var suggestionsEl = document.getElementById('vendor_suggestions');
@@ -405,6 +909,17 @@ document.addEventListener('DOMContentLoaded', function() {
               vendorIdInput.value = v.id;
               hideSuggestions();
               updateStatus('Fornecedor selecionado: ' + v.name);
+              // Após selecionar o fornecedor, preparar o campo de produto e exibir lista
+              try {
+                if (productIdInput) productIdInput.value = '';
+                if (productInput) {
+                  productInput.value = '';
+                  // Focar o campo para disparar o carregamento inicial de sugestões
+                  productInput.focus();
+                }
+                // Carregar metadados agregados do vendor
+                try { if (vendorIdInput && vendorIdInput.value) { window.loadVendorMetadata && window.loadVendorMetadata(String(vendorIdInput.value)); } } catch (_) {}
+              } catch (e) { /* noop */ }
             });
             suggestionsEl.appendChild(a);
           });
@@ -461,6 +976,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  }
   // Show success toast on form submission
   function showToast(message, type = 'success') {
     if (typeof window.safeNotify === 'function') {
@@ -495,5 +1011,151 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 });
+</script>
+<script nonce="{{ nonce }}">
+// Metadados de produto/vendor: modelos, SO, versões (escopo global)
+(function(){
+  function setDatalist(listEl, items){
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    const uniq = Array.from(new Set((items || []).filter(Boolean).map(s => String(s).trim()).filter(s => s.length)));
+    uniq.slice(0, 500).forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v;
+      listEl.appendChild(opt);
+    });
+  }
+
+  function normalizeFortinetOS(os){
+    if (!os) return os;
+    const s = String(os).trim();
+    if (/^fortios\b/i.test(s)) return 'FortiOS';
+    if (/^fortiweb\b/i.test(s)) return 'FortiWeb';
+    if (/^fortiproxy\b/i.test(s)) return 'FortiProxy';
+    if (/^fortimanager\b/i.test(s)) return 'FortiManager';
+    return s;
+  }
+
+  function normalizeVersion(v){
+    if (!v) return v;
+    const s = String(v).trim();
+    const m = s.match(/v?\s*(\d+(?:\.\d+){0,3})/i);
+    const b = s.match(/build\s*(\d+)/i);
+    if (m) {
+      return b ? `${m[1]} build ${b[1]}` : m[1];
+    }
+    return s;
+  }
+
+  async function loadVendorMetadata(vendorId){
+    const vendorIdInput = document.getElementById('vendor_id');
+    const vendorName = (document.getElementById('vendor_name')?.value || '').trim().toLowerCase();
+    const modelList = document.getElementById('model_list');
+    const osList = document.getElementById('os_list');
+    const versionList = document.getElementById('version_list');
+    if (!vendorId) return;
+    try {
+      const url = new URL(`/api/products/vendors/${vendorId}/metadata`, window.location.origin);
+      const res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) return;
+      const json = await res.json().catch(() => ({}));
+      const osItems = (vendorName === 'fortinet')
+        ? (json.operating_systems || []).map(normalizeFortinetOS)
+        : (json.operating_systems || []);
+      setDatalist(modelList, json.models || []);
+      setDatalist(osList, osItems);
+      setDatalist(versionList, (json.versions || []).map(normalizeVersion));
+    } catch (e) { /* noop */ }
+  }
+
+  async function loadProductMetadata(productId){
+    const modelList = document.getElementById('model_list');
+    const osList = document.getElementById('os_list');
+    const versionList = document.getElementById('version_list');
+    if (!productId) return;
+    try {
+      const url = new URL(`/api/products/${productId}/metadata`, window.location.origin);
+      const res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) return;
+      const json = await res.json().catch(() => ({}));
+      setDatalist(modelList, json.models || []);
+      setDatalist(osList, (json.operating_systems || []).map(normalizeFortinetOS));
+      setDatalist(versionList, (json.versions || []).map(normalizeVersion));
+    } catch (e) { /* noop */ }
+  }
+
+  // Expor globalmente
+  window.loadVendorMetadata = loadVendorMetadata;
+  window.loadProductMetadata = loadProductMetadata;
+
+  // Normalização automática de versão ao sair do campo
+  const versionInput = document.getElementById('installed_version');
+  versionInput?.addEventListener('blur', function(){
+    const v = (versionInput.value || '').trim();
+    if (!v) return;
+    versionInput.value = normalizeVersion(v);
+  });
+
+  // Carregar metadados se já houver vendor selecionado ao abrir a página
+  const initialVendorId = (document.getElementById('vendor_id')?.value || '').trim();
+  if (initialVendorId) {
+    loadVendorMetadata(initialVendorId);
+  }
+
+  // Disparar carregamento inicial de produtos com base no fornecedor selecionado
+  const vendorSelectEl = document.getElementById('vendor_name');
+  if (vendorSelectEl && vendorSelectEl.value) {
+    (async () => {
+      try {
+        const vName = vendorSelectEl.value.trim().toLowerCase();
+        const vid = await (window.resolveVendorIdByName ? window.resolveVendorIdByName(vName) : (async function(name){
+          try {
+            const url = new URL('/api/v1/vendors', window.location.origin);
+            url.searchParams.set('q', name);
+            url.searchParams.set('limit', '1');
+            const res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+            if (!res.ok) return null;
+            const json = await res.json().catch(() => ({}));
+            const items = Array.isArray(json?.data) ? json.data : [];
+            return items.length ? items[0].id : null;
+          } catch (_) { return null; }
+        })(vName));
+        if (vid) {
+          const vendorIdInput = document.getElementById('vendor_id');
+          if (vendorIdInput) vendorIdInput.value = String(vid);
+          if (typeof window.loadVendorMetadata === 'function') window.loadVendorMetadata(String(vid));
+          if (typeof window.loadAllProductsForVendorId === 'function') {
+            window.loadAllProductsForVendorId(vid);
+          } else {
+            // Fallback direto
+            const url = new URL(`/api/products/vendors/${vid}`, window.location.origin);
+            const res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+            const json = await res.json().catch(() => ({}));
+            const items = Array.isArray(json?.items) ? json.items : [];
+            const select = document.getElementById('product_select');
+            if (select) {
+              select.innerHTML = '';
+              const defaultOpt = document.createElement('option');
+              defaultOpt.value = '';
+              defaultOpt.textContent = 'Selecione um produto';
+              defaultOpt.disabled = true;
+              defaultOpt.selected = true;
+              select.appendChild(defaultOpt);
+              items.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = String(item.id || '');
+                opt.textContent = item.name || String(item.id || '');
+                select.appendChild(opt);
+              });
+            }
+          }
+        } else {
+          // Fallback por nome
+          if (typeof window.loadAllProductsForVendorName === 'function') window.loadAllProductsForVendorName(vName);
+        }
+      } catch (_) { /* noop */ }
+    })();
+  }
+})();
 </script>
 {% endblock %}

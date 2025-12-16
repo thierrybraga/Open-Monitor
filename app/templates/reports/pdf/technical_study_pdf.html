@@ -457,7 +457,7 @@
         <div class="technical-analysis">
             <h3>Configurações Atuais Avaliadas</h3>
             {% if report.ai_analysis and report.ai_analysis.technical_study %}
-                {{ report.ai_analysis.technical_study | safe }}
+                {{ (report.ai_analysis.technical_study.markdown or report.ai_analysis.technical_study) | safe }}
             {% else %}
                 <p>A análise técnica detalhada será gerada automaticamente com base nos dados coletados.</p>
                 

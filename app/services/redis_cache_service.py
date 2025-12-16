@@ -296,9 +296,6 @@ class RedisCacheService:
             if deleted > 0:
                 self.stats.deletes += 1
                 return True
-            
-            return False
-            
         except (RedisError, RedisConnectionError) as e:
             logger.error(f"Erro Redis ao deletar {cache_key}: {e}")
             self.stats.errors += 1
@@ -307,6 +304,50 @@ class RedisCacheService:
             logger.error(f"Erro ao deletar do cache {cache_key}: {e}")
             self.stats.errors += 1
             return False
+        
+        return False
+
+    async def get_cached_vulnerabilities(self, key: str, return_count_only: bool = False):
+        if not self.enabled or not self.redis_client:
+            return None
+        payload = self.get(key, namespace='nvd_sync')
+        if payload is None:
+            return None
+        if return_count_only:
+            try:
+                if isinstance(payload, dict) and 'count' in payload:
+                    return int(payload.get('count') or 0)
+                if isinstance(payload, list):
+                    return len(payload)
+            except Exception:
+                return None
+        return payload
+
+    async def cache_vulnerabilities(self, key: str, vulnerabilities, ttl: int = 3600):
+        if not self.enabled or not self.redis_client:
+            return False
+        try:
+            if isinstance(vulnerabilities, dict) and 'count' in vulnerabilities:
+                payload = vulnerabilities
+            elif isinstance(vulnerabilities, list):
+                payload = {'count': len(vulnerabilities)}
+            else:
+                payload = {'count': 0}
+            return self.set(key, payload, ttl=ttl, namespace='nvd_sync')
+        except Exception:
+            self.stats.errors += 1
+            return False
+
+    def get_stats(self) -> Dict[str, Any]:
+        return {
+            'enabled': self.enabled,
+            'hits': self.stats.hits,
+            'misses': self.stats.misses,
+            'sets': self.stats.sets,
+            'deletes': self.stats.deletes,
+            'errors': self.stats.errors,
+            'hit_rate': self.stats.hit_rate
+        }
     
     def delete_pattern(self, pattern: str, namespace: str = 'default') -> int:
         """Remove múltiplas chaves baseado em padrão."""

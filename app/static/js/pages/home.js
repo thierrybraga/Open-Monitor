@@ -10,6 +10,9 @@
   function applySavedVendorIdsToUrlIfMissing() {
     try {
       var url = new URL(window.location.href);
+      // Não alterar a URL se o escopo global estiver ativo
+      var hasGlobalScope = (url.searchParams.get('vendor_scope') || '').trim().toLowerCase() === 'all';
+      if (hasGlobalScope) return;
       var hasVendorParam = url.searchParams.has('vendor_ids');
       if (hasVendorParam) return;
       var raw = localStorage.getItem('vendorSelection.selectedVendorIds');
@@ -19,7 +22,15 @@
       ids = ids.map(function (x) { return parseInt(x, 10); }).filter(function (n) { return Number.isFinite(n); });
       if (!ids.length) return;
       url.searchParams.set('vendor_ids', ids.join(','));
-      window.location.replace(url.toString());
+      var newHref = url.toString();
+      if (newHref === window.location.href) return;
+      if (typeof history !== 'undefined' && typeof history.replaceState === 'function') {
+        history.replaceState(null, '', newHref);
+        try { document.dispatchEvent(new Event('vendorScopeApplied')); } catch (_) {}
+      } else {
+        // Fallback: navegação somente se history API não estiver disponível
+        window.location.href = newHref;
+      }
     } catch (e) {
       console.warn('Falha ao aplicar vendor_ids da seleção salva:', e);
     }
@@ -55,6 +66,18 @@
   }
 
   // ===== Helpers de vendor_ids =====
+  function isGlobalScopeActive() {
+    try {
+      var params = new URLSearchParams(window.location.search || '');
+      var scopeUrl = String(params.get('vendor_scope') || '').trim().toLowerCase();
+      if (scopeUrl === 'all') return true;
+      try {
+        var scopeSaved = String(localStorage.getItem('vendorSelection.scope') || '').trim().toLowerCase();
+        if (scopeSaved === 'all') return true;
+      } catch (_) {}
+      return false;
+    } catch (_) { return false; }
+  }
   function getVendorIdsFromUrl() {
     try {
       var params = new URLSearchParams(window.location.search || '');
@@ -102,6 +125,12 @@
 
   function appendVendorToUrl(href) {
     try {
+      if (isGlobalScopeActive()) {
+        var u0 = new URL(href, window.location.origin);
+        u0.searchParams.set('vendor_scope', 'all');
+        u0.searchParams.delete('vendor_ids');
+        return u0.toString();
+      }
       var ids = getVendorIdsFromUrl();
       var eff = ids.length ? ids : getVendorIdsFromLocalStorage();
       if (!eff.length) return href;
@@ -153,10 +182,14 @@
     var apiUrl = new URL('/api/analytics/latest-cves', window.location.origin);
     apiUrl.searchParams.set('page', '1');
     apiUrl.searchParams.set('per_page', '10');
-    // Determinar vendor_ids efetivos a partir da URL ou do localStorage
-    var effectiveIds = getVendorIdsFromUrl();
-    if (!effectiveIds || !effectiveIds.length) {
-      effectiveIds = getVendorIdsFromLocalStorage();
+    // Determinar escopo e vendor_ids efetivos
+    var globalScope = isGlobalScopeActive();
+    var effectiveIds = [];
+    if (!globalScope) {
+      effectiveIds = getVendorIdsFromUrl();
+      if (!effectiveIds || !effectiveIds.length) {
+        effectiveIds = getVendorIdsFromLocalStorage();
+      }
     }
     // Renderiza um hint visual do escopo de vendors ativo
     try {
@@ -174,8 +207,10 @@
     try {
       console.debug('[Home] vendor_ids efetivos:', effectiveIds);
     } catch (_e2) { /* noop */ }
-    if (effectiveIds && effectiveIds.length) {
+    if (!globalScope && effectiveIds && effectiveIds.length) {
       apiUrl.searchParams.set('vendor_ids', effectiveIds.join(','));
+    } else if (globalScope) {
+      apiUrl.searchParams.set('vendor_scope', 'all');
     }
     try { console.debug('[Home] URL da API latest-cves:', apiUrl.toString()); } catch (_e3) { /* noop */ }
 

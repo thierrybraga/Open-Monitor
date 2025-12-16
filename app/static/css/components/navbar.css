@@ -322,9 +322,8 @@
 /* Medium screens */
 @media (max-width: 991.98px) {
   .sync-badge {
-    display: none !important;
+    display: flex !important;
   }
-  
   .navbar .container-fluid {
     padding-left: 0.75rem;
     padding-right: 0.75rem;
@@ -467,7 +466,7 @@
 /* Sync Badge - Responsivo */
 @media (max-width: 991.98px) {
   .sync-badge {
-    display: none !important;
+    display: flex !important;
   }
 }
 

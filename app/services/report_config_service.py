@@ -7,7 +7,7 @@ Permite personalizar templates, formatos, notificações e outras configuraçõe
 
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, asdict
 from enum import Enum
@@ -283,8 +283,8 @@ class ReportConfigService:
     def add_custom_template(self, template: ReportTemplate) -> bool:
         """Adiciona template personalizado."""
         try:
-            template.created_at = datetime.utcnow()
-            template.updated_at = datetime.utcnow()
+            template.created_at = datetime.now(timezone.utc)
+            template.updated_at = datetime.now(timezone.utc)
             self.templates[template.id] = template
             
             logger.info(f"Template personalizado {template.id} adicionado")
@@ -305,7 +305,7 @@ class ReportConfigService:
                 if hasattr(template, key):
                     setattr(template, key, value)
             
-            template.updated_at = datetime.utcnow()
+            template.updated_at = datetime.now(timezone.utc)
             
             logger.info(f"Template {template_id} atualizado")
             return True

@@ -8,6 +8,7 @@ import os
 import sys
 import time
 import asyncio
+import json
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List, Tuple
 from pathlib import Path
@@ -20,6 +21,7 @@ from app.extensions.db import db
 from services.vulnerability_service import VulnerabilityService
 from app.jobs.enhanced_nvd_fetcher import EnhancedNVDFetcher
 from app.config.parallel_nvd_config import ParallelNVDConfig
+from app.config import get_consolidated_configs
 from flask import Flask
 from sqlalchemy import text
 from app.utils.sync_metadata_orm import upsert_sync_metadata
@@ -549,6 +551,11 @@ class DatabaseInitializer:
         self.app_logger.info(f"📋 Tabelas criadas: {stats['tables_created']}")
         self.app_logger.info(f"🔄 Sincronização inicial: {'Sim' if stats['initial_sync_performed'] else 'Não'}")
         self.app_logger.info(f"🔍 Vulnerabilidades importadas: {stats['vulnerabilities_imported']}")
+
+        # Configurações consolidadas
+        self.app_logger.subsection("Configurações Consolidadas")
+        configs = get_consolidated_configs()
+        self.app_logger.info(json.dumps(configs, ensure_ascii=False, indent=2))
         
         # Erros
         if stats['errors']:

@@ -116,23 +116,9 @@ class Weakness(db.Model):
             return None
 
     @classmethod
-    def create_weakness(cls, vulnerability_id: int, cwe_id: str) -> 'Weakness':
-        """
-        Create and save a new Weakness instance.
-
-        Args:
-            vulnerability_id: The ID of the associated vulnerability.
-            cwe_id: The CWE identifier.
-
-        Returns:
-            Weakness: The created Weakness instance.
-
-        Raises:
-            ValueError: If validation fails.
-            Exception: If the database operation fails.
-        """
+    def create_weakness(cls, cve_id: str, cwe_id: str) -> 'Weakness':
         try:
-            weakness = cls(vulnerability_id=vulnerability_id, cwe_id=cwe_id)
+            weakness = cls(cve_id=cve_id, cwe_id=cwe_id)
             weakness.save()
             logger.debug(f"Created Weakness: {weakness}")
             return weakness

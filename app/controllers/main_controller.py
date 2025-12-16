@@ -13,6 +13,7 @@ from typing import Any, Dict, Optional, List, Tuple
 from flask import (
     Blueprint,
     render_template,
+    render_template_string,
     abort,
     request,
     current_app,
@@ -37,6 +38,7 @@ from app.forms.newsletter_forms import NewsletterSubscriptionForm, NewsletterUns
 from app.forms.profile_form import ProfileForm, ChangePasswordForm
 from app.extensions import db
 from flask_login import login_required, current_user
+from app.extensions.csrf import csrf
 # Local helper to avoid circular import with app.app
 
 def wants_json() -> bool:
@@ -58,6 +60,7 @@ main_bp = Blueprint('main', __name__)
 ROUTES: Dict[str, Dict[str, Any]] = {
     # Rotas Principais
     'index':      {'template': 'pages/index.html',               'label': 'Home',           'icon': 'house',             'path': '/',         'methods': ['GET']}, # path ajustado para '/' se for a homepage principal
+    'loading':    {'template': 'pages/loading.html',              'label': 'Loading',        'icon': 'hourglass-split',   'path': '/loading',  'methods': ['GET']},
     'monitoring': {'template': 'monitoring/monitoring.html', 'label': 'Monitoramento',  'icon': 'activity',          'path': '/monitoring','methods': ['GET']}, # <<-- AJUSTADO
     'analytics':  {'template': 'analytics/analytics.html',   'label': 'Analytics',      'icon': 'bar-chart',         'path': '/analytics', 'methods': ['GET']}, # <<-- AJUSTADO
 
@@ -70,6 +73,10 @@ ROUTES: Dict[str, Dict[str, Any]] = {
     'assets':     {'template': 'assets/asset_list.html',              'label': 'Assets',         'icon': 'server',            'path': '/assets',    'methods': ['GET']},
     'insights':   {'template': 'pages/insights.html',            'label': 'Insights',       'icon': 'lightbulb',         'path': '/insights',  'methods': ['GET']},
     'settings':   {'template': 'pages/settings.html',            'label': 'Settings',       'icon': 'gear',              'path': '/settings',  'methods': ['GET', 'POST']},
+
+    # Páginas institucionais
+    'privacy':    {'template': 'pages/privacy.html',             'label': 'Privacidade',    'icon': 'shield-lock',       'path': '/privacy',   'methods': ['GET']},
+    'terms':      {'template': 'pages/terms.html',               'label': 'Termos',         'icon': 'file-text',         'path': '/terms',     'methods': ['GET']},
 
     # Rotas de Detalhes/Itens Específicos (Exemplo)
     # 'vulnerability_details': Removida - usar vulnerability_ui.vulnerability_details
@@ -122,6 +129,10 @@ def render_page(page_key: str, **context: Any) -> str:
         'app_name': current_app.config.get('APP_NAME', 'Sec4all'),
         'current_year': datetime.now().year,
         'social_links': SOCIAL_LINKS, # Adiciona links sociais
+        'ui_settings': {
+            'theme': (session.get('settings') or {}).get('general', {}).get('theme', 'auto'),
+            'language': (session.get('settings') or {}).get('general', {}).get('language', current_app.config.get('HTML_LANG', 'pt-BR')),
+        },
         # Lista de itens de navegação derivada das rotas configuradas
         'nav_items': [
             {
@@ -163,139 +174,264 @@ def render_page(page_key: str, **context: Any) -> str:
 def index() -> str:
     """Serve a Home via template (pages/index.html) usando a estrutura de templates."""
     logger.info("Rendering template-based Home 'pages/index.html'.")
+    try:
+        from app.models.sync_metadata import SyncMetadata
+        from app.extensions import db
+        meta = db.session.query(SyncMetadata).filter_by(key='require_root_setup').first()
+        req = (str(meta.value).strip().lower() not in ('false','0','no')) if meta else True
+        from app.models.user import User
+        has_active = db.session.query(User).filter((User.is_active == True) & (User.password_hash.isnot(None))).count() > 0
+        has_admin = db.session.query(User).filter(User.is_admin == True).count() > 0
+        if req and not (has_active or has_admin):
+            from flask import redirect, url_for
+            return redirect(url_for('auth.init_root'))
+        try:
+            first_done_meta = db.session.query(SyncMetadata).filter_by(key='nvd_first_sync_completed').first()
+            first_done_val = (first_done_meta.value or '').strip().lower() if first_done_meta and first_done_meta.value else ''
+            if first_done_val not in ('1','true','yes'):
+                from flask import redirect, url_for
+                return redirect(url_for('main.loading'))
+        except Exception:
+            pass
+    except Exception:
+        pass
+    # Contexto seguro para evitar erros 500 por variáveis indefinidas
+    _page_raw = request.args.get('page', '1')
+    try:
+        page = int(_page_raw)
+    except Exception:
+        page = 1
+    _per_page_raw = request.args.get('per_page', '10')
+    try:
+        per_page = int(_per_page_raw)
+    except Exception:
+        per_page = 10
+
+    selected_vendor_ids: List[int] = []
+    raw_vendor_ids = (request.args.get('vendor_ids') or '').strip()
+    if raw_vendor_ids:
+        try:
+            selected_vendor_ids = [int(v) for v in raw_vendor_ids.split(',') if v.strip().isdigit()]
+        except Exception:
+            selected_vendor_ids = []
 
     try:
-        # Contexto seguro para evitar erros 500 por variáveis indefinidas
-        try:
-            page = int(request.args.get('page', 1))
-        except Exception:
-            page = 1
-        try:
-            per_page = int(request.args.get('per_page', 10))
-        except Exception:
-            per_page = 10
+        if not selected_vendor_ids and getattr(current_user, 'is_authenticated', False):
+            from app.models.sync_metadata import SyncMetadata
+            key = f'user_vendor_preferences:{current_user.id}'
+            pref = db.session.query(SyncMetadata).filter_by(key=key).first()
+            if pref and pref.value:
+                parsed = [int(x) for x in str(pref.value).split(',') if str(x).strip().isdigit()]
+                selected_vendor_ids = parsed
+    except Exception:
+        pass
 
-        # vendor_ids=1,2,3 -> lista de strings/ints
-        raw_vendor_ids = (request.args.get('vendor_ids') or '').strip()
-        selected_vendor_ids: List[int] = []
-        if raw_vendor_ids:
-            try:
-                selected_vendor_ids = [int(v) for v in raw_vendor_ids.split(',') if v.strip().isdigit()]
-            except Exception:
-                selected_vendor_ids = []
+    vulnerabilities: List[Vulnerability] = []
+    total_count: int = 0
+    critical_count = high_count = medium_count = 0
+    weekly_critical = weekly_high = weekly_medium = weekly_total = 0
+    total_card_value = 0
+    sync_in_progress = False
 
-        # Se nenhum vendor foi passado na URL, tentar preferências do usuário autenticado
-        try:
-            if not selected_vendor_ids and getattr(current_user, 'is_authenticated', False):
-                from app.models.sync_metadata import SyncMetadata
-                key = f'user_vendor_preferences:{current_user.id}'
-                pref = db.session.query(SyncMetadata).filter_by(key=key).first()
-                if pref and pref.value:
-                    parsed = [int(x) for x in str(pref.value).split(',') if str(x).strip().isdigit()]
-                    selected_vendor_ids = parsed
-        except Exception:
-            # Ignorar falhas de leitura de preferências
-            pass
-
-        # Buscar dados reais via serviço, aplicando filtro por vendors selecionados quando presente
-        vulnerabilities: List[Vulnerability] = []
-        total_count: int = 0
-        critical_count = high_count = medium_count = 0
-        weekly_critical = weekly_high = weekly_medium = weekly_total = 0
-
-        selected_vendor_map: List[Dict[str, Any]] = []
-        try:
-            session = db.session
-            vuln_service = VulnerabilityService(session)
-
-            # Lista paginada de vulnerabilidades recentes, escopadas por vendors quando fornecidos
-            vulnerabilities, total_count = vuln_service.get_recent_paginated(
-                page=page,
-                per_page=per_page,
-                vendor_ids=selected_vendor_ids or None
-            )
-
-            # Contagens gerais por severidade (escopadas por vendors quando fornecidos)
-            counts = vuln_service.get_dashboard_counts(vendor_ids=selected_vendor_ids or None)
-            critical_count = int(counts.get('critical', 0))
-            high_count = int(counts.get('high', 0))
-            medium_count = int(counts.get('medium', 0))
-            # Total pode não ser apenas soma; use valor retornado
-            total_count_overview = int(counts.get('total', 0))
-            # Se overview total estiver disponível, preferir para o card "Total"
-            if total_count_overview:
-                total_card_value = total_count_overview
-            else:
-                total_card_value = total_count
-
-            # Contagens semanais por severidade
-            weekly_counts = vuln_service.get_weekly_counts(vendor_ids=selected_vendor_ids or None)
-            weekly_critical = int(weekly_counts.get('critical', 0))
-            weekly_high = int(weekly_counts.get('high', 0))
-            weekly_medium = int(weekly_counts.get('medium', 0))
-            weekly_total = int(weekly_counts.get('total', 0))
-
-            # Obter nomes dos vendors selecionados para exibir chips na Home
-            if selected_vendor_ids:
-                try:
-                    from app.models.vendor import Vendor
-                    vendors = (
-                        session.query(Vendor.id, Vendor.name)
-                        .filter(Vendor.id.in_(selected_vendor_ids))
-                        .all()
-                    )
-                    selected_vendor_map = [
-                        {'id': int(vid), 'name': (vname or '').strip()}
-                        for vid, vname in vendors
-                    ]
-                except Exception:
-                    selected_vendor_map = []
-        except Exception as e:
-            logger.error(f"Error fetching Home data: {e}", exc_info=True)
-            # Mantém valores padrão já inicializados
-
-        # Calcular páginas totais com aritmética inteira robusta
-        total_pages = (total_count + per_page - 1) // per_page if per_page > 0 else 1
-        if total_pages <= 0:
-            total_pages = 1
-
-        # Usa helper para renderizar com contexto da aplicação
-        return render_page(
-            'index',
-            critical_count=critical_count,
-            high_count=high_count,
-            medium_count=medium_count,
-            total_count=total_card_value,
-            weekly_critical=weekly_critical,
-            weekly_high=weekly_high,
-            weekly_medium=weekly_medium,
-            weekly_total=weekly_total,
-            vulnerabilities=vulnerabilities,
+    selected_vendor_map: List[Dict[str, Any]] = []
+    try:
+        session = db.session
+        vuln_service = VulnerabilityService(session)
+        # Lista paginada de vulnerabilidades recentes, escopadas por vendors quando fornecidos
+        vulnerabilities, total_count = vuln_service.get_recent_paginated(
             page=page,
             per_page=per_page,
-            total_pages=total_pages,
-            selected_vendor_ids=selected_vendor_ids,
-            selected_vendor_map=selected_vendor_map,
+            vendor_ids=selected_vendor_ids or None
         )
+
+        # Contagens gerais por severidade (escopadas por vendors quando fornecidos)
+        counts = vuln_service.get_dashboard_counts(vendor_ids=selected_vendor_ids or None)
+        critical_count = int(counts.get('critical', 0))
+        high_count = int(counts.get('high', 0))
+        medium_count = int(counts.get('medium', 0))
+        # Total pode não ser apenas soma; use valor retornado
+        total_count_overview = int(counts.get('total', 0))
+        # Se overview total estiver disponível, preferir para o card "Total"
+        if total_count_overview:
+            total_card_value = total_count_overview
+        else:
+            total_card_value = total_count
+
+        # Contagens semanais por severidade
+        weekly_counts = vuln_service.get_weekly_counts(vendor_ids=selected_vendor_ids or None)
+        weekly_critical = int(weekly_counts.get('critical', 0))
+        weekly_high = int(weekly_counts.get('high', 0))
+        weekly_medium = int(weekly_counts.get('medium', 0))
+        weekly_total = int(weekly_counts.get('total', 0))
+
+        # Obter nomes dos vendors selecionados para exibir chips na Home
+        if selected_vendor_ids:
+            try:
+                from app.models.vendor import Vendor
+                vendors = (
+                    session.query(Vendor.id, Vendor.name)
+                    .filter(Vendor.id.in_(selected_vendor_ids))
+                    .all()
+                )
+                selected_vendor_map = [
+                    {'id': int(vid), 'name': (vname or '').strip()}
+                    for vid, vname in vendors
+                ]
+            except Exception:
+                selected_vendor_map = []
+        try:
+            from app.models.sync_metadata import SyncMetadata
+            status_meta = session.query(SyncMetadata).filter_by(key='nvd_sync_progress_status').first()
+            first_done_meta = session.query(SyncMetadata).filter_by(key='nvd_first_sync_completed').first()
+            first_done_val = (first_done_meta.value or '').strip().lower() if first_done_meta and first_done_meta.value else ''
+            sync_in_progress = False
+            if not first_done_meta or first_done_val not in ('1', 'true', 'yes'):
+                sync_in_progress = True
+            elif status_meta and (str(status_meta.value or '').strip().lower() == 'processing'):
+                sync_in_progress = True
+            # Fallback: se já existem CVEs persistidas, exibir dados mesmo sem metadados
+            if sync_in_progress:
+                from sqlalchemy import func
+                from app.models.vulnerability import Vulnerability
+                try:
+                    total_cves = int(session.query(func.count(Vulnerability.cve_id)).scalar() or 0)
+                    if total_cves > 0:
+                        sync_in_progress = False
+                except Exception:
+                    pass
+        except Exception:
+            # Fallback: verificar se há CVEs
+            try:
+                from sqlalchemy import func
+                from app.models.vulnerability import Vulnerability
+                total_cves = int(session.query(func.count(Vulnerability.cve_id)).scalar() or 0)
+                sync_in_progress = (total_cves == 0)
+            except Exception:
+                sync_in_progress = True
+        if sync_in_progress:
+            critical_count = 0
+            high_count = 0
+            medium_count = 0
+            total_card_value = 0
+            weekly_critical = 0
+            weekly_high = 0
+            weekly_medium = 0
+            weekly_total = 0
+            vulnerabilities = []
+            total_count = 0
     except Exception as e:
-        logger.error(f"Error rendering Home template: {e}", exc_info=True)
-        # Fallback mínimo
-        return render_page('index',
-                           critical_count=0,
-                           high_count=0,
-                           medium_count=0,
-                           total_count=0,
-                           weekly_critical=0,
-                           weekly_high=0,
-                           weekly_medium=0,
-                           weekly_total=0,
-                           vulnerabilities=[],
-                           page=1,
-                           per_page=10,
-                           total_pages=1,
-                           selected_vendor_ids=[])
+        logger.error(f"Error fetching Home data: {e}", exc_info=True)
+        # Mantém valores padrão já inicializados
+
+    # Calcular páginas totais com aritmética inteira robusta
+    total_pages = (total_count + per_page - 1) // per_page if per_page > 0 else 1
+    if total_pages <= 0:
+        total_pages = 1
+
+    # Usa helper para renderizar com contexto da aplicação
+    return render_page(
+        'index',
+        critical_count=critical_count,
+        high_count=high_count,
+        medium_count=medium_count,
+        total_count=total_card_value,
+        weekly_critical=weekly_critical,
+        weekly_high=weekly_high,
+        weekly_medium=weekly_medium,
+        weekly_total=weekly_total,
+        vulnerabilities=vulnerabilities,
+        page=page,
+        per_page=per_page,
+        total_pages=total_pages,
+        selected_vendor_ids=selected_vendor_ids,
+        selected_vendor_map=selected_vendor_map,
+        vendor_scope=('all' if not selected_vendor_ids else 'selected'),
+        sync_in_progress=sync_in_progress,
+    )
+
+@main_bp.route(ROUTES['loading']['path'], methods=ROUTES['loading']['methods'])
+def loading() -> str:
+    try:
+        from app.models.sync_metadata import SyncMetadata
+        status_meta = db.session.query(SyncMetadata).filter_by(key='nvd_sync_progress_status').first()
+        first_done_meta = db.session.query(SyncMetadata).filter_by(key='nvd_first_sync_completed').first()
+        first_done_val = (first_done_meta.value or '').strip().lower() if first_done_meta and first_done_meta.value else ''
+        status_val = str(status_meta.value or '').strip().lower() if status_meta and status_meta.value is not None else ''
+        in_progress = status_val in ('processing','saving')
+        if first_done_val not in ('1','true','yes') and not in_progress:
+            try:
+                from app.models.vulnerability import Vulnerability
+                from sqlalchemy import func
+                total_vulns = int(db.session.query(func.count(Vulnerability.cve_id)).scalar() or 0)
+            except Exception:
+                total_vulns = 0
+            try:
+                now_running = db.session.query(SyncMetadata).filter_by(key='nvd_sync_progress_status').first()
+                if not now_running:
+                    now_running = SyncMetadata(key='nvd_sync_progress_status', value='processing')
+                    db.session.add(now_running)
+                else:
+                    now_running.value = 'processing'
+                current_meta = db.session.query(SyncMetadata).filter_by(key='nvd_sync_progress_current').first()
+                if not current_meta:
+                    current_meta = SyncMetadata(key='nvd_sync_progress_current', value='0')
+                    db.session.add(current_meta)
+                else:
+                    current_meta.value = '0'
+                total_meta = db.session.query(SyncMetadata).filter_by(key='nvd_sync_progress_total').first()
+                if not total_meta:
+                    total_meta = SyncMetadata(key='nvd_sync_progress_total', value='0')
+                    db.session.add(total_meta)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+            import threading, asyncio
+            from flask import current_app
+            from app.jobs.enhanced_nvd_fetcher import EnhancedNVDFetcher
+            try:
+                from app.main_startup import initialize_database
+                with current_app.app_context():
+                    initialize_database(current_app)
+            except Exception:
+                pass
+            app_obj = current_app._get_current_object()
+            def _run_sync():
+                try:
+                    import os
+                    workers_raw = os.getenv('OM_SYNC_WORKERS','10')
+                    try:
+                        max_workers = int(workers_raw)
+                    except Exception:
+                        max_workers = 10
+                    fetcher = EnhancedNVDFetcher(app=app_obj, max_workers=max_workers, enable_cache=True)
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        mode = str(os.getenv('OM_SYNC_MODE','pipeline')).strip().lower()
+                        loop.run_until_complete(fetcher.sync_nvd(full=(total_vulns == 0), max_pages=None, use_parallel=(mode != 'sequential')))
+                    finally:
+                        loop.close()
+                except Exception:
+                    try:
+                        sm = db.session.query(SyncMetadata).filter_by(key='nvd_sync_progress_status').first()
+                        if sm:
+                            sm.value = 'idle'
+                        db.session.commit()
+                    except Exception:
+                        db.session.rollback()
+            import os
+            if str(os.getenv('OM_DISABLE_SYNC_THREADS','')).strip().lower() != 'true':
+                threading.Thread(target=_run_sync, daemon=True).start()
+        sync_in_progress = True
+        if first_done_val in ('1','true','yes'):
+            if not status_meta or (str(status_meta.value or '').strip().lower() != 'processing'):
+                sync_in_progress = False
+        return render_page('loading', sync_in_progress=sync_in_progress)
+    except Exception:
+        return render_page('loading', sync_in_progress=True)
 
 @main_bp.route(ROUTES['search']['path'], methods=ROUTES['search']['methods'])
+@login_required
 def search() -> str:
     """Renders the search page and processes the search form."""
     logger.info(f"Accessing search page with method: {request.method}") # Logging mais informativo
@@ -351,6 +487,25 @@ def search() -> str:
         # TODO: Passar variáveis de paginação, se aplicável
     )
 
+# ============================================================================
+# Páginas institucionais
+# ============================================================================
+
+@main_bp.route(ROUTES['privacy']['path'], methods=ROUTES['privacy']['methods'])
+@login_required
+def privacy() -> str:
+    """Renderiza a página de Política de Privacidade."""
+    logger.info("Accessing privacy policy page.")
+    return render_page('privacy')
+
+
+@main_bp.route(ROUTES['terms']['path'], methods=ROUTES['terms']['methods'])
+@login_required
+def terms() -> str:
+    """Renderiza a página de Termos de Uso."""
+    logger.info("Accessing terms of use page.")
+    return render_page('terms')
+
 @main_bp.route('/vulnerability_details.html', methods=['GET'])
 def vulnerability_details_root_alias():
     """Alias para acessos a /vulnerability_details.html na raiz.
@@ -372,6 +527,8 @@ def vulnerability_details_root_alias():
 def newsletter() -> str:
     """Renderiza o feed de notícias com filtros, ordenação e paginação simples."""
     logger.info(f"Accessing newsletter (news feed) with method: {request.method}")
+    import time
+    t_start = time.monotonic()
 
     # Query params para UX
     q = (request.args.get('q') or '').strip()
@@ -399,9 +556,10 @@ def newsletter() -> str:
     # Carregar itens reais da CyberNews API e feeds RSS
     try:
         from app.services.cybernews_service import CyberNewsService
-        base_items = CyberNewsService.get_news(limit=60)
+        t_cyber_start = time.monotonic()
+        base_items = CyberNewsService.get_news_fast(limit=60)
         base_count = len(base_items)
-        logger.info(f"Newsletter: itens carregados da CyberNews = {base_count}")
+        logger.info(f"Newsletter: CyberNews carregados={base_count} em {(time.monotonic()-t_cyber_start):.3f}s")
     except Exception as e:
         logger.error(f"Erro ao carregar notícias da CyberNews: {e}")
         base_items = []
@@ -409,9 +567,10 @@ def newsletter() -> str:
 
     try:
         from app.services.rss_feed_service import RSSFeedService
-        rss_items = RSSFeedService.get_news(limit=60)
+        t_rss_start = time.monotonic()
+        rss_items = RSSFeedService.get_news_fast(limit=60)
         rss_count = len(rss_items)
-        logger.info(f"Newsletter: itens carregados de RSS = {rss_count}")
+        logger.info(f"Newsletter: RSS carregados={rss_count} em {(time.monotonic()-t_rss_start):.3f}s")
     except Exception as e:
         logger.error(f"Erro ao carregar notícias de RSS: {e}")
         rss_items = []
@@ -427,6 +586,7 @@ def newsletter() -> str:
         vendor_release_items = []
 
     aggregated_items = (base_items or []) + (rss_items or []) + (vendor_release_items or [])
+    logger.info(f"Newsletter: agregados total={len(aggregated_items)} em {(time.monotonic()-t_start):.3f}s")
 
     # Enriquecer/normalizar tags para todos os itens
     try:
@@ -589,6 +749,7 @@ def newsletter_unsubscribe() -> str:
     from app.services.newsletter_service import NewsletterService
     from app.services.email_service import EmailService
     from app.extensions import db
+    from app.forms.newsletter_forms import NewsletterUnsubscribeForm
     
     form = NewsletterUnsubscribeForm()
     newsletter_service = NewsletterService(db.session)
@@ -629,6 +790,7 @@ def newsletter_unsubscribe() -> str:
 
 
 @main_bp.route(ROUTES['analytics']['path'], methods=ROUTES['analytics']['methods'])
+@login_required
 def analytics() -> str:
     """Renders the Analytics page quickly; metrics load via API."""
     logger.info("Accessing analytics page.")
@@ -809,20 +971,20 @@ def analytics() -> str:
         )
 
 @main_bp.route(ROUTES['assets']['path'], methods=ROUTES['assets']['methods'])
+@login_required
 def assets() -> str:
-    """Renders the Assets listing page."""
-    logger.info("Accessing assets page.") # Logging mais informativo
+    """Delegates to canonical assets listing in 'asset' blueprint to avoid route duplication."""
+    logger.info("Accessing assets page (redirecting to asset.list_assets).")
     try:
-        # Get assets data - filtrar por usuário atual
-        from app.extensions.middleware import filter_by_user_assets
-        assets_list = filter_by_user_assets(Asset.query).all()
-        return render_page('assets', assets=assets_list)
+        # Preservar parâmetros de consulta (ex.: vendor_ids) ao redirecionar
+        return redirect(url_for('asset.list_assets', **request.args))
     except Exception as e:
-        logger.error(f"Error loading assets page: {e}", exc_info=True)
-        flash('Erro ao carregar assets.', 'danger')
+        logger.error(f"Error redirecting to asset.list_assets: {e}", exc_info=True)
+        flash('Erro ao redirecionar para a lista de ativos.', 'danger')
         return "Error: " + str(e)
 
 @main_bp.route(ROUTES['insights']['path'], methods=ROUTES['insights']['methods'])
+@login_required
 def insights() -> str:
     """Renders the Insights page."""
     logger.info("Accessing insights page.") # Logging mais informativo
@@ -848,10 +1010,7 @@ def insights() -> str:
                                    .filter(Asset.owner_id == owner_id)
         critical_count = q_critical.scalar() or 0
 
-        # Contagem de assets monitorados
         q_assets = session.query(func.count(Asset.id))
-        if owner_id:
-            q_assets = q_assets.filter(Asset.owner_id == owner_id)
         assets_count = q_assets.scalar() or 0
 
         # Contagem de regras de monitoramento
@@ -964,6 +1123,7 @@ def insights() -> str:
 
 # Exemplo na versão refatorada
 @main_bp.route(ROUTES['monitoring']['path'], methods=ROUTES['monitoring']['methods'])
+@login_required
 def monitoring() -> str:
     """Renders the Monitoring page."""
     logger.info("Accessing monitoring page.")
@@ -971,6 +1131,7 @@ def monitoring() -> str:
 
 
 @main_bp.route(ROUTES['chat']['path'], methods=ROUTES['chat']['methods'])
+@login_required
 def chat() -> str:
     """Renders the Chat page."""
     logger.info("Accessing chat page.")
@@ -980,11 +1141,9 @@ def chat() -> str:
 
 @main_bp.route('/chat-test', methods=['GET'])
 def chat_test() -> str:
-    """Renders the Chat test page without base template."""
-    logger.info("Accessing chat test page.")
-    
-    # Render the chat test template
-    return render_template('user/chat/chat-test.html')
+    """Redirects to the unified test page."""
+    logger.info("Accessing chat test page; redirecting to unified test page.")
+    return redirect('/vulnerabilities/debug-test')
 
 # Removed duplicate route to avoid conflicts
 # TODO: Add routes for Account, Vulnerability Details, etc., referencing ROUTES dictionary
@@ -1192,20 +1351,11 @@ def page_not_found(error: Any) -> Tuple[str, int]:
 
 @main_bp.app_errorhandler(500)
 def internal_server_error(error: Any) -> Tuple[str, int]:
-    """
-    Handler para erros 500 (Erro Interno do Servidor).
-
-    Args:
-        error: O objeto de erro.
-
-    Returns:
-        Uma tupla contendo a string renderizada do template 500 e o código de status 500.
-    """
-    # Usa logger.exception para logar o traceback completo do erro original
     logger.exception(f"Internal server error: {request.url} - {error}")
-    # Renderiza a página 500, passando o erro e o código para o template
-    # Em produção, evite exibir detalhes sensíveis do erro.
-    return render_page('500', error=error, error_code=500), 500
+    try:
+        return render_template('error/500.html', error=error, error_code=500), 500
+    except Exception:
+        return "<h1>Erro 500</h1>", 500
 
 @main_bp.app_errorhandler(400)
 def bad_request_error(error: Any) -> Tuple[str, int]:
@@ -1350,3 +1500,84 @@ def settings() -> str:
 # Exemplo:
 # from utils.controllers.main_controller import main_bp
 # app.register_blueprint(main_bp)
+@main_bp.route('/api/news', methods=['GET'])
+@login_required
+def api_news() -> jsonify:
+    try:
+        from app.models.sync_metadata import SyncMetadata
+        from app.services.news_cache_service import NewsCacheService
+        data = NewsCacheService.load_json_feed()
+        items = data.get('items') or []
+        try:
+            key = f"user_news_filters:{current_user.id}"
+            pref = db.session.query(SyncMetadata).filter_by(key=key).first()
+            filters = {}
+            if pref and pref.value:
+                import json as _json
+                filters = _json.loads(pref.value)
+            srcs = set([s.lower() for s in (filters.get('sources') or []) if isinstance(s, str)])
+            cats = set([c.lower() for c in (filters.get('categories') or []) if isinstance(c, str)])
+            if srcs or cats:
+                filtered = []
+                for it in items:
+                    s = str(it.get('source') or '').lower()
+                    ts = [str(t).lower() for t in (it.get('tags') or [])]
+                    if srcs and s and s not in srcs:
+                        continue
+                    if cats and not any(t in cats for t in ts):
+                        continue
+                    filtered.append(it)
+                items = filtered
+        except Exception:
+            pass
+        try:
+            items.sort(key=lambda i: i.get('published_at') or '')
+        except Exception:
+            pass
+        return jsonify({'items': items, 'sources': data.get('sources') or [], 'updated_at': data.get('updated_at')})
+    except Exception as e:
+        logger.error(f"Error in /api/news: {e}")
+        return jsonify({'items': [], 'sources': [], 'updated_at': None}), 200
+
+@main_bp.route('/api/news/filters', methods=['POST'])
+@csrf.exempt
+@login_required
+def set_news_filters() -> jsonify:
+    try:
+        payload = request.get_json(silent=True) or {}
+        if not isinstance(payload, dict):
+            return jsonify({'success': False, 'error': 'Payload must be an object'}), 400
+        srcs = payload.get('sources') or []
+        cats = payload.get('categories') or []
+        srcs = [str(s).strip() for s in srcs if isinstance(s, str) and str(s).strip()]
+        cats = [str(c).strip() for c in cats if isinstance(c, str) and str(c).strip()]
+        data = {'sources': srcs, 'categories': cats}
+        key = f"user_news_filters:{current_user.id}"
+        from app.models.sync_metadata import SyncMetadata
+        sm = db.session.query(SyncMetadata).filter_by(key=key).first()
+        import json as _json
+        serialized = _json.dumps(data, ensure_ascii=False)
+        now = datetime.utcnow()
+        if sm:
+            sm.value = serialized
+            sm.status = 'active'
+            sm.sync_type = 'user_news_filters'
+            sm.last_modified = now
+        else:
+            sm = SyncMetadata(
+                key=key,
+                value=serialized,
+                status='active',
+                sync_type='user_news_filters',
+                last_modified=now
+            )
+            db.session.add(sm)
+        db.session.commit()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        logger.error(f"Error in /api/news/filters: {e}")
+        return jsonify({'success': False, 'error': 'internal_error'}), 500

@@ -129,27 +129,28 @@ class PDFExportService:
     
     def _prepare_charts_data(self, report) -> Dict[str, Any]:
         """Prepara dados dos gráficos para exportação"""
-        if not report.content or not hasattr(report.content, 'charts'):
+        content = report.content or {}
+        if not isinstance(content, dict) or 'charts' not in content:
             return {}
-            
+
         charts_data = {}
-        
+
         try:
             # Gráfico de distribuição CVSS
-            if hasattr(report.content, 'vulnerabilities'):
+            if 'vulnerabilities' in content:
                 charts_data['cvss_distribution'] = self._generate_cvss_chart_data(report)
-            
+
             # Gráfico de tendências
-            if hasattr(report.content, 'trends'):
+            if 'trends' in content or 'charts' in content:
                 charts_data['trends'] = self._generate_trends_chart_data(report)
-            
+
             # Gráfico de ativos por risco
-            if hasattr(report.content, 'assets'):
+            if 'assets' in content:
                 charts_data['assets_risk'] = self._generate_assets_risk_chart_data(report)
-                
+
         except Exception as e:
             logger.warning(f"Erro ao preparar dados dos gráficos: {str(e)}")
-            
+
         return charts_data
     
     def _calculate_summary_stats(self, report) -> Dict[str, Any]:
@@ -166,10 +167,11 @@ class PDFExportService:
         }
         
         try:
-            if report.content and hasattr(report.content, 'vulnerabilities'):
-                vulns = report.content.vulnerabilities
-                if isinstance(vulns, dict) and 'details' in vulns:
-                    vuln_list = vulns['details']
+            content = report.content or {}
+            if isinstance(content, dict) and 'vulnerabilities' in content:
+                vulns = content.get('vulnerabilities', {})
+                if isinstance(vulns, dict):
+                    vuln_list = vulns.get('details', [])
                     stats['total_vulnerabilities'] = len(vuln_list)
                     
                     cvss_scores = []
@@ -223,27 +225,48 @@ class PDFExportService:
     
     def _format_content_for_pdf(self, content) -> Dict[str, Any]:
         """Formata o conteúdo para melhor exibição em PDF"""
-        if not content:
+        if not content or not isinstance(content, dict):
             return {}
-            
-        formatted = {}
-        
+
+        formatted: Dict[str, Any] = {}
+
         try:
             # Formatar vulnerabilidades
-            if hasattr(content, 'vulnerabilities'):
-                formatted['vulnerabilities'] = self._format_vulnerabilities_for_pdf(content.vulnerabilities)
-            
-            # Formatar análise de impacto
-            if hasattr(content, 'business_impact'):
-                formatted['business_impact'] = self._format_business_impact_for_pdf(content.business_impact)
-            
-            # Formatar recomendações
-            if hasattr(content, 'recommendations'):
-                formatted['recommendations'] = self._format_recommendations_for_pdf(content.recommendations)
-                
+            if 'vulnerabilities' in content:
+                formatted['vulnerabilities'] = self._format_vulnerabilities_for_pdf(content.get('vulnerabilities'))
+
+            # Formatar análise de impacto (fallback para BIA)
+            if 'business_impact' in content and isinstance(content.get('business_impact'), dict):
+                formatted['business_impact'] = self._format_business_impact_for_pdf(content.get('business_impact'))
+            elif 'bia_analysis' in content:
+                bia = content.get('bia_analysis') or {}
+                # `bia_analysis` no template de visualização é markdown em `content`.
+                # Para o PDF padrão, usamos como impacto operacional, mantendo outras áreas como "Não avaliado".
+                bia_md = bia.get('content') if isinstance(bia, dict) else None
+                formatted['business_impact'] = self._format_business_impact_for_pdf({
+                    'operational_impact': bia_md or 'Não avaliado'
+                })
+
+            # Formatar recomendações (fallback para plano de remediação)
+            if 'recommendations' in content and isinstance(content.get('recommendations'), list):
+                formatted['recommendations'] = self._format_recommendations_for_pdf(content.get('recommendations'))
+            elif 'remediation_plan' in content:
+                rem = content.get('remediation_plan') or {}
+                rem_md = rem.get('content') if isinstance(rem, dict) else None
+                # Criar uma recomendação única baseada no plano de remediação
+                formatted['recommendations'] = self._format_recommendations_for_pdf([
+                    {
+                        'title': 'Plano de Remediação',
+                        'description': rem_md or 'Sem detalhes',
+                        'priority': 'medium',
+                        'effort': 'Não estimado',
+                        'timeline': 'Não definido'
+                    }
+                ])
+
         except Exception as e:
             logger.warning(f"Erro ao formatar conteúdo: {str(e)}")
-            
+
         return formatted
     
     def _get_company_info(self) -> Dict[str, Any]:
@@ -325,7 +348,7 @@ class PDFExportService:
             css_content = self._get_pdf_css()
             
             # Configurações do WeasyPrint
-            base_url = current_app.config.get('BASE_URL', 'http://localhost:5000')
+            base_url = current_app.config.get('BASE_URL', 'http://localhost:4443')
             
             # Gerar PDF
             html_doc = HTML(string=html_content, base_url=base_url)

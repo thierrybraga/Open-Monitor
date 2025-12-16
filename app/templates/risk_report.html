@@ -209,7 +209,7 @@
                     <strong>CVE:</strong> {{ cve_id }}
                 </p>
                 <p class="mb-0 opacity-90">
-                    <strong>Gerado em:</strong> {{ moment.format('DD/MM/YYYY HH:mm') }}
+                    <strong>Gerado em:</strong> {{ generated_at | datetimeformat('%d/%m/%Y %H:%M') }}
                 </p>
             </div>
             <div class="text-end">
@@ -234,17 +234,90 @@
         </div>
     </div>
     
-    <!-- Conteúdo do Relatório -->
-    <div class="report-content">
-        {% if risk_analysis %}
-            {{ risk_analysis | markdown | safe }}
-        {% else %}
-            <div class="text-center py-5">
-                <i class="fas fa-exclamation-triangle text-warning fa-3x mb-3"></i>
-                <h3>Relatório não disponível</h3>
-                <p class="text-muted">Não foi possível gerar o relatório de risco para esta vulnerabilidade.</p>
+    <style>
+        .report-layout{display:grid;grid-template-columns:320px minmax(860px,1fr);gap:2rem;align-items:start}
+        .report-layout.collapsed{grid-template-columns:1fr}
+        .report-layout.collapsed .report-summary{display:none}
+        .report-toc{position:sticky;top:1rem;border:1px solid var(--border-subtle,#e5e7eb);border-radius:12px;padding:1rem;background:var(--surface-0,#fff)}
+        .report-toc-title{font-weight:600;margin-bottom:.75rem}
+        .report-toc ul{list-style:none;padding:0;margin:0}
+        .report-toc li{margin:.25rem 0}
+        .report-toc a{display:block;color:var(--content-strong,#111827);text-decoration:none;padding:.25rem .5rem;border-radius:8px}
+        .report-toc a:hover{background:var(--surface-1,#f8f9fa)}
+        .report-content{min-height:300px;max-width:clamp(860px,75vw,1280px)}
+        .markdown-body{line-height:1.75;color:var(--content-strong,#111827)}
+        .markdown-body h1,.markdown-body h2,.markdown-body h3{margin-top:1.25rem;margin-bottom:.75rem;font-weight:700}
+        .markdown-body h1{font-size:1.75rem}
+        .markdown-body h2{font-size:1.35rem;border-bottom:1px solid var(--border-subtle,#e5e7eb);padding-bottom:.35rem}
+        .markdown-body h3{font-size:1.1rem;color:var(--content-medium,#374151)}
+        .markdown-body p{margin:.75rem 0}
+        .markdown-body ul,.markdown-body ol{margin:.65rem 0 .85rem .95rem}
+        .markdown-body li{margin:.25rem 0}
+        .markdown-body blockquote{border-left:4px solid var(--border-medium,#d1d5db);padding:.5rem 1rem;background:var(--surface-1,#f9fafb);border-radius:8px;color:var(--content-medium,#374151)}
+        .markdown-body table{width:100%;border-collapse:collapse;margin:1rem 0;border:1px solid var(--border-subtle,#e5e7eb);border-radius:8px;overflow:hidden}
+        .markdown-body th,.markdown-body td{border:1px solid var(--border-subtle,#e5e7eb);padding:.5rem .75rem;text-align:left}
+        .markdown-body thead th{background:var(--surface-50,#f3f4f6)}
+        .markdown-body pre{position:relative;background:#0f172a;color:#e5e7eb;padding:1rem;border-radius:12px;overflow:auto}
+        .code-copy{position:absolute;top:.5rem;right:.5rem;background:#1f2937;color:#fff;border:none;border-radius:6px;padding:.25rem .5rem;font-size:.85rem}
+        .anchor-link{color:var(--content-medium,#6b7280);text-decoration:none;margin-left:.4rem;font-size:.85rem}
+        .report-actions{display:flex;gap:.75rem;margin-top:1.5rem}
+        .btn-print,.btn-export{border:none;border-radius:10px;padding:.5rem 1rem}
+        .btn-print{background:#6c757d}
+        .btn-export{background:#0d6efd}
+        @media(max-width:992px){.report-layout{grid-template-columns:1fr}.report-toc{position:relative}}
+        @media print{.report-toc,.report-actions,.alert{display:none}}
+    </style>
+    <style>
+        .report-summary{position:sticky;top:1rem;border:1px solid var(--border-subtle,#e5e7eb);border-radius:12px;padding:1rem;background:var(--surface-0,#fff)}
+        .summary-section{margin-bottom:1rem}
+        .summary-section h5{margin:0 0 .5rem 0;font-weight:600;color:var(--content-strong,#111827)}
+        .summary-item{display:flex;justify-content:space-between;margin:.25rem 0;color:var(--content-medium,#374151)}
+        .summary-badge{display:inline-block;padding:.25rem .5rem;border-radius:8px;background:var(--surface-1,#f8f9fa);font-size:.85rem}
+    </style>
+    <div class="report-layout">
+        <aside class="report-summary">
+            {% set metric = None %}
+            {% for m in vulnerability.metrics %}
+                {% if m.is_primary %}
+                    {% set metric = m %}
+                {% endif %}
+            {% endfor %}
+            {% if not metric and vulnerability.metrics and vulnerability.metrics|length > 0 %}
+                {% set metric = vulnerability.metrics[0] %}
+            {% endif %}
+            <div class="summary-section">
+                <h5>Pré-requisitos Técnicos</h5>
+                <div class="summary-item"><span>Vetor de ataque</span><span class="summary-badge">{{ (metric.attack_vector or metric.access_vector) if metric else 'N/A' }}</span></div>
+                <div class="summary-item"><span>Complexidade</span><span class="summary-badge">{{ (metric.attack_complexity or metric.access_complexity) if metric else 'N/A' }}</span></div>
+                <div class="summary-item"><span>Privilégios</span><span class="summary-badge">{{ (metric.privileges_required or metric.authentication) if metric else 'N/A' }}</span></div>
+                <div class="summary-item"><span>Interação do usuário</span><span class="summary-badge">{{ metric.user_interaction if metric else 'N/A' }}</span></div>
+                <div class="summary-item"><span>Escopo</span><span class="summary-badge">{{ metric.scope if metric else 'N/A' }}</span></div>
             </div>
-        {% endif %}
+            <div class="summary-section">
+                <h5>Metadados</h5>
+                <div class="summary-item"><span>Publicado</span><span class="summary-badge">{{ vulnerability.published_date.strftime('%d/%m/%Y') if vulnerability.published_date else 'N/A' }}</span></div>
+                <div class="summary-item"><span>Atualizado</span><span class="summary-badge">{{ vulnerability.last_update.strftime('%d/%m/%Y') if vulnerability.last_update else 'N/A' }}</span></div>
+                <div class="summary-item"><span>Patch oficial</span><span class="summary-badge">{{ 'Sim' if vulnerability.patch_available else 'Não' }}</span></div>
+                <div class="summary-item"><span>Status NVD</span><span class="summary-badge">{{ vulnerability.vuln_status or 'N/A' }}</span></div>
+            </div>
+        </aside>
+        <div class="report-content">
+            {% if risk_analysis %}
+                {% if is_prompt %}
+                    <div class="alert alert-info" role="alert">
+                        <i class="bi bi-lightbulb"></i>
+                        Este é um <strong>prompt estruturado</strong> para geração de relatório técnico. Copie e utilize com seu provedor LLM.
+                    </div>
+                {% endif %}
+                <div id="markdown-container" class="markdown-body">{{ risk_analysis | markdown | safe }}</div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-exclamation-triangle text-warning fa-3x mb-3"></i>
+                    <h3>Relatório não disponível</h3>
+                    <p class="text-muted">Não foi possível gerar o relatório de risco para esta vulnerabilidade.</p>
+                </div>
+            {% endif %}
+        </div>
     </div>
     
     <!-- Ações do Relatório -->
@@ -261,7 +334,7 @@
         
         <button type="button" class="btn btn-secondary" onclick="copyToClipboard()">
             <i class="fas fa-copy me-2"></i>
-            Copiar Conteúdo
+            {% if is_prompt %}Copiar Prompt{% else %}Copiar Conteúdo{% endif %}
         </button>
         
         <a href="{{ url_for('vulnerability_ui.vulnerability_details', cve_id=cve_id) }}" class="btn btn-outline-primary">
@@ -281,7 +354,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ nonce }}">
     const RAW_MD = {{ risk_analysis | tojson | safe if risk_analysis else '""' }};
 
     // Função para exportar para PDF
@@ -367,6 +440,22 @@
     // Melhorias de formatação pós-render
     document.addEventListener('DOMContentLoaded', function() {
         const reportContent = document.querySelector('.report-content');
+        const layout = document.querySelector('.report-layout');
+        const toggleBtn = document.createElement('button');
+        toggleBtn.className = 'btn btn-sm btn-outline-secondary';
+        toggleBtn.style.marginBottom = '0.75rem';
+        toggleBtn.innerHTML = '<i class="bi bi-layout-sidebar-inset"></i> Alternar resumo';
+        const header = document.querySelector('.report-header .d-flex');
+        if (header) {
+            const container = document.createElement('div');
+            container.appendChild(toggleBtn);
+            header.appendChild(container);
+        }
+        toggleBtn.addEventListener('click', ()=>{
+            if (layout) {
+                layout.classList.toggle('collapsed');
+            }
+        });
         if (reportContent) {
             const headings = reportContent.querySelectorAll('h1, h2, h3, h4, h5, h6');
             headings.forEach(h => h.classList.add('fw-bold'));
@@ -374,6 +463,34 @@
             lists.forEach(l => l.classList.add('mb-3'));
             const paragraphs = reportContent.querySelectorAll('p');
             paragraphs.forEach(p => { if (p.textContent.trim()) p.classList.add('mb-3'); });
+
+            function slugify(text){
+                return text.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+            }
+            headings.forEach(h=>{
+                const id = h.id || slugify(h.textContent.trim());
+                h.id = id;
+                const link = document.createElement('a');
+                link.href = `#${id}`;
+                link.className = 'anchor-link';
+                link.textContent = '§';
+                h.appendChild(link);
+            });
+
+            const pres = reportContent.querySelectorAll('.markdown-body pre');
+            pres.forEach(pre=>{
+                const btn = document.createElement('button');
+                btn.className = 'code-copy';
+                btn.textContent = 'Copiar';
+                btn.addEventListener('click',()=>{
+                    navigator.clipboard.writeText(pre.innerText).then(()=>{
+                        showToast('Código copiado para a área de transferência!', 'success');
+                    }).catch(()=>{
+                        showToast('Erro ao copiar código', 'error');
+                    });
+                });
+                pre.appendChild(btn);
+            });
         }
     });
 </script>

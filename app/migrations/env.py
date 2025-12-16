@@ -37,6 +37,7 @@ def get_engine_url():
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 config.set_main_option('sqlalchemy.url', get_engine_url())
+from app import models as _models  # ensure models are imported and registered
 target_db = current_app.extensions['migrate'].db
 
 # other values from the config, defined by the needs of env.py,
@@ -94,19 +95,33 @@ def run_migrations_online():
     if conf_args.get("process_revision_directives") is None:
         conf_args["process_revision_directives"] = process_revision_directives
 
+    # Default bind
     connectable = get_engine()
-
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=get_metadata(),
-            **conf_args
-        )
-
+        context.configure(connection=connection, target_metadata=get_metadata(), **conf_args)
         with context.begin_transaction():
             context.run_migrations()
 
+    # Additional binds (e.g., 'public')
+    if hasattr(target_db, 'metadatas'):
+        for bind_key, metadata in target_db.metadatas.items():
+            if bind_key is None:
+                continue
+            bind_engine = get_bind_engine(bind_key)
+            if bind_engine is None:
+                continue
+            with bind_engine.connect() as connection:
+                context.configure(connection=connection, target_metadata=metadata, **conf_args)
+                with context.begin_transaction():
+                    context.run_migrations()
 
+
+def get_bind_engine(bind_key):
+    try:
+        return current_app.extensions['migrate'].db.get_engine(current_app, bind=bind_key)
+    except Exception:
+        return None
+ 
 if context.is_offline_mode():
     run_migrations_offline()
 else:

@@ -1,0 +1,131 @@
+services:
+  app:
+    build: .
+    image: openmonitor-app:latest
+    container_name: openmonitor-app
+    working_dir: /app
+    ports:
+      - "4443:4443"
+    environment:
+      # Principais variáveis da aplicação (carregadas também de .env se presente)
+      FLASK_ENV: ${FLASK_ENV:-production}
+      PORT: "4443"
+      SECRET_KEY: ${SECRET_KEY:-changeme}
+      BASE_URL: ${BASE_URL:-http://localhost:4443}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_CORE_USER:-postgres}:${POSTGRES_CORE_PASSWORD:-Passw0rdCore}@${POSTGRES_CORE_HOST:-postgres_core}:5432/${POSTGRES_CORE_DB:-om_core}}
+      PUBLIC_DATABASE_URL: ${PUBLIC_DATABASE_URL:-postgresql://${POSTGRES_PUBLIC_USER:-postgres}:${POSTGRES_PUBLIC_PASSWORD:-Passw0rdPublic}@${POSTGRES_PUBLIC_HOST:-postgres_public}:5432/${POSTGRES_PUBLIC_DB:-om_public}}
+      PUBLIC_MODE: ${PUBLIC_MODE:-false}
+      LOGIN_ENABLED_IN_PUBLIC_MODE: ${LOGIN_ENABLED_IN_PUBLIC_MODE:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-20}
+      DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:-30}
+      DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:-3600}
+      ANALYTICS_CACHE_TTL: ${ANALYTICS_CACHE_TTL:-900}
+      WEB_CONCURRENCY: "1"
+      GUNICORN_THREADS: "8"
+      # NVD API
+      NVD_API_BASE: ${NVD_API_BASE:-https://services.nvd.nist.gov/rest/json/cves/2.0}
+      NVD_API_KEY: ${NVD_API_KEY:-}
+      NVD_PAGE_SIZE: ${NVD_PAGE_SIZE:-2000}
+      NVD_MAX_RETRIES: ${NVD_MAX_RETRIES:-5}
+      NVD_REQUEST_TIMEOUT: ${NVD_REQUEST_TIMEOUT:-30}
+      NVD_USER_AGENT: ${NVD_USER_AGENT:-Open-Monitor NVD Fetcher}
+      # Redis Cache (opcional)
+      REDIS_CACHE_ENABLED: "true"
+      REDIS_URL: redis://redis:6379/0
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_DB: ${REDIS_DB:-0}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      CACHE_KEY_PREFIX: ${CACHE_KEY_PREFIX:-nvd_cache:}
+      # OpenAI / LLM
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-3.5-turbo}
+      OPENAI_MAX_TOKENS: ${OPENAI_MAX_TOKENS:-1000}
+      OPENAI_TEMPERATURE: ${OPENAI_TEMPERATURE:-0.7}
+      OPENAI_TIMEOUT: ${OPENAI_TIMEOUT:-30}
+      OPENAI_MAX_RETRIES: ${OPENAI_MAX_RETRIES:-2}
+      OPENAI_RETRY_BACKOFF: ${OPENAI_RETRY_BACKOFF:-1.5}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_COMPLETION_TOKENS_PARAM: ${LLM_COMPLETION_TOKENS_PARAM:-}
+    volumes:
+      - instance:/app/instance
+      - logs:/app/logs
+      - cache:/app/cache
+    depends_on:
+      postgres_core:
+        condition: service_healthy
+      postgres_public:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request, json, os; url=f'http://localhost:{os.getenv('PORT','4443')}/api/v1/system/bootstrap'; data=urllib.request.urlopen(url).read().decode(); json.loads(data)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:size=64m
+    command: ["/app/entrypoint.sh"]
+
+  postgres_core:
+    image: postgres:16
+    container_name: openmonitor-postgres-core
+    environment:
+      POSTGRES_USER: ${POSTGRES_CORE_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_CORE_PASSWORD:-Passw0rdCore}
+      POSTGRES_DB: ${POSTGRES_CORE_DB:-om_core}
+    volumes:
+      - pgdata_core:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_CORE_USER:-postgres} -d ${POSTGRES_CORE_DB:-om_core} -h localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  postgres_public:
+    image: postgres:16
+    container_name: openmonitor-postgres-public
+    environment:
+      POSTGRES_USER: ${POSTGRES_PUBLIC_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PUBLIC_PASSWORD:-Passw0rdPublic}
+      POSTGRES_DB: ${POSTGRES_PUBLIC_DB:-om_public}
+    volumes:
+      - pgdata_public:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_PUBLIC_USER:-postgres} -d ${POSTGRES_PUBLIC_DB:-om_public} -h localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: openmonitor-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+
+volumes:
+  pgdata_core:
+  pgdata_public:
+  instance:
+  logs:
+  cache:
+  redisdata:

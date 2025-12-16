@@ -31,10 +31,14 @@ class AccountModel {
    */
   static async updateAccount(data) {
     try {
+      const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
       const response = await fetch(API_BASE, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+          'X-CSRFToken': csrfToken,
         },
         credentials: 'include',
         body: JSON.stringify(data),
@@ -59,10 +63,14 @@ class AccountModel {
    */
   static async changePassword({ currentPassword, newPassword, confirmPassword }) {
     try {
+      const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+      const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
       const response = await fetch(`${API_BASE}/password`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+          'X-CSRFToken': csrfToken,
         },
         credentials: 'include',
         body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),

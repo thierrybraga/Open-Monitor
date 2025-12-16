@@ -31,6 +31,7 @@ from app.controllers.chat_controller import chat_bp
 
 # Importação do Blueprint do report_controller
 from app.controllers.report_controller import report_bp
+from app.controllers.product_controller import product_api_bp
 
 # Lista de todos os Blueprints a serem registrados pela aplicação
 BLUEPRINTS: List[Blueprint] = [
@@ -48,6 +49,7 @@ BLUEPRINTS: List[Blueprint] = [
     newsletter_admin_bp,
     chat_bp,
     report_bp,
+    product_api_bp,
 ]
 
 # Opcional: Você pode listar explicitamente os Blueprints em __all__

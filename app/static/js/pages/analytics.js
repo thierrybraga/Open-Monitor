@@ -71,6 +71,18 @@ class AnalyticsDashboard {
             // Buscar preferências de vendors antes de carregar dados
             await this.fetchVendorPreferences();
 
+            // Atualizar aviso de escopo de vendors na UI
+            try {
+                const el = document.getElementById('vendor-scope-text');
+                if (el) {
+                    if (this.selectedVendorIds && this.selectedVendorIds.length > 0) {
+                        el.textContent = `Filtrando por ${this.selectedVendorIds.length} vendor(s) selecionado(s)`;
+                    } else {
+                        el.textContent = 'Nenhum vendor selecionado. Dados globais exibidos.';
+                    }
+                }
+            } catch(_) {}
+
             // Fallback: se não houver preferências salvas, tentar obter da URL ou do localStorage
             if (!this.selectedVendorIds || this.selectedVendorIds.length === 0) {
                 const fromUrl = this.getVendorIdsFromUrl();
@@ -111,6 +123,16 @@ class AnalyticsDashboard {
             // Otimização: lazy load da tabela Top Products quando entrar na viewport
             // Evita custo inicial no carregamento da página
             // A tabela será carregada quando seu container for visível
+            // Eager fallback: garantir primeira carga quando vendors existem OU visão global está habilitada
+            if (((this.selectedVendorIds && this.selectedVendorIds.length > 0) || this.features.allowGlobalOverview) && !this._productsLoadedOnce) {
+                try {
+                    this._productsLoadedOnce = true;
+                    await this.loadTopProducts(this.currentProductsPage || 1, this.currentProductsPerPage || 10, false);
+                } catch (e) {
+                    console.warn('Eager load top products failed:', e);
+                    this._productsLoadedOnce = false;
+                }
+            }
             // Carregar Latest CVEs quando houver vendors ou flag global ativa
             if ((this.selectedVendorIds && this.selectedVendorIds.length > 0) || this.features.allowGlobalLatestCVEs) {
                 await this.loadLatestCVEs();
@@ -124,6 +146,7 @@ class AnalyticsDashboard {
             // Carregar todos os gráficos assim que Chart.js estiver disponível
             if (typeof Chart !== 'undefined') {
                 await this.loadCharts();
+                this.applyTooltips();
             }
             // Otimização: lazy load de gráficos pesados (ex.: Product Chart)
             // Em vez de carregar todos os gráficos imediatamente, configurar observadores
@@ -143,6 +166,50 @@ class AnalyticsDashboard {
             console.error('Failed to initialize analytics dashboard:', error);
             this.showError('Failed to load analytics data');
         }
+    }
+
+    // Helpers reutilizáveis de UI/Charts
+    createEmptyState(container, message) {
+        if (!container) return;
+        const prev = container.querySelector('.chart-empty');
+        if (prev) prev.remove();
+        const emptyMsg = document.createElement('div');
+        emptyMsg.className = 'chart-empty text-muted small d-flex align-items-center justify-content-center';
+        emptyMsg.style.minHeight = '120px';
+        emptyMsg.innerHTML = `<i class="bi bi-info-circle me-2"></i>${message || 'Sem dados disponíveis'}`;
+        container.appendChild(emptyMsg);
+    }
+
+    ensureChart(key, ctx, config, { container, hasData }) {
+        try {
+            if (!ctx) { return; }
+            if (this.charts[key]) { this.charts[key].destroy(); }
+            if (!hasData) {
+                this.createEmptyState(container || (ctx && ctx.closest && ctx.closest('.chart-container')), 'Sem dados para exibir');
+                return;
+            }
+            this.charts[key] = new Chart(ctx, config);
+        } catch (e) {
+            console.error(`Failed to render chart '${key}':`, e);
+        }
+    }
+
+    applyTooltips(root) {
+        try {
+            const r = root || document.body;
+            const list = [].slice.call(r.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            list.forEach(function (el) { try { new bootstrap.Tooltip(el); } catch(_) {} });
+        } catch(_) {}
+    }
+
+    applyCommonOptions(options) {
+        try {
+            if (!options) return options;
+            options.responsive = true;
+            options.maintainAspectRatio = false;
+            if (!options.interaction) { options.interaction = { intersect: false, mode: 'index' }; }
+            return options;
+        } catch(_) { return options; }
     }
 
     async fetchVendorPreferences() {
@@ -166,6 +233,14 @@ class AnalyticsDashboard {
     // Obtém vendor_ids da query string (suporta vendor_ids=1,2,3 e múltiplos vendor_ids)
     getVendorIdsFromUrl() {
         try {
+            // Ignorar vendor_ids quando vendor_scope=all estiver ativo (URL ou localStorage)
+            const paramsForScope = new URLSearchParams(window.location.search || '');
+            const scopeUrl = String(paramsForScope.get('vendor_scope') || '').trim().toLowerCase();
+            if (scopeUrl === 'all') return [];
+            try {
+                const scopeSaved = String(localStorage.getItem('vendorSelection.scope') || '').trim().toLowerCase();
+                if (scopeSaved === 'all') return [];
+            } catch (_) { /* ignore */ }
             const params = new URLSearchParams(window.location.search || '');
             const multi = params.getAll('vendor_ids');
             let ids = [];
@@ -216,6 +291,17 @@ class AnalyticsDashboard {
     // Constrói vendor_ids priorizando URL, com prefixo configurável ('?' ou '&')
     buildVendorParam(prefix = '?') {
         try {
+            const paramsForScope = new URLSearchParams(window.location.search || '');
+            const scopeUrl = String(paramsForScope.get('vendor_scope') || '').trim().toLowerCase();
+            if (scopeUrl === 'all') {
+                return `${prefix}vendor_scope=all`;
+            }
+            try {
+                const scopeSaved = String(localStorage.getItem('vendorSelection.scope') || '').trim().toLowerCase();
+                if (scopeSaved === 'all') {
+                    return `${prefix}vendor_scope=all`;
+                }
+            } catch (_) { /* ignore */ }
             const urlVendorIds = this.getVendorIdsFromUrl();
             const effectiveIds = (urlVendorIds && urlVendorIds.length)
                 ? urlVendorIds
@@ -385,6 +471,10 @@ class AnalyticsDashboard {
             }
             
             const result = await response.json();
+            try {
+                const src = result && (result.source || (result.metadata && result.metadata.data_source));
+                this.updateSourceBadge('products', src);
+            } catch (_) {}
             
             // Atualizar dados e tabela
             this.currentProductsData = result.data || [];
@@ -546,9 +636,9 @@ class AnalyticsDashboard {
                     <td>
                         <div class="d-flex align-items-center">
                             <i class="fas fa-building me-2 text-muted"></i>
-                            <span class="text-muted" title="Nome original: ${this.escapeHtml(product.vendor_original || product.vendor || 'Unknown')}">
+                            <a href="/reports/quick-create?auto=1&report_type=tecnico&vendor_name=${encodeURIComponent(product.vendor || 'Unknown')}" class="text-muted text-decoration-none" title="Gerar relatório técnico consolidado para o vendor ${this.escapeHtml(product.vendor || 'Unknown')}">
                                 ${this.escapeHtml(product.vendor || 'Unknown')}
-                            </span>
+                            </a>
                         </div>
                     </td>
                     <td>
@@ -709,6 +799,10 @@ class AnalyticsDashboard {
             }
 
             const result = await response.json();
+            try {
+                const src = result && ((result.metadata && result.metadata.data_source) || result.source);
+                this.updateSourceBadge('cwes', src);
+            } catch (_) {}
 
             // Store the data and pagination info
             this.originalCWEsData = result.data || [];
@@ -1042,6 +1136,36 @@ class AnalyticsDashboard {
         }
     }
 
+    updateSourceBadge(section, source) {
+        try {
+            const isFallback = String(source || '').toLowerCase().includes('nvd');
+            const text = isFallback ? 'dados NVD brutos' : 'dados normalizados';
+            const cls = isFallback ? 'bg-warning text-dark' : 'bg-success';
+            const id = section === 'products' ? 'products-source-badge' : 'cwes-source-badge';
+            const anchorId = section === 'products' ? 'products-pagination-info' : 'cwes-pagination-info';
+            const header = document.getElementById(anchorId)?.closest('.card-header');
+            if (!header) return;
+            let badge = header.querySelector('#' + id);
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.id = id;
+                badge.style.fontSize = '0.75em';
+                badge.className = 'badge ' + cls + ' ms-2';
+                badge.innerHTML = `<i class="bi bi-database me-1"></i>${this.escapeHtml(text)}`;
+                const rightGroup = header.querySelector('.d-flex.gap-2, .d-flex.align-items-center');
+                if (rightGroup) {
+                    rightGroup.prepend(badge);
+                } else {
+                    header.appendChild(badge);
+                }
+            } else {
+                badge.className = 'badge ' + cls + ' ms-2';
+                badge.innerHTML = `<i class="bi bi-database me-1"></i>${this.escapeHtml(text)}`;
+            }
+            badge.setAttribute('title', isFallback ? 'Exibindo dados por fallback (NVD bruto)' : 'Exibindo dados normalizados');
+        } catch (_) {}
+    }
+
     updatePagination(pagination) {
         const paginationContainer = document.getElementById('pagination');
         if (!paginationContainer || !pagination) return;
@@ -1357,6 +1481,13 @@ class AnalyticsDashboard {
             await this.loadLatestCVEs(this.currentPage);
             await this.loadCharts();
             this.showLoading(false);
+            try {
+                var el = document.getElementById('last-update');
+                if (el) {
+                    var now = new Date();
+                    el.textContent = now.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+                }
+            } catch (e) {}
         } catch (error) {
             console.error('Error refreshing data:', error);
             this.showError('Failed to refresh data');
@@ -1920,10 +2051,8 @@ class AnalyticsDashboard {
 
     async loadProductChart(Chart) {
         try {
-            // Prefer vendor_ids from URL to override saved preferences; fallback to selectedVendorIds
-            const urlVendorIds = this.getVendorIdsFromUrl();
-            const vendorIdsForRequest = (urlVendorIds && urlVendorIds.length) ? urlVendorIds : (this.selectedVendorIds || []);
-            const vendorParam = vendorIdsForRequest.length ? `&vendor_ids=${vendorIdsForRequest.join(',')}` : '';
+            // Respeitar escopo global
+            const vendorParam = this.buildVendorParam('&');
 
             // Use relational details endpoint to ensure accurate vendor-scoped products
             const response = await this.fetchWithRetry(`/api/analytics/details/top_products?page=1&per_page=5${vendorParam}`, { credentials: 'include' }, 2, 300);
@@ -2283,13 +2412,8 @@ class AnalyticsDashboard {
             
             const values = result.data.map(item => item.value);
             
-            // Destroy existing chart if it exists
-            if (this.charts.cveHistoryChart) {
-                this.charts.cveHistoryChart.destroy();
-            }
-
-            // Create line chart
-            this.charts.cveHistoryChart = new Chart(ctx, {
+            const hasData = Array.isArray(result.data) && result.data.length > 0;
+            const config = {
                 type: 'line',
                 data: {
                     labels: labels,
@@ -2360,7 +2484,9 @@ class AnalyticsDashboard {
                         mode: 'index'
                     }
                 }
-            });
+            };
+            config.options = this.applyCommonOptions(config.options);
+            this.ensureChart('cveHistoryChart', ctx, config, { container: ctx.closest('.chart-container'), hasData });
             
             console.log('CVE History chart loaded successfully');
             
@@ -2476,41 +2602,10 @@ class AnalyticsDashboard {
             console.log('Top Assigners data received:', data);
             
             const ctx = document.getElementById('assigneeChart');
-            if (!ctx) {
-                console.warn('Assignee chart canvas not found');
-                return;
-            }
-            console.log('Canvas element found:', ctx);
-            const container = ctx.closest('.chart-container');
-            // Clear any previous empty-state message
-            if (container) {
-                const prevEmpty = container.querySelector('.chart-empty');
-                if (prevEmpty) prevEmpty.remove();
-            }
-            
-            // Destroy existing chart if it exists
-            if (this.charts.assigneeChart) {
-                console.log('Destroying existing chart');
-                this.charts.assigneeChart.destroy();
-            }
-            
-            // If no data, show an empty-state message and skip chart rendering
+            if (!ctx) { console.warn('Assignee chart canvas not found'); return; }
             const hasData = Array.isArray(data.labels) && data.labels.length > 0 && Array.isArray(data.values) && data.values.length > 0;
-            if (!hasData) {
-                if (container) {
-                    const emptyMsg = document.createElement('div');
-                    emptyMsg.className = 'chart-empty text-muted small';
-                    emptyMsg.style.display = 'flex';
-                    emptyMsg.style.alignItems = 'center';
-                    emptyMsg.style.justifyContent = 'center';
-                    emptyMsg.style.height = '100%';
-                    emptyMsg.textContent = 'Sem dados para os filtros selecionados.';
-                    container.appendChild(emptyMsg);
-                }
-                return;
-            }
-
-            this.charts.assigneeChart = new Chart(ctx, {
+            const container = ctx.closest('.chart-container');
+            const config = {
                 type: 'bar',
                 data: {
                     labels: Array.isArray(data.labels) ? data.labels : [],
@@ -2518,7 +2613,7 @@ class AnalyticsDashboard {
                         label: 'CVEs Atribuídos',
                         data: Array.isArray(data.values) ? data.values : [],
                         backgroundColor: Array.isArray(data.colors) ? data.colors : [],
-                        borderColor: (Array.isArray(data.colors) ? data.colors : []).map(color => color + '80'), // Add transparency
+                        borderColor: (Array.isArray(data.colors) ? data.colors : []).map(color => color + '80'),
                         borderWidth: 1,
                         borderRadius: 4,
                         borderSkipped: false
@@ -2574,11 +2669,9 @@ class AnalyticsDashboard {
                         easing: 'easeInOutQuart'
                     }
                 }
-            });
-            
-            const assigneeChartInstance = this.charts.assigneeChart;
-            console.log('Chart instance created:', assigneeChartInstance);
-            console.log('Chart data:', assigneeChartInstance ? assigneeChartInstance.data : undefined);
+            };
+            config.options = this.applyCommonOptions(config.options);
+            this.ensureChart('assigneeChart', ctx, config, { container, hasData });
             console.log('Top Assigners chart loaded successfully');
             
         } catch (error) {
@@ -2940,6 +3033,13 @@ if (typeof window.fetchWithRetry !== 'function') {
 window.fetchWithRetry = async function fetchWithRetry(url, options = {}, retries = 2, backoffMs = 300) {
     for (let attempt = 0; attempt <= retries; attempt++) {
         try {
+            // Permitir que requisições GET terminem durante transições/unload
+            try {
+                if (typeof options.keepalive === 'undefined') {
+                    const method = options.method ? String(options.method).toUpperCase() : 'GET';
+                    if (method === 'GET') options.keepalive = true;
+                }
+            } catch(_) {}
             const resp = await fetch(url, options);
             if (resp && resp.ok) return resp;
             // Do not retry for client errors (4xx)
@@ -2952,7 +3052,9 @@ window.fetchWithRetry = async function fetchWithRetry(url, options = {}, retries
         } catch (err) {
             const msg = String(err && (err.message || err)).toLowerCase();
             const isAbort = (err && err.name === 'AbortError') || msg.includes('abort');
-            // Retry on abort/network errors
+            // Não retry em AbortError; deixa o chamador ignorar silenciosamente
+            if (isAbort) throw err;
+            // Retry em erros de rede/transientes
             if (attempt === retries) throw err;
             // Small backoff before next attempt
         }

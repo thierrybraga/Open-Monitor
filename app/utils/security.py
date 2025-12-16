@@ -2,7 +2,7 @@
 
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 from flask import request, session
 from functools import wraps
@@ -25,7 +25,7 @@ class RateLimiter:
     
     def is_rate_limited(self, identifier: str, max_attempts: int = 5, window_minutes: int = 15) -> bool:
         """Verifica se um identificador (IP, usuário) está limitado por rate limiting."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         # Verificar se está bloqueado
         if identifier in self.blocked_ips:
@@ -53,7 +53,7 @@ class RateLimiter:
     
     def record_attempt(self, identifier: str):
         """Registra uma tentativa de login."""
-        self.attempts[identifier].append(datetime.utcnow())
+        self.attempts[identifier].append(datetime.now(timezone.utc))
     
     def clear_attempts(self, identifier: str):
         """Limpa as tentativas de um identificador após login bem-sucedido."""
@@ -86,7 +86,7 @@ def log_security_event(event_type: str, user_id: Optional[int] = None,
     user_agent_info = parse_user_agent(user_agent)
     
     log_data = {
-        'timestamp': datetime.utcnow().isoformat(),
+        'timestamp': datetime.now(timezone.utc).isoformat(),
         'event_type': event_type,
         'client_ip': client_ip,
         'user_agent': user_agent,
@@ -180,7 +180,7 @@ def calculate_login_duration() -> Optional[float]:
         session_id = session.get('_id')
         if session_id and session_id in session_start_times:
             start_time = session_start_times[session_id]
-            duration = (datetime.utcnow() - start_time).total_seconds()
+            duration = (datetime.now(timezone.utc) - start_time).total_seconds()
             return round(duration, 2)
         return None
     except Exception as e:
@@ -204,7 +204,7 @@ def record_login_start():
     try:
         session_id = session.get('_id')
         if session_id:
-            session_start_times[session_id] = datetime.utcnow()
+            session_start_times[session_id] = datetime.now(timezone.utc)
     except Exception as e:
         logger.debug(f"Erro ao registrar início do login: {e}")
 
@@ -214,7 +214,7 @@ def record_successful_login(user_id: int, username: str):
     try:
         client_ip = get_client_ip()
         login_info = {
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'client_ip': client_ip,
             'user_agent': request.headers.get('User-Agent', 'Unknown'),
             'username': username
@@ -235,7 +235,7 @@ def record_successful_login(user_id: int, username: str):
 def cleanup_session_data():
     """Limpa dados de sessão antigos para evitar vazamento de memória."""
     try:
-        cutoff_time = datetime.utcnow() - timedelta(hours=24)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
         
         # Limpar tempos de início de sessão antigos
         expired_sessions = [

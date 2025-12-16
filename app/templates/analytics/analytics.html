@@ -12,6 +12,21 @@
 {% endblock %}
 
 {% block content %}
+{% macro metric_card(label, id, color, icon, value) %}
+<div class="col">
+  <div class="card metric-card border-{{ color }} h-100">
+    <div class="card-body p-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <div class="small text-muted text-uppercase">{{ label }}</div>
+          <div class="fs-4 fw-semibold text-{{ color }}" id="{{ id }}">{{ value }}</div>
+        </div>
+        <i class="bi {{ icon }} text-{{ color }} fs-3" aria-hidden="true"></i>
+      </div>
+    </div>
+  </div>
+</div>
+{% endmacro %}
 <div class="analytics-dashboard" role="main">
   <!-- Page Header -->
   <header class="dashboard-header d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3 mb-4">
@@ -19,185 +34,44 @@
       <h1 class="h3 fw-semibold mb-1">Analytics Dashboard</h1>
       <p class="text-muted small">Real-time CVE monitoring and security insights</p>
     </div>
-    <div class="d-flex gap-2">
-      <button class="btn btn-sm btn-primary d-flex align-items-center gap-2" id="refresh-data" aria-label="Refresh dashboard data">
-        <i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Refresh
-      </button>
-    </div>
   </header>
 
-  <!-- Key Metrics -->
-  <section class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-3 mb-4">
-    <div class="col">
-      <div class="card metric-card border-primary h-100">
-        <div class="card-body p-3">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <div class="small text-muted text-uppercase">Total CVEs</div>
-              <div class="fs-4 fw-semibold text-primary" id="total-cves">{{ total_cves | default(0, true) }}</div>
-            </div>
-            <i class="bi bi-shield-fill text-primary fs-3" aria-hidden="true"></i>
-          </div>
-        </div>
+  <section class="vendor-scope-notice card mb-3" aria-live="polite">
+    <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center gap-2 text-muted small">
+        <i class="bi bi-filter" aria-hidden="true"></i>
+        <span id="vendor-scope-text">Carregando preferências de vendors…</span>
       </div>
-    </div>
-    <div class="col">
-      <div class="card metric-card border-danger h-100">
-        <div class="card-body p-3">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <div class="small text-muted text-uppercase">Critical</div>
-              <div class="fs-4 fw-semibold text-danger" id="critical-severity-cves">{{ critical_cves | default(0, true) }}</div>
-            </div>
-            <i class="bi bi-exclamation-triangle-fill text-danger fs-3" aria-hidden="true"></i>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="col">
-      <div class="card metric-card border-warning h-100">
-        <div class="card-body p-3">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <div class="small text-muted text-uppercase">High</div>
-              <div class="fs-4 fw-semibold text-warning" id="high-severity-cves">{{ high_cves | default(0, true) }}</div>
-            </div>
-            <i class="bi bi-exclamation-circle-fill text-warning fs-3" aria-hidden="true"></i>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="col">
-      <div class="card metric-card border-success h-100">
-        <div class="card-body p-3">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <div class="small text-muted text-uppercase">Medium</div>
-              <div class="fs-4 fw-semibold text-success" id="medium-severity-cves">{{ medium_cves | default(0, true) }}</div>
-            </div>
-            <i class="bi bi-exclamation text-success fs-3" aria-hidden="true"></i>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="col">
-      <div class="card metric-card border-success h-100">
-        <div class="card-body p-3">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <div class="small text-muted text-uppercase">Patched</div>
-              <div class="fs-4 fw-semibold text-success" id="patched-cves">{{ patched_cves | default(0, true) }}</div>
-            </div>
-            <i class="bi bi-check-circle-fill text-success fs-3" aria-hidden="true"></i>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="col">
-      <div class="card metric-card border-danger h-100">
-        <div class="card-body p-3">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <div class="small text-muted text-uppercase">Unpatched</div>
-              <div class="fs-4 fw-semibold text-danger" id="unpatched-cves">{{ unpatched_cves | default(0, true) }}</div>
-            </div>
-            <i class="bi bi-x-circle-fill text-danger fs-3" aria-hidden="true"></i>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="col">
-      <div class="card metric-card border-primary h-100">
-        <div class="card-body p-3">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <div class="small text-muted text-uppercase">Active Threats</div>
-              <div class="fs-4 fw-semibold text-primary" id="active-threats">{{ active_threats | default(0, true) }}</div>
-            </div>
-            <i class="bi bi-bell-fill text-primary fs-3" aria-hidden="true"></i>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="col">
-      <div class="card metric-card border-primary h-100">
-        <div class="card-body p-3">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <div class="small text-muted text-uppercase">Avg. CVSS Score</div>
-              <div class="fs-4 fw-semibold text-primary" id="avg-cvss-score">{{ avg_cvss_score | default(0.0, true) }}</div>
-            </div>
-            <i class="bi bi-graph-up text-primary fs-3" aria-hidden="true"></i>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="col">
-      <div class="card metric-card border-warning h-100">
-        <div class="card-body p-3">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <div class="small text-muted text-uppercase">Avg. Exploitability</div>
-              <div class="fs-4 fw-semibold text-warning" id="avg-exploit-score">{{ avg_exploit_score | default(0.0, true) }}</div>
-            </div>
-            <i class="bi bi-lightning-fill text-warning fs-3" aria-hidden="true"></i>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="col">
-      <div class="card metric-card border-success h-100">
-        <div class="card-body p-3">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <div class="small text-muted text-uppercase">Patch Coverage</div>
-              <div class="fs-4 fw-semibold text-success" id="patch-coverage">{{ patch_coverage | default(0, true) }}%</div>
-            </div>
-            <i class="bi bi-shield-check text-success fs-3" aria-hidden="true"></i>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="col">
-      <div class="card metric-card border-primary h-100">
-        <div class="card-body p-3">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <div class="small text-muted text-uppercase">Vendors</div>
-              <div class="fs-4 fw-semibold text-primary" id="vendor-count">{{ vendor_count | default(0, true) }}</div>
-            </div>
-            <i class="bi bi-building text-primary fs-3" aria-hidden="true"></i>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="col">
-      <div class="card metric-card border-primary h-100">
-        <div class="card-body p-3">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <div class="small text-muted text-uppercase">Products</div>
-              <div class="fs-4 fw-semibold text-primary" id="product-count">{{ product_count | default(0, true) }}</div>
-            </div>
-            <i class="bi bi-box-seam text-primary fs-3" aria-hidden="true"></i>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="col">
-      <div class="card metric-card border-danger h-100">
-        <div class="card-body p-3">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <div class="small text-muted text-uppercase">CWEs</div>
-              <div class="fs-4 fw-semibold text-danger" id="cwe-count">{{ cwe_count | default(0, true) }}</div>
-            </div>
-            <i class="bi bi-bug-fill text-danger fs-3" aria-hidden="true"></i>
-          </div>
-        </div>
+      <div class="d-flex align-items-center gap-2">
+        <a href="{{ url_for('vulnerability_ui.vendor_selection_ui') }}" class="btn btn-sm btn-outline-primary">
+          Gerenciar Vendors
+        </a>
+        <a href="{{ url_for('vulnerability_ui.list_vulnerabilities_ui') }}" class="btn btn-sm btn-outline-secondary">
+          Abrir Vulnerabilidades
+        </a>
       </div>
     </div>
   </section>
+
+  <!-- Key Metrics -->
+  <section class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-3 mb-4">
+    {{ metric_card('Total CVEs', 'total-cves', 'primary', 'bi-shield-fill', total_cves | default(0, true)) }}
+    {{ metric_card('Critical', 'critical-severity-cves', 'danger', 'bi-exclamation-triangle-fill', critical_cves | default(0, true)) }}
+    {{ metric_card('High', 'high-severity-cves', 'warning', 'bi-exclamation-circle-fill', high_cves | default(0, true)) }}
+    {{ metric_card('Medium', 'medium-severity-cves', 'success', 'bi-exclamation', medium_cves | default(0, true)) }}
+    {{ metric_card('Patched', 'patched-cves', 'success', 'bi-check-circle-fill', patched_cves | default(0, true)) }}
+    {{ metric_card('Unpatched', 'unpatched-cves', 'danger', 'bi-x-circle-fill', unpatched_cves | default(0, true)) }}
+    {{ metric_card('Active Threats', 'active-threats', 'primary', 'bi-bell-fill', active_threats | default(0, true)) }}
+    {{ metric_card('Avg. CVSS Score', 'avg-cvss-score', 'primary', 'bi-graph-up', avg_cvss_score | default(0.0, true)) }}
+    {{ metric_card('Avg. Exploitability', 'avg-exploit-score', 'warning', 'bi-lightning-fill', avg_exploit_score | default(0.0, true)) }}
+    {{ metric_card('Patch Coverage', 'patch-coverage', 'success', 'bi-shield-check', (patch_coverage | default(0, true) ~ '%')) }}
+    {{ metric_card('Vendors', 'vendor-count', 'primary', 'bi-building', vendor_count | default(0, true)) }}
+    {{ metric_card('Products', 'product-count', 'primary', 'bi-box-seam', product_count | default(0, true)) }}
+    {{ metric_card('CWEs', 'cwe-count', 'danger', 'bi-bug-fill', cwe_count | default(0, true)) }}
+  </section>
+
+  <!-- Resumo de Totais -->
+  
 
   <!-- Visual Insights -->
   <section class="card chart-section mb-4">
@@ -693,5 +567,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/pages/analytics.js') }}?v={{ nonce }}" defer nonce="{{ nonce }}"></script>
+<script src="{{ url_for('static', filename='js/pages/analytics.js') }}" defer nonce="{{ nonce }}"></script>
 {% endblock %}

@@ -170,8 +170,83 @@ class RegisterForm(FlaskForm):
         # Validar se não são todos os dígitos iguais
         if len(set(phone_digits)) == 1:
             raise ValidationError('Número de telefone inválido.')
-        
-        # Validar padrões conhecidos inválidos
-        invalid_patterns = ['1234567890', '0987654321', '1111111111', '0000000000']
-        if phone_digits in invalid_patterns or phone_digits[-10:] in invalid_patterns:
+
+
+class RootInitForm(FlaskForm):
+    username = StringField(
+        'Nome de usuário',
+        validators=[
+            DataRequired(message="O nome de usuário é obrigatório."),
+            Length(3, 50, message="Usuário deve ter entre 3 e 50 caracteres."),
+            Regexp(r'^[A-Za-z0-9_]+$', message="Somente letras, números e underscore são permitidos.")
+        ],
+        render_kw={"placeholder": "Digite o usuário root", "autocomplete": "username"}
+    )
+    first_name = StringField(
+        'Nome',
+        validators=[
+            DataRequired(message="O nome é obrigatório."),
+            Length(2, 50, message="Nome deve ter entre 2 e 50 caracteres."),
+            Regexp(r'^[A-Za-zÀ-ÿ\s]+$', message="Nome deve conter apenas letras e espaços.")
+        ],
+        render_kw={"placeholder": "Digite seu nome", "autocomplete": "given-name"}
+    )
+    last_name = StringField(
+        'Sobrenome',
+        validators=[
+            DataRequired(message="O sobrenome é obrigatório."),
+            Length(2, 50, message="Sobrenome deve ter entre 2 e 50 caracteres."),
+            Regexp(r'^[A-Za-zÀ-ÿ\s]+$', message="Sobrenome deve conter apenas letras e espaços.")
+        ],
+        render_kw={"placeholder": "Digite seu sobrenome", "autocomplete": "family-name"}
+    )
+    email = StringField(
+        'E-mail',
+        validators=[
+            DataRequired(message="O e-mail é obrigatório."),
+            Email(message="Formato de e-mail inválido."),
+            Length(max=255, message="E-mail muito longo.")
+        ],
+        render_kw={"placeholder": "Digite seu e-mail", "autocomplete": "email"}
+    )
+    phone = StringField(
+        'Telefone',
+        validators=[Optional()],
+        render_kw={"placeholder": "(11) 99999-9999", "autocomplete": "tel"}
+    )
+    password = PasswordField(
+        'Senha',
+        validators=[
+            DataRequired(message="A senha é obrigatória."),
+            Length(8, 128, message="A senha deve ter entre 8 e 128 caracteres.")
+        ],
+        render_kw={"placeholder": "Defina a senha do usuário root", "autocomplete": "new-password"}
+    )
+    tacacs_enabled = BooleanField('Habilitar TACACS', default=False)
+    tacacs_username = StringField('Usuário TACACS', validators=[Optional()])
+    tacacs_secret = StringField('Segredo TACACS', validators=[Optional()])
+    tacacs_server = StringField('Servidor TACACS', validators=[Optional()])
+    tacacs_port = StringField('Porta TACACS', validators=[Optional()])
+    tacacs_timeout = StringField('Timeout TACACS', validators=[Optional()])
+    terms_accepted = BooleanField('Aceito os termos de uso e política de privacidade', default=True)
+    submit = SubmitField('Criar Usuário Root')
+    def validate_username(self, username):
+        user = User.query.filter_by(username=username.data).first()
+        if user:
+            raise ValidationError('Este nome de usuário já está em uso. Escolha outro.')
+    def validate_email(self, email):
+        user = User.query.filter_by(email=email.data.lower()).first()
+        if user:
+            raise ValidationError('Este e-mail já está cadastrado.')
+
+    def validate_phone(self, phone):
+        raw = (phone.data or '').strip()
+        if not raw:
+            return
+        digits = ''.join([c for c in raw if c.isdigit()])
+        if not digits:
+            return
+        invalid_patterns = {'1234567890', '0987654321', '1111111111', '0000000000'}
+        base = digits[-10:] if len(digits) >= 10 else digits
+        if digits in invalid_patterns or base in invalid_patterns:
             raise ValidationError('Número de telefone inválido.')

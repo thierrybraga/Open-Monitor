@@ -26,8 +26,8 @@ class SessionMiddleware:
         """Executado antes de cada requisição."""
         # Armazenar informações da sessão no contexto global
         g.user_session = {
-            'user_id': None,
-            'is_authenticated': False,
+            'user_id': (current_user.id if getattr(current_user, 'is_authenticated', False) else None),
+            'is_authenticated': (getattr(current_user, 'is_authenticated', False) is True),
             'ip_address': request.remote_addr,
             'user_agent': request.headers.get('User-Agent', ''),
             'endpoint': request.endpoint
@@ -65,7 +65,24 @@ def require_user_ownership(model_class, id_param='id', owner_field='owner_id'):
                 abort(401, description="Autenticação necessária")
             
             try:
-                resource = model_class.query.get_or_404(resource_id)
+                try:
+                    from sqlalchemy.orm import load_only
+                    owner_attr = getattr(model_class, owner_field)
+                    from app.extensions import db as _db
+                    resource = (
+                        _db.session.query(model_class)
+                        .options(load_only(model_class.id, owner_attr))
+                        .filter(model_class.id == resource_id)
+                        .first()
+                    )
+                    if resource is None:
+                        abort(404, description="Recurso não encontrado")
+                except Exception:
+                    from app.extensions import db as _db
+                    resource = _db.session.query(model_class).filter(model_class.id == resource_id).first()
+                    if resource is None:
+                        abort(404, description="Recurso não encontrado")
+
                 owner_id = getattr(resource, owner_field, None)
                 is_owner = (owner_id == current_user.id)
                 
@@ -75,12 +92,21 @@ def require_user_ownership(model_class, id_param='id', owner_field='owner_id'):
                 
                 # Adicionar o recurso ao contexto para uso na função
                 g.current_resource = resource
-                
-                return f(*args, **kwargs)
-                
             except Exception as e:
-                logger.error(f"Error accessing resource: {e}")
+                # Não mascarar exceções HTTP (404/401/403); propagar como estão
+                try:
+                    from werkzeug.exceptions import HTTPException
+                except Exception:
+                    HTTPException = tuple()  # Fallback seguro, nunca corresponderá
+
+                if isinstance(e, HTTPException):
+                    raise e
+
+                logger.error(f"Error accessing resource: {e}", exc_info=True)
                 abort(500, description="Erro interno do servidor")
+
+            # Fora do bloco try para não mascarar erros do handler original
+            return f(*args, **kwargs)
         
         return decorated_function
     return decorator
@@ -130,7 +156,7 @@ def audit_log(action: str, resource_type: str = None, resource_id: str = None, d
         details: Detalhes adicionais da ação
     """
     log_data = {
-        'user_id': None,
+        'user_id': (current_user.id if getattr(current_user, 'is_authenticated', False) else None),
         'action': action,
         'resource_type': resource_type,
         'resource_id': resource_id,
@@ -139,7 +165,7 @@ def audit_log(action: str, resource_type: str = None, resource_id: str = None, d
         'endpoint': request.endpoint,
         'details': details or {}
     }
-    
+
     logger.info(f"AUDIT: {log_data}")
 
 # Instância global do middleware

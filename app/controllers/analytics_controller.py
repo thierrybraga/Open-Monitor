@@ -12,6 +12,8 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 
 from flask import Blueprint, jsonify, request, Response
+from sqlalchemy.exc import SQLAlchemyError
+from werkzeug.exceptions import BadRequest, NotFound, InternalServerError
 from flask import current_app
 from sqlalchemy import func, desc, or_, text
 # Função auxiliar para validação de parâmetros de paginação
@@ -23,6 +25,7 @@ def validate_pagination_params(page, per_page):
 
 
 from app.extensions import db
+from flask_login import current_user
 from app.models.vulnerability import Vulnerability
 from app.models.references import Reference
 from app.services.vulnerability_service import VulnerabilityService
@@ -38,6 +41,33 @@ logger = logging.getLogger(__name__)
 
 # Create Blueprint for analytics API
 analytics_api_bp = Blueprint('analytics_api', __name__, url_prefix='/api/analytics')
+
+
+# Require authentication for all analytics API routes
+@analytics_api_bp.before_request
+def _require_authentication():
+    if not getattr(current_user, 'is_authenticated', False):
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
+
+@analytics_api_bp.errorhandler(BadRequest)
+def _handle_bad_request(e: BadRequest) -> Response:
+    return jsonify(error=str(e)), 400
+
+@analytics_api_bp.errorhandler(NotFound)
+def _handle_not_found(e: NotFound) -> Response:
+    return jsonify(error='Not Found'), 404
+
+@analytics_api_bp.errorhandler(SQLAlchemyError)
+def _handle_db_error(e: SQLAlchemyError) -> Response:
+    try:
+        detail = str(getattr(e, 'orig', e))
+    except Exception:
+        detail = str(e)
+    return jsonify(error='Database error', detail=detail), 500
+
+@analytics_api_bp.errorhandler(Exception)
+def _handle_unexpected_error(e: Exception) -> Response:
+    raise InternalServerError()
 
 
 @analytics_api_bp.route('/overview', methods=['GET'])
@@ -73,6 +103,14 @@ def get_analytics_overview() -> Response:
         from app.models.cve_vendor import CVEVendor
         from app.models.cve_product import CVEProduct
         from app.models.weakness import Weakness
+        from app.models.vendor import Vendor
+        from app.models.product import Product
+        from app.models.version_reference import VersionReference
+        from app.models.product import Product
+        from app.models.version_reference import VersionReference
+        from app.models.product import Product
+        from app.models.version_reference import VersionReference
+        from app.models.vendor import Vendor
         from sqlalchemy import text
         # Models used for accurate product counting
         from app.models.version_reference import VersionReference
@@ -228,17 +266,64 @@ def get_analytics_overview() -> Response:
         # Count vendors/products/cwes with preferences when present
         if selected_vendor_ids:
             vendor_count = len(selected_vendor_ids)
+            product_count = 0
+            # Prefer normalized associations for accurate product counting per vendor
             try:
-                # Accurate product count: distinct products affected and correctly associated to vendor
-                # Using VersionReference joined with Product and filtering by Product.vendor_id
+                from app.models.product import Product
+                from app.models.cve_product import CVEProduct
                 product_count = (
-                    session.query(func.count(func.distinct(VersionReference.product_id)))
-                    .join(Product, Product.id == VersionReference.product_id)
+                    session.query(func.count(func.distinct(Product.id)))
+                    .join(CVEProduct, CVEProduct.product_id == Product.id)
+                    .join(Vulnerability, Vulnerability.cve_id == CVEProduct.cve_id)
                     .filter(Product.vendor_id.in_(selected_vendor_ids))
                     .scalar() or 0
                 )
             except Exception:
                 product_count = 0
+            # Fallback: derive from NVD raw JSON fields when normalized data is unavailable
+            if not product_count:
+                try:
+                    selected_vendor_names: List[str] = []
+                    rows = (
+                        session.query(Vendor.id, Vendor.name)
+                        .filter(Vendor.id.in_(selected_vendor_ids))
+                        .all()
+                    )
+                    for r in rows:
+                        vname = getattr(r, 'name', None) or (isinstance(r, tuple) and len(r) > 1 and r[1])
+                        if vname:
+                            selected_vendor_names.append(str(vname).strip().lower())
+                    if selected_vendor_names:
+                        params: Dict[str, Any] = {}
+                        placeholders = []
+                        for idx, nm in enumerate(selected_vendor_names):
+                            key = f"vn_{idx}"
+                            placeholders.append(f":{key}")
+                            params[key] = nm
+                        sql_products_raw = f"""
+                            WITH vendor_cves AS (
+                                SELECT v.cve_id
+                                FROM vulnerabilities v, json_each(v.nvd_vendors_data) AS vendor_data
+                                WHERE v.nvd_vendors_data IS NOT NULL
+                                  AND (
+                                    LOWER(vendor_data.value) IN ({', '.join(placeholders)})
+                                    OR LOWER(json_extract(vendor_data.value, '$.name')) IN ({', '.join(placeholders)})
+                                  )
+                            ),
+                            product_names AS (
+                                SELECT DISTINCT COALESCE(
+                                    NULLIF(TRIM(json_extract(product_data.value, '$.name')), ''),
+                                    NULLIF(TRIM(product_data.value), '')
+                                ) AS product_name
+                                FROM vulnerabilities v, json_each(v.nvd_products_data) AS product_data
+                                WHERE v.nvd_products_data IS NOT NULL
+                                  AND v.cve_id IN (SELECT cve_id FROM vendor_cves)
+                            )
+                            SELECT COUNT(*) AS total FROM product_names WHERE product_name IS NOT NULL AND product_name != ''
+                        """
+                        product_count = int(session.execute(text(sql_products_raw), params).scalar() or 0)
+                except Exception:
+                    product_count = 0
             try:
                 # Count CWEs for CVEs scoped by unified vendor filter
                 from sqlalchemy import union
@@ -263,24 +348,55 @@ def get_analytics_overview() -> Response:
                 )
             except Exception:
                 cwe_count = 0
+            # Fallback: quando associações normalizadas não retornam CWEs, tentar por JSON de vendors
+            try:
+                if (cwe_count == 0):
+                    from app.models.vendor import Vendor
+                    selected_vendor_names: List[str] = []
+                    try:
+                        rows = (
+                            session.query(Vendor.id, Vendor.name)
+                            .filter(Vendor.id.in_(selected_vendor_ids))
+                            .all()
+                        )
+                        for r in rows:
+                            vname = getattr(r, 'name', None) or (isinstance(r, tuple) and len(r) > 1 and r[1])
+                            if vname:
+                                selected_vendor_names.append(str(vname).strip())
+                    except Exception:
+                        selected_vendor_names = []
+                    if selected_vendor_names:
+                        name_clauses = []
+                        for vname in selected_vendor_names:
+                            if not vname:
+                                continue
+                            name_clauses.append(Vulnerability.nvd_vendors_data.ilike(f"%{vname}%"))
+                        if name_clauses:
+                            cwe_count = (
+                                session.query(func.count(func.distinct(Weakness.cwe_id)))
+                                .join(Vulnerability, Vulnerability.cve_id == Weakness.cve_id)
+                                .filter(or_(*name_clauses))
+                                .scalar() or 0
+                            )
+            except Exception:
+                pass
         else:
-            # Fallback original counts (no vendor selection)
-            vendor_count = session.execute(text("""
-                SELECT COUNT(DISTINCT vendor_data.value) as vendor_count
-                FROM vulnerabilities vuln,
-                     json_each(vuln.nvd_vendors_data) as vendor_data
-                WHERE vuln.nvd_vendors_data IS NOT NULL 
-                  AND vendor_data.value IS NOT NULL 
-                  AND vendor_data.value != ''
-            """)).scalar() or 0
-            product_count = session.execute(text("""
-                SELECT COUNT(DISTINCT product_data.value) as product_count
-                FROM vulnerabilities vuln,
-                     json_each(vuln.nvd_products_data) as product_data
-                WHERE vuln.nvd_products_data IS NOT NULL 
-                  AND product_data.value IS NOT NULL 
-                  AND product_data.value != ''
-            """)).scalar() or 0
+            from app.models.vendor import Vendor
+            from app.models.cve_vendor import CVEVendor
+            from app.models.product import Product
+            from app.models.cve_product import CVEProduct
+            vendor_count = (
+                session.query(func.count(func.distinct(Vendor.id)))
+                .join(CVEVendor, CVEVendor.vendor_id == Vendor.id)
+                .join(Vulnerability, Vulnerability.cve_id == CVEVendor.cve_id)
+                .scalar() or 0
+            )
+            product_count = (
+                session.query(func.count(func.distinct(Product.id)))
+                .join(CVEProduct, CVEProduct.product_id == Product.id)
+                .join(Vulnerability, Vulnerability.cve_id == CVEProduct.cve_id)
+                .scalar() or 0
+            )
             cwe_count = session.query(func.count(func.distinct(Weakness.cwe_id))).scalar() or 0
         
         # Calculate patch coverage percentage using the same total as overview counts
@@ -439,6 +555,7 @@ def get_analytics_details(category: str) -> Response:
                 from sqlalchemy import func, desc, text
                 import json
                 from datetime import datetime, timedelta
+                used_fallback = False
                 
                 # Calculate date for recent activity (last 30 days)
                 recent_date = datetime.now() - timedelta(days=30)
@@ -448,7 +565,7 @@ def get_analytics_details(category: str) -> Response:
                 trend_previous_end = datetime.now() - timedelta(days=90)
                 
                 # Enhanced query to extract products and calculate all required metrics
-                # Construir filtros condicionais por vendor usando associação via CVEVendor (cv.vendor_id)
+                # Construir filtros condicionais por vendor usando associação via Product.vendor_id
                 vendor_filter_clause = ""
                 vendor_params: Dict[str, Any] = {}
                 if selected_vendor_ids:
@@ -457,7 +574,7 @@ def get_analytics_details(category: str) -> Response:
                         key = f"vid_{idx}"
                         placeholders.append(f":{key}")
                         vendor_params[key] = vid
-                    vendor_filter_clause = f" AND cv.vendor_id IN ({', '.join(placeholders)})"
+                    vendor_filter_clause = f" AND ven.id IN ({', '.join(placeholders)})"
 
                 sql_query = """
                     WITH product_cves AS (
@@ -472,8 +589,7 @@ def get_analytics_details(category: str) -> Response:
                         FROM vulnerabilities v
                         JOIN cve_products cp ON cp.cve_id = v.cve_id
                         JOIN product p ON p.id = cp.product_id
-                        JOIN cve_vendors cv ON cv.cve_id = v.cve_id
-                        JOIN vendor ven ON ven.id = cv.vendor_id
+                        JOIN vendor ven ON ven.id = p.vendor_id
                         WHERE 1=1
                         {vendor_filter}
                     ),
@@ -536,8 +652,7 @@ def get_analytics_details(category: str) -> Response:
                         FROM vulnerabilities v
                         JOIN cve_products cp ON cp.cve_id = v.cve_id
                         JOIN product p ON p.id = cp.product_id
-                        JOIN cve_vendors cv ON cv.cve_id = v.cve_id
-                        JOIN vendor ven ON ven.id = cv.vendor_id
+                        JOIN vendor ven ON ven.id = p.vendor_id
                         WHERE 1=1
                         {vendor_filter}
                     )
@@ -579,6 +694,108 @@ def get_analytics_details(category: str) -> Response:
                     **vendor_params
                 }
                 results = session.execute(query_final, params).fetchall()
+
+                if not total_count or not results:
+                    base_vuln_query = session.query(Vulnerability)
+                    if selected_vendor_ids:
+                        try:
+                            from sqlalchemy import union
+                            from app.models.cve_vendor import CVEVendor
+                            from app.models.cve_product import CVEProduct
+                            from app.models.product import Product
+                            cves_por_vendor = (
+                                session
+                                .query(CVEVendor.cve_id)
+                                .filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+                            )
+                            cves_por_produto_vendor = (
+                                session
+                                .query(CVEProduct.cve_id)
+                                .join(Product, Product.id == CVEProduct.product_id)
+                                .filter(Product.vendor_id.in_(selected_vendor_ids))
+                            )
+                            cves_unificados_sq = union(cves_por_vendor, cves_por_produto_vendor).subquery()
+                            base_vuln_query = base_vuln_query.filter(
+                                Vulnerability.cve_id.in_(session.query(cves_unificados_sq.c.cve_id))
+                            ).distinct()
+                        except Exception:
+                            pass
+                    rows = base_vuln_query.with_entities(
+                        Vulnerability.cve_id,
+                        Vulnerability.nvd_products_data,
+                        Vulnerability.nvd_vendors_data,
+                        Vulnerability.cvss_score,
+                        Vulnerability.base_severity,
+                        Vulnerability.published_date,
+                        Vulnerability.patch_available
+                    ).all()
+                    agg = {}
+                    import json as _json
+                    for r in rows:
+                        try:
+                            prods = r[1] if isinstance(r[1], list) else (_json.loads(r[1]) if r[1] else [])
+                        except Exception:
+                            prods = []
+                        vname = None
+                        try:
+                            vens = r[2] if isinstance(r[2], list) else (_json.loads(r[2]) if r[2] else [])
+                            vname = vens[0] if isinstance(vens, list) and vens else None
+                        except Exception:
+                            vname = None
+                        for p in prods or []:
+                            key = (str(p).strip() or 'Unknown', str(vname or 'Unknown').strip())
+                            if key not in agg:
+                                agg[key] = {
+                                    'total_cves': 0,
+                                    'critical_cves': 0,
+                                    'cvss_sum': 0.0,
+                                    'cvss_count': 0,
+                                    'recent_activity': 0,
+                                    'patched_cves': 0,
+                                    'current_period_cves': 0,
+                                    'previous_period_cves': 0
+                                }
+                            a = agg[key]
+                            a['total_cves'] += 1
+                            if (r[4] == 'CRITICAL'):
+                                a['critical_cves'] += 1
+                            if r[3] is not None:
+                                a['cvss_sum'] += float(r[3])
+                                a['cvss_count'] += 1
+                            if r[6]:
+                                a['patched_cves'] += 1
+                            pd = r[5]
+                            if pd:
+                                if pd >= recent_date:
+                                    a['recent_activity'] += 1
+                                if pd >= trend_current_start:
+                                    a['current_period_cves'] += 1
+                                elif pd >= trend_previous_start and pd < trend_previous_end:
+                                    a['previous_period_cves'] += 1
+                    sorted_items = sorted(agg.items(), key=lambda kv: kv[1]['total_cves'], reverse=True)
+                    total_count = len(sorted_items)
+                    page_items = sorted_items[offset:offset+per_page]
+                    results = []
+                    used_fallback = True
+                    for (prod_name, ven_name), a in page_items:
+                        cvss_avg = round((a['cvss_sum'] / a['cvss_count']), 2) if a['cvss_count'] > 0 else 0.0
+                        trend_val = 0.0
+                        if a['previous_period_cves'] > 0:
+                            trend_val = round(((a['current_period_cves'] - a['previous_period_cves']) * 100.0 / a['previous_period_cves']), 1)
+                        elif a['current_period_cves'] > 0:
+                            trend_val = 100.0
+                        patch_pct = round(((a['patched_cves'] * 100.0) / a['total_cves']), 1) if a['total_cves'] > 0 else 0.0
+                        results.append(type('Row', (), {
+                            'product': prod_name,
+                            'vendor': ven_name,
+                            'total_cves': a['total_cves'],
+                            'critical_cves': a['critical_cves'],
+                            'cvss_avg': cvss_avg,
+                            'recent_activity': a['recent_activity'],
+                            'patch_status': patch_pct,
+                            'trend': trend_val,
+                            'risk_score': round(((a['critical_cves'] * 10.0) + (a['total_cves'] * 0.5)), 2)
+                        }))
                 
                 # Helper functions for enhanced data formatting
                 def get_risk_level_and_icon(risk_score):
@@ -698,6 +915,8 @@ def get_analytics_details(category: str) -> Response:
                         cache.set(cache_key, payload, ttl=ttl, namespace='analytics')
                 except Exception:
                     pass
+                data_source = 'nvd_raw' if used_fallback else 'normalized'
+                locals()['__top_products_source__'] = data_source
             except Exception as e:
                 logger.error(f"Error in top_products: {str(e)}", exc_info=True)
                 return jsonify({'error': f'Database error: {str(e)}'}), 500
@@ -749,11 +968,63 @@ def get_analytics_details(category: str) -> Response:
             ).order_by(
                 desc('count')
             ).limit(per_page).offset(offset).all()
+
+            used_fallback_cwes = False
+            if not total_count or not results:
+                vquery = session.query(
+                    Vulnerability.description,
+                    Vulnerability.cvss_score,
+                    Vulnerability.base_severity,
+                    Vulnerability.published_date
+                )
+                if selected_vendor_ids:
+                    try:
+                        from sqlalchemy import union
+                        from app.models.cve_vendor import CVEVendor
+                        from app.models.cve_product import CVEProduct
+                        from app.models.product import Product
+                        cves_por_vendor = (
+                            session
+                            .query(CVEVendor.cve_id)
+                            .filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+                        )
+                        cves_por_produto_vendor = (
+                            session
+                            .query(CVEProduct.cve_id)
+                            .join(Product, Product.id == CVEProduct.product_id)
+                            .filter(Product.vendor_id.in_(selected_vendor_ids))
+                        )
+                        cves_unificados_sq = union(cves_por_vendor, cves_por_produto_vendor).subquery()
+                        vquery = vquery.filter(
+                            Vulnerability.cve_id.in_(session.query(cves_unificados_sq.c.cve_id))
+                        ).distinct()
+                    except Exception:
+                        pass
+                rows = vquery.all()
+                import re as _re
+                counts = {}
+                for r in rows:
+                    desc_text = r[0] or ''
+                    for m in _re.finditer(r"CWE-\d+", desc_text):
+                        code = m.group(0)
+                        if code not in counts:
+                            counts[code] = {'total': 0}
+                        counts[code]['total'] += 1
+                sorted_cwes = sorted(counts.items(), key=lambda kv: kv[1]['total'], reverse=True)
+                total_count = len(sorted_cwes)
+                page_items = sorted_cwes[offset:offset+per_page]
+                results = [type('Row', (), {'cwe_id': code, 'count': data['total']}) for code, data in page_items]
+                used_fallback_cwes = True
             
             data = [{
                 'cwe': result.cwe_id,
                 'count': result.count
             } for result in results]
+
+            try:
+                locals()['__top_cwes_source__'] = 'nvd_raw' if used_fallback_cwes else 'normalized'
+            except Exception:
+                pass
             
             # Add pagination info
             total_pages = (total_count + per_page - 1) // per_page if total_count > 0 else 1
@@ -851,6 +1122,14 @@ def get_analytics_details(category: str) -> Response:
             
         # Return data with pagination info if available
         response_data = {'data': data}
+        # Include data source badge flag when available
+        try:
+            if category == 'top_products' and '__top_products_source__' in locals():
+                response_data['source'] = locals()['__top_products_source__']
+            if category == 'top_cwes' and '__top_cwes_source__' in locals():
+                response_data['source'] = locals()['__top_cwes_source__']
+        except Exception:
+            pass
         if (category == 'top_products' or category == 'top_cwes' or category == 'test_simple') and 'pagination' in locals():
             response_data['pagination'] = pagination
             
@@ -1176,35 +1455,139 @@ def get_dashboard_counts() -> Response:
         if selected_vendor_ids:
             vendor_count = len(selected_vendor_ids)
             try:
-                product_count = session.query(func.count(func.distinct(CVEProduct.product_id)))\
-                    .join(Vulnerability, Vulnerability.cve_id == CVEProduct.cve_id)\
-                    .join(CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id)\
-                    .filter(CVEVendor.vendor_id.in_(selected_vendor_ids)).scalar() or 0
+                product_count = (
+                    session.query(func.count(func.distinct(VersionReference.product_id)))
+                    .join(Product, Product.id == VersionReference.product_id)
+                    .filter(Product.vendor_id.in_(selected_vendor_ids))
+                    .scalar() or 0
+                )
             except Exception:
                 product_count = 0
-            cwe_count = session.query(func.count(func.distinct(Weakness.cwe_id)))\
-                .join(Vulnerability, Vulnerability.cve_id == Weakness.cve_id)\
-                .join(CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id)\
-                .filter(CVEVendor.vendor_id.in_(selected_vendor_ids)).scalar() or 0
+            try:
+                from sqlalchemy import union
+                cves_por_vendor = (
+                    session
+                    .query(CVEVendor.cve_id)
+                    .filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+                )
+                cves_por_produto_vendor = (
+                    session
+                    .query(CVEProduct.cve_id)
+                    .join(Product, Product.id == CVEProduct.product_id)
+                    .filter(Product.vendor_id.in_(selected_vendor_ids))
+                )
+                cves_unificados_sq = union(cves_por_vendor, cves_por_produto_vendor).subquery()
+                cwe_count = (
+                    session.query(func.count(func.distinct(Weakness.cwe_id)))
+                    .join(Vulnerability, Vulnerability.cve_id == Weakness.cve_id)
+                    .filter(Vulnerability.cve_id.in_(session.query(cves_unificados_sq.c.cve_id)))
+                    .scalar() or 0
+                )
+            except Exception:
+                cwe_count = 0
+            if product_count == 0:
+                base_v = session.query(
+                    Vulnerability.nvd_products_data
+                )
+                try:
+                    from sqlalchemy import union
+                    from app.models.product import Product
+                    cves_por_vendor = (
+                        session
+                        .query(CVEVendor.cve_id)
+                        .filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+                    )
+                    cves_por_produto_vendor = (
+                        session
+                        .query(CVEProduct.cve_id)
+                        .join(Product, Product.id == CVEProduct.product_id)
+                        .filter(Product.vendor_id.in_(selected_vendor_ids))
+                    )
+                    cves_unificados_sq = union(cves_por_vendor, cves_por_produto_vendor).subquery()
+                    base_v = base_v.filter(
+                        Vulnerability.cve_id.in_(session.query(cves_unificados_sq.c.cve_id))
+                    ).distinct()
+                except Exception:
+                    pass
+                import json as _json
+                names = set()
+                for row in base_v.all():
+                    raw = row[0]
+                    try:
+                        items = raw if isinstance(raw, list) else (_json.loads(raw) if raw else [])
+                    except Exception:
+                        items = []
+                    for p in items or []:
+                        s = str(p).strip()
+                        if s:
+                            names.add(s)
+                product_count = len(names)
+            if cwe_count == 0:
+                vq = session.query(Vulnerability.description)
+                try:
+                    from sqlalchemy import union
+                    from app.models.product import Product
+                    cves_por_vendor = (
+                        session
+                        .query(CVEVendor.cve_id)
+                        .filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+                    )
+                    cves_por_produto_vendor = (
+                        session
+                        .query(CVEProduct.cve_id)
+                        .join(Product, Product.id == CVEProduct.product_id)
+                        .filter(Product.vendor_id.in_(selected_vendor_ids))
+                    )
+                    cves_unificados_sq = union(cves_por_vendor, cves_por_produto_vendor).subquery()
+                    vq = vq.filter(
+                        Vulnerability.cve_id.in_(session.query(cves_unificados_sq.c.cve_id))
+                    ).distinct()
+                except Exception:
+                    pass
+                import re as _re
+                codes = set()
+                for row in vq.all():
+                    txt = row[0] or ''
+                    for m in _re.finditer(r"CWE-\d+", txt):
+                        codes.add(m.group(0))
+                cwe_count = len(codes)
         else:
-            vendor_count = session.execute(text("""
-                SELECT COUNT(DISTINCT vendor_data.value) as vendor_count
-                FROM vulnerabilities vuln,
-                     json_each(vuln.nvd_vendors_data) as vendor_data
-                WHERE vuln.nvd_vendors_data IS NOT NULL 
-                  AND vendor_data.value IS NOT NULL 
-                  AND vendor_data.value != ''
-            """)).scalar() or 0
-            
-            product_count = session.execute(text("""
-                SELECT COUNT(DISTINCT product_data.value) as product_count
-                FROM vulnerabilities vuln,
-                     json_each(vuln.nvd_products_data) as product_data
-                WHERE vuln.nvd_products_data IS NOT NULL 
-                  AND product_data.value IS NOT NULL 
-                  AND product_data.value != ''
-            """)).scalar() or 0
+            vendor_count = (
+                session.query(func.count(func.distinct(Vendor.id)))
+                .join(CVEVendor, CVEVendor.vendor_id == Vendor.id)
+                .join(Vulnerability, Vulnerability.cve_id == CVEVendor.cve_id)
+                .scalar() or 0
+            )
+
+            product_count = (
+                session.query(func.count(func.distinct(Product.id)))
+                .join(CVEProduct, CVEProduct.product_id == Product.id)
+                .join(Vulnerability, Vulnerability.cve_id == CVEProduct.cve_id)
+                .scalar() or 0
+            )
             cwe_count = session.query(func.count(func.distinct(Weakness.cwe_id))).scalar() or 0
+            if product_count == 0:
+                import json as _json
+                names = set()
+                for row in session.query(Vulnerability.nvd_products_data).all():
+                    raw = row[0]
+                    try:
+                        items = raw if isinstance(raw, list) else (_json.loads(raw) if raw else [])
+                    except Exception:
+                        items = []
+                    for p in items or []:
+                        s = str(p).strip()
+                        if s:
+                            names.add(s)
+                product_count = len(names)
+            if cwe_count == 0:
+                import re as _re
+                codes = set()
+                for row in session.query(Vulnerability.description).all():
+                    txt = row[0] or ''
+                    for m in _re.finditer(r"CWE-\d+", txt):
+                        codes.add(m.group(0))
+                cwe_count = len(codes)
         
         # Calculate patch coverage
         total_cves = counts.get('total', 0)
@@ -1559,33 +1942,16 @@ def get_top_cwes() -> Response:
             desc('total_cves')
         ).limit(limit).all()
         
-        # Then get enhanced metrics for each CWE by joining with Vulnerability
-        results = []
-        for basic_result in basic_results:
-            cwe_id = basic_result[0]
-            total_cves = basic_result[1]
-            
-            # Get enhanced metrics for this CWE
-            enhanced_metrics = session.query(
-                func.avg(Vulnerability.cvss_score).label('avg_cvss'),
-                func.max(Vulnerability.cvss_score).label('max_cvss'),
-                func.min(Vulnerability.cvss_score).label('min_cvss'),
-                func.sum(case((Vulnerability.base_severity == 'CRITICAL', 1), else_=0)).label('critical_count'),
-                func.sum(case((Vulnerability.base_severity == 'HIGH', 1), else_=0)).label('high_count'),
-                func.sum(case((Vulnerability.base_severity == 'MEDIUM', 1), else_=0)).label('medium_count'),
-                func.sum(case((Vulnerability.base_severity == 'LOW', 1), else_=0)).label('low_count'),
-                func.sum(case((Vulnerability.published_date >= recent_date, 1), else_=0)).label('recent_cves'),
-                func.count(func.distinct(extract('year', Vulnerability.published_date))).label('active_years')
-            ).join(
-                Weakness, Weakness.cve_id == Vulnerability.cve_id
-            ).filter(
-                Weakness.cwe_id == cwe_id,
-                Vulnerability.published_date.isnot(None)
+        fallback_data = None
+        if not basic_results:
+            vquery = session.query(
+                Vulnerability.description,
+                Vulnerability.cvss_score,
+                Vulnerability.base_severity,
+                Vulnerability.published_date
             )
-            
-            # Apply vendor filter to enhanced metrics as well (unified filter)
-            try:
-                if selected_vendor_ids:
+            if selected_vendor_ids:
+                try:
                     from sqlalchemy import union
                     from app.models.cve_vendor import CVEVendor
                     from app.models.cve_product import CVEProduct
@@ -1602,122 +1968,265 @@ def get_top_cwes() -> Response:
                         .filter(Product.vendor_id.in_(selected_vendor_ids))
                     )
                     cves_unificados_sq = union(cves_por_vendor, cves_por_produto_vendor).subquery()
-                    enhanced_metrics = enhanced_metrics.filter(
+                    vquery = vquery.filter(
                         Vulnerability.cve_id.in_(session.query(cves_unificados_sq.c.cve_id))
+                    ).distinct()
+                except Exception:
+                    from app.models.cve_vendor import CVEVendor
+                    from app.models.cve_product import CVEProduct
+                    from app.models.product import Product
+                    vquery = (
+                        vquery
+                        .outerjoin(CVEVendor, CVEVendor.cve_id == Vulnerability.cve_id)
+                        .outerjoin(CVEProduct, CVEProduct.cve_id == Vulnerability.cve_id)
+                        .outerjoin(Product, Product.id == CVEProduct.product_id)
+                        .filter(or_(CVEVendor.vendor_id.in_(selected_vendor_ids), Product.vendor_id.in_(selected_vendor_ids)))
+                        .distinct()
                     )
-            except Exception:
-                pass
-
-            enhanced_metrics = enhanced_metrics.first()
-            
-            # Combine basic count with enhanced metrics
-            results.append((
-                cwe_id,
-                total_cves,
-                enhanced_metrics[0] if enhanced_metrics else None,  # avg_cvss
-                enhanced_metrics[1] if enhanced_metrics else None,  # max_cvss
-                enhanced_metrics[2] if enhanced_metrics else None,  # min_cvss
-                enhanced_metrics[3] if enhanced_metrics else 0,     # critical_count
-                enhanced_metrics[4] if enhanced_metrics else 0,     # high_count
-                enhanced_metrics[5] if enhanced_metrics else 0,     # medium_count
-                enhanced_metrics[6] if enhanced_metrics else 0,     # low_count
-                enhanced_metrics[7] if enhanced_metrics else 0,     # recent_cves
-                enhanced_metrics[8] if enhanced_metrics else 0      # active_years
-            ))
+            rows = vquery.all()
+            import re as _re
+            counts = {}
+            recent_date = datetime.now() - timedelta(days=365)
+            for r in rows:
+                desc_text = r[0] or ''
+                cvss = r[1]
+                sev = (r[2] or '').upper()
+                pd = r[3]
+                for m in _re.finditer(r"CWE-\d+", desc_text):
+                    code = m.group(0)
+                    if code not in counts:
+                        counts[code] = {
+                            'total': 0,
+                            'cvss_sum': 0.0,
+                            'cvss_n': 0,
+                            'critical': 0,
+                            'high': 0,
+                            'medium': 0,
+                            'low': 0,
+                            'recent': 0,
+                            'years': set()
+                        }
+                    c = counts[code]
+                    c['total'] += 1
+                    if cvss is not None:
+                        c['cvss_sum'] += float(cvss)
+                        c['cvss_n'] += 1
+                    if sev == 'CRITICAL':
+                        c['critical'] += 1
+                    elif sev == 'HIGH':
+                        c['high'] += 1
+                    elif sev == 'MEDIUM':
+                        c['medium'] += 1
+                    elif sev == 'LOW':
+                        c['low'] += 1
+                    if pd:
+                        if pd >= recent_date:
+                            c['recent'] += 1
+                        try:
+                            counts[code]['years'].add(pd.year)
+                        except Exception:
+                            pass
+            all_data = []
+            for code, data in sorted(counts.items(), key=lambda kv: kv[1]['total'], reverse=True):
+                if search_query and (code.find(search_query) == -1):
+                    continue
+                total_cves = data['total']
+                avg_cvss = round((data['cvss_sum'] / data['cvss_n']), 2) if data['cvss_n'] > 0 else 0.0
+                critical_count = data['critical']
+                high_count = data['high']
+                medium_count = data['medium']
+                low_count = data['low']
+                recent_cves = data['recent']
+                active_years = len(data['years'])
+                critical_percentage = round((critical_count / total_cves * 100), 1) if total_cves > 0 else 0.0
+                trend_percentage = round((recent_cves / total_cves * 100), 1) if total_cves > 0 else 0.0
+                if trend_percentage > 20:
+                    trend_status = 'Alta'
+                    trend_indicator = '🔴'
+                elif trend_percentage > 10:
+                    trend_status = 'Média'
+                    trend_indicator = '🟡'
+                else:
+                    trend_status = 'Baixa'
+                    trend_indicator = '🟢'
+                risk_score = round(((avg_cvss * 0.4) + (critical_percentage * 0.1) + (trend_percentage * 0.05) + (min(active_years, 10) * 0.05)), 2)
+                if critical_count > 0:
+                    primary_severity = 'CRITICAL'
+                elif high_count > 0:
+                    primary_severity = 'HIGH'
+                elif medium_count > 0:
+                    primary_severity = 'MEDIUM'
+                else:
+                    primary_severity = 'LOW'
+                if risk_score >= 7.0:
+                    risk_level = 'Alto'
+                elif risk_score >= 4.0:
+                    risk_level = 'Médio'
+                else:
+                    risk_level = 'Baixo'
+                cwe_data = {
+                    'cwe': code,
+                    'count': total_cves,
+                    'avg_cvss': avg_cvss,
+                    'max_cvss': avg_cvss,
+                    'min_cvss': avg_cvss,
+                    'severity_distribution': {
+                        'critical': critical_count,
+                        'high': high_count,
+                        'medium': medium_count,
+                        'low': low_count
+                    },
+                    'primary_severity': primary_severity,
+                    'critical_percentage': critical_percentage,
+                    'recent_cves': recent_cves,
+                    'trend_percentage': trend_percentage,
+                    'trend_status': trend_status,
+                    'trend_indicator': trend_indicator,
+                    'active_years': active_years,
+                    'risk_score': risk_score,
+                    'risk_level': risk_level
+                }
+                if severity_filter and primary_severity != severity_filter:
+                    continue
+                if risk_threshold is not None:
+                    if risk_score < risk_threshold:
+                        continue
+                elif risk_label_filter:
+                    if risk_level != risk_label_filter:
+                        continue
+                all_data.append(cwe_data)
+            fallback_data = all_data
         
-        # Process results and apply filters
-        all_data = []
-        for result in results:
-            cwe_id = result[0]
-            total_cves = result[1]
-            avg_cvss = round(result[2], 2) if result[2] else 0.0
-            max_cvss = round(result[3], 2) if result[3] else 0.0
-            min_cvss = round(result[4], 2) if result[4] else 0.0
-            critical_count = result[5] or 0
-            high_count = result[6] or 0
-            medium_count = result[7] or 0
-            low_count = result[8] or 0
-            recent_cves = result[9] or 0
-            active_years = result[10] or 0
-            
-            # Calculate derived metrics
-            critical_percentage = round((critical_count / total_cves * 100), 1) if total_cves > 0 else 0.0
-            trend_percentage = round((recent_cves / total_cves * 100), 1) if total_cves > 0 else 0.0
-            
-            # Determine trend status
-            if trend_percentage > 20:
-                trend_status = 'Alta'
-                trend_indicator = '🔴'
-            elif trend_percentage > 10:
-                trend_status = 'Média'
-                trend_indicator = '🟡'
-            else:
-                trend_status = 'Baixa'
-                trend_indicator = '🟢'
-            
-            # Calculate risk score (weighted combination of CVSS, critical %, and trend)
-            risk_score = round((
-                (avg_cvss * 0.4) + 
-                (critical_percentage * 0.1) + 
-                (trend_percentage * 0.05) + 
-                (min(active_years, 10) * 0.05)
-            ), 2)
-            
-            # Determine primary severity based on distribution
-            if critical_count > 0:
-                primary_severity = 'CRITICAL'
-            elif high_count > 0:
-                primary_severity = 'HIGH'
-            elif medium_count > 0:
-                primary_severity = 'MEDIUM'
-            else:
-                primary_severity = 'LOW'
-            
-            # Determine risk level based on risk score
-            if risk_score >= 7.0:
-                risk_level = 'Alto'
-            elif risk_score >= 4.0:
-                risk_level = 'Médio'
-            else:
-                risk_level = 'Baixo'
-            
-            cwe_data = {
-                'cwe': cwe_id,
-                'count': total_cves,
-                'avg_cvss': avg_cvss,
-                'max_cvss': max_cvss,
-                'min_cvss': min_cvss,
-                'severity_distribution': {
-                    'critical': critical_count,
-                    'high': high_count,
-                    'medium': medium_count,
-                    'low': low_count
-                },
-                'primary_severity': primary_severity,
-                'critical_percentage': critical_percentage,
-                'recent_cves': recent_cves,
-                'trend_percentage': trend_percentage,
-                'trend_status': trend_status,
-                'trend_indicator': trend_indicator,
-                'active_years': active_years,
-                'risk_score': risk_score,
-                'risk_level': risk_level
-            }
-            
-            # Apply severity filter
-            if severity_filter and primary_severity != severity_filter:
-                continue
-
-            # Apply risk filter (numeric threshold or label)
-            if risk_threshold is not None:
-                if risk_score < risk_threshold:
+        if fallback_data is None:
+            results = []
+            for basic_result in basic_results:
+                cwe_id = basic_result[0]
+                total_cves = basic_result[1]
+                enhanced_metrics = session.query(
+                    func.avg(Vulnerability.cvss_score).label('avg_cvss'),
+                    func.max(Vulnerability.cvss_score).label('max_cvss'),
+                    func.min(Vulnerability.cvss_score).label('min_cvss'),
+                    func.sum(case((Vulnerability.base_severity == 'CRITICAL', 1), else_=0)).label('critical_count'),
+                    func.sum(case((Vulnerability.base_severity == 'HIGH', 1), else_=0)).label('high_count'),
+                    func.sum(case((Vulnerability.base_severity == 'MEDIUM', 1), else_=0)).label('medium_count'),
+                    func.sum(case((Vulnerability.base_severity == 'LOW', 1), else_=0)).label('low_count'),
+                    func.sum(case((Vulnerability.published_date >= recent_date, 1), else_=0)).label('recent_cves'),
+                    func.count(func.distinct(extract('year', Vulnerability.published_date))).label('active_years')
+                ).join(
+                    Weakness, Weakness.cve_id == Vulnerability.cve_id
+                ).filter(
+                    Weakness.cwe_id == cwe_id,
+                    Vulnerability.published_date.isnot(None)
+                )
+                try:
+                    if selected_vendor_ids:
+                        from sqlalchemy import union
+                        from app.models.cve_vendor import CVEVendor
+                        from app.models.cve_product import CVEProduct
+                        from app.models.product import Product
+                        cves_por_vendor = (
+                            session
+                            .query(CVEVendor.cve_id)
+                            .filter(CVEVendor.vendor_id.in_(selected_vendor_ids))
+                        )
+                        cves_por_produto_vendor = (
+                            session
+                            .query(CVEProduct.cve_id)
+                            .join(Product, Product.id == CVEProduct.product_id)
+                            .filter(Product.vendor_id.in_(selected_vendor_ids))
+                        )
+                        cves_unificados_sq = union(cves_por_vendor, cves_por_produto_vendor).subquery()
+                        enhanced_metrics = enhanced_metrics.filter(
+                            Vulnerability.cve_id.in_(session.query(cves_unificados_sq.c.cve_id))
+                        )
+                except Exception:
+                    pass
+                enhanced_metrics = enhanced_metrics.first()
+                results.append((
+                    cwe_id,
+                    total_cves,
+                    enhanced_metrics[0] if enhanced_metrics else None,
+                    enhanced_metrics[1] if enhanced_metrics else None,
+                    enhanced_metrics[2] if enhanced_metrics else None,
+                    enhanced_metrics[3] if enhanced_metrics else 0,
+                    enhanced_metrics[4] if enhanced_metrics else 0,
+                    enhanced_metrics[5] if enhanced_metrics else 0,
+                    enhanced_metrics[6] if enhanced_metrics else 0,
+                    enhanced_metrics[7] if enhanced_metrics else 0,
+                    enhanced_metrics[8] if enhanced_metrics else 0
+                ))
+            all_data = []
+            for result in results:
+                cwe_id = result[0]
+                total_cves = result[1]
+                avg_cvss = round(result[2], 2) if result[2] else 0.0
+                max_cvss = round(result[3], 2) if result[3] else 0.0
+                min_cvss = round(result[4], 2) if result[4] else 0.0
+                critical_count = result[5] or 0
+                high_count = result[6] or 0
+                medium_count = result[7] or 0
+                low_count = result[8] or 0
+                recent_cves = result[9] or 0
+                active_years = result[10] or 0
+                critical_percentage = round((critical_count / total_cves * 100), 1) if total_cves > 0 else 0.0
+                trend_percentage = round((recent_cves / total_cves * 100), 1) if total_cves > 0 else 0.0
+                if trend_percentage > 20:
+                    trend_status = 'Alta'
+                    trend_indicator = '🔴'
+                elif trend_percentage > 10:
+                    trend_status = 'Média'
+                    trend_indicator = '🟡'
+                else:
+                    trend_status = 'Baixa'
+                    trend_indicator = '🟢'
+                risk_score = round(((avg_cvss * 0.4) + (critical_percentage * 0.1) + (trend_percentage * 0.05) + (min(active_years, 10) * 0.05)), 2)
+                if critical_count > 0:
+                    primary_severity = 'CRITICAL'
+                elif high_count > 0:
+                    primary_severity = 'HIGH'
+                elif medium_count > 0:
+                    primary_severity = 'MEDIUM'
+                else:
+                    primary_severity = 'LOW'
+                if risk_score >= 7.0:
+                    risk_level = 'Alto'
+                elif risk_score >= 4.0:
+                    risk_level = 'Médio'
+                else:
+                    risk_level = 'Baixo'
+                cwe_data = {
+                    'cwe': cwe_id,
+                    'count': total_cves,
+                    'avg_cvss': avg_cvss,
+                    'max_cvss': max_cvss,
+                    'min_cvss': min_cvss,
+                    'severity_distribution': {
+                        'critical': critical_count,
+                        'high': high_count,
+                        'medium': medium_count,
+                        'low': low_count
+                    },
+                    'primary_severity': primary_severity,
+                    'critical_percentage': critical_percentage,
+                    'recent_cves': recent_cves,
+                    'trend_percentage': trend_percentage,
+                    'trend_status': trend_status,
+                    'trend_indicator': trend_indicator,
+                    'active_years': active_years,
+                    'risk_score': risk_score,
+                    'risk_level': risk_level
+                }
+                if severity_filter and primary_severity != severity_filter:
                     continue
-            elif risk_label_filter:
-                # Compare label filter to computed risk level
-                if risk_level != risk_label_filter:
-                    continue
-            
-            all_data.append(cwe_data)
+                if risk_threshold is not None:
+                    if risk_score < risk_threshold:
+                        continue
+                elif risk_label_filter:
+                    if risk_level != risk_label_filter:
+                        continue
+                all_data.append(cwe_data)
+        else:
+            all_data = fallback_data
         
         # Apply sorting
         reverse_order = sort_order.lower() == 'desc'
@@ -1765,7 +2274,8 @@ def get_top_cwes() -> Response:
             'metadata': {
                 'recent_period_days': 365,
                 'calculated_at': datetime.now().isoformat(),
-                'total_unfiltered_items': len(all_data) if not severity_filter and not risk_filter and not search_query else None
+                'total_unfiltered_items': len(all_data) if not severity_filter and not risk_filter and not search_query else None,
+                'data_source': 'nvd_raw' if (fallback_data is not None) else 'normalized'
             }
         })
         

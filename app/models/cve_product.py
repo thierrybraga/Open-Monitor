@@ -1,10 +1,11 @@
 # E:\Open-Monitor\models\cve_product.py
 
-from sqlalchemy import Column, String, Integer, ForeignKey, PrimaryKeyConstraint, Index
+from sqlalchemy import Column, String, Integer, ForeignKey, PrimaryKeyConstraint, Index, DateTime
 from sqlalchemy.orm import relationship
 from app.extensions import db
 from app.models.vulnerability import Vulnerability # <-- Adicionado: Importa a classe Vulnerability
 from typing import TYPE_CHECKING
+from datetime import datetime, timezone
 
 if TYPE_CHECKING:
     from app.models.product import Product
@@ -24,6 +25,7 @@ class CVEProduct(db.Model):
     product_id: int = Column(Integer, ForeignKey('product.id', ondelete='CASCADE'),
                             nullable=False, index=True,
                             doc="Chave estrangeira para o ID do produto em product.")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     __table_args__ = (
         PrimaryKeyConstraint('cve_id', 'product_id', name='pk_cve_product'),

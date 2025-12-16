@@ -148,12 +148,15 @@ def seed_assets():
                 )
             continue
 
+        from datetime import datetime
         asset = Asset(
             name=data["name"],
             ip_address=data["ip_address"],
             status="active",
             owner_id=admin.id,
             vendor_id=vendor_id,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
         )
         db.session.add(asset)
         try:

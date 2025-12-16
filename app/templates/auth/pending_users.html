@@ -1,0 +1,59 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Aprovação de Usuários{% endblock %}
+
+{% block content %}
+<section class="container py-4">
+  <h1 class="mb-4">Usuários Pendentes</h1>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  {% if users %}
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Usuário</th>
+            <th>E-mail</th>
+            <th>Criado em</th>
+            <th>Confirmado</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td>{{ u.username }}</td>
+            <td>{{ u.email }}</td>
+            <td>{{ u.created_at|datetimeformat('%d/%m/%Y %H:%M') }}</td>
+            <td>{{ 'Sim' if u.email_confirmed else 'Não' }}</td>
+            <td>
+              <form method="POST" action="{{ url_for('auth.approve_user', user_id=u.id) }}">
+                <button class="btn btn-success btn-sm" type="submit">
+                  Aprovar
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="text-muted">Nenhum usuário pendente.</p>
+  {% endif %}
+
+  <div class="mt-4">
+    <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">Voltar</a>
+  </div>
+</section>
+{% endblock %}

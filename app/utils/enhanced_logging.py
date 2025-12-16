@@ -277,9 +277,25 @@ class EnhancedLogger:
             self._log_with_color(LogLevel.INFO, message, Fore.GREEN, "🌐")
     
     def performance_metric(self, metric_name: str, value: Any, unit: str = ""):
-        """Log de métricas de performance."""
         message = f"📊 {metric_name}: {value}{unit}"
         self._log_with_color(LogLevel.INFO, message, Fore.YELLOW, "📊")
+        try:
+            import json
+            from datetime import datetime
+            payload = {
+                "event": "metric",
+                "metric_name": metric_name,
+                "unit": unit or None,
+                "logger": self.logger.name,
+                "ts": datetime.utcnow().isoformat() + "Z"
+            }
+            if isinstance(value, dict):
+                payload["fields"] = value
+            else:
+                payload["value"] = value
+            self.logger.info(json.dumps(payload, ensure_ascii=False))
+        except Exception:
+            self.logger.info(message)
     
     def get_stats(self) -> Dict[str, int]:
         """Obtém estatísticas de logging."""
@@ -597,13 +613,11 @@ class NVDLogger(EnhancedLogger):
         self.section(f"Sincronização {sync_type} Iniciada")
     
     def sync_completed(self, processed: int, duration: float, errors: int = 0):
-        """Log de conclusão de sincronização."""
         message = f"✅ SINCRONIZAÇÃO CONCLUÍDA: {processed} vulnerabilidades em {duration:.2f}s"
         if errors > 0:
             message += f" ({errors} erros)"
-        
         self.success(message)
-        self.performance_metric("Taxa de processamento", f"{processed/duration:.1f}", " vuln/s")
+        self.performance_metric("processing_rate", processed / duration, "vulns_per_second")
     
     def print_nvd_stats(self):
         """Imprime estatísticas NVD."""

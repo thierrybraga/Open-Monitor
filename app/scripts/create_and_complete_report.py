@@ -39,13 +39,29 @@ def main():
         # Definir dados mínimos e concluir
         report.content = {
             'summary': 'Resumo executivo gerado para validação.',
-            'details': 'Conteúdo de teste para geração de PDF.'
+            'details': 'Conteúdo de teste para geração de PDF.',
+            # Exercitar mapeamento de BIA e plano de remediação
+            'bia_analysis': {
+                'financial_impact': 'Perdas estimadas de R$ 200k se não mitigado.',
+                'operational_impact': 'Interrupções de serviços críticos por até 4h.',
+                'reputation_impact': 'Danos de imagem com clientes estratégicos.',
+                'compliance_impact': 'Risco de não conformidade com LGPD/ISO 27001.'
+            },
+            'remediation_plan': {
+                'title': 'Plano de Remediação Prioritário',
+                'description': 'Aplicar patches e reforçar controles de acesso.',
+                'priority': 'Alta',
+                'effort': 'Médio',
+                'timeline': '2 semanas'
+            }
         }
         report.ai_analysis = {'executive_summary': 'Análise executiva de teste.'}
-        # Atributos não persistentes usados pelo serviço/controlador
-        report.include_charts = True
-        report.chart_types = ['cvss_distribution']
-        report.export_formats = ['html', 'pdf']
+        # Metadados controlam flags de exportação e gráficos
+        report.report_metadata = {
+            'include_charts': True,
+            'chart_types': ['cvss_distribution'],
+            'export_formats': ['html', 'pdf']
+        }
         report.status = ReportStatus.COMPLETED
         report.generated_at = datetime.utcnow()
         db.session.commit()

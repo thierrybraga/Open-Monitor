@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Tuple
 
 from sqlalchemy import select, func
@@ -51,7 +51,7 @@ def upsert_sync_metadata(
             raise RuntimeError("Não foi possível resolver engine/bind para sessão do SQLAlchemy")
 
         dialect_name = engine.dialect.name
-        now_dt = last_modified or datetime.utcnow()
+        now_dt = last_modified or datetime.now(timezone.utc)
         # Limitar tamanho de value/status para evitar erros em colunas pequenas
         safe_value = (value or '').strip()
         if len(safe_value) > 255:

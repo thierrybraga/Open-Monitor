@@ -12,9 +12,7 @@
 <meta name="robots" content="noindex, nofollow">
 {% endblock %}
 
-{% block extra_css %}
-<link href="{{ url_for('static', filename='css/pages/register.css') }}" rel="stylesheet">
-{% endblock %}
+{% block extra_css %}{% endblock %}
 
 {% block content %}
 <section class="auth-container auth-minimal container d-flex align-items-center justify-content-center min-vh-100">
@@ -81,38 +79,18 @@
 
       <div class="form-group mb-3">
         <label for="password" class="form-label required">Senha</label>
-        <div class="input-group">
-          {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), id="password", placeholder="Digite sua senha", autocomplete="new-password") }}
-          <button class="btn btn-outline-secondary" type="button" id="togglePassword" aria-label="Mostrar/ocultar senha">
-            <i class="bi bi-eye" id="togglePasswordIcon"></i>
-          </button>
-        </div>
+        {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""), id="password", placeholder="Digite sua senha", autocomplete="new-password", minlength="8", required=True) }}
         {% if form.password.errors %}
           <div class="invalid-feedback">{{ form.password.errors[0] }}</div>
         {% endif %}
-        <div class="password-strength mt-2">
-          <div class="password-strength-bar"><div class="password-strength-fill" id="passwordStrengthFill"></div></div>
-          <small class="password-strength-text" id="passwordStrengthText">Digite uma senha</small>
-        </div>
       </div>
 
       <div class="form-group mb-3">
         <label for="confirm_password" class="form-label required">Confirmar senha</label>
-        <div class="input-group">
-          {{ form.confirm_password(class="form-control" + (" is-invalid" if form.confirm_password.errors else ""), id="confirm_password", placeholder="Confirme sua senha", autocomplete="new-password") }}
-          <button class="btn btn-outline-secondary" type="button" id="toggleConfirmPassword" aria-label="Mostrar/ocultar senha">
-            <i class="bi bi-eye" id="toggleConfirmPasswordIcon"></i>
-          </button>
-        </div>
+        {{ form.confirm_password(class="form-control" + (" is-invalid" if form.confirm_password.errors else ""), id="confirm_password", placeholder="Confirme sua senha", autocomplete="new-password", minlength="8", required=True) }}
         {% if form.confirm_password.errors %}
           <div class="invalid-feedback">{{ form.confirm_password.errors[0] }}</div>
         {% endif %}
-        <div class="password-match mt-2" id="passwordMatch" style="display: none;">
-          <small class="text-success"><i class="bi bi-check"></i> As senhas coincidem</small>
-        </div>
-        <div class="password-mismatch mt-2" id="passwordMismatch" style="display: none;">
-          <small class="text-danger"><i class="bi bi-x"></i> As senhas não coincidem</small>
-        </div>
       </div>
 
       <div class="form-group mb-3">

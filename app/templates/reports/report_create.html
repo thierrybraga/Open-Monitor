@@ -448,6 +448,28 @@
                 </div>
             </div>
 
+            <!-- FortiGuide / FortiGate Release Notes -->
+            <div class="form-section">
+                <h5><i class="bi bi-journal-text me-2"></i>Notas de Release FortiGate</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="form-check form-switch">
+                            {{ form.include_fortiguide_notes(class="form-check-input", id="include_fortiguide_notes") }}
+                            {{ form.include_fortiguide_notes.label(class="form-check-label", for="include_fortiguide_notes") }}
+                        </div>
+                        <small class="text-muted">Inclui notas de release do FortiGate no Estudo Técnico.</small>
+                    </div>
+                    <div class="col-md-6" id="fortiguide-versions-container" style="display: none;">
+                        {{ form.fortiguide_versions.label(class="form-label") }}
+                        {{ form.fortiguide_versions(class="form-select", multiple=true) }}
+                        {% if form.fortiguide_versions.errors %}
+                            <div class="text-danger small">{{ form.fortiguide_versions.errors[0] }}</div>
+                        {% endif %}
+                        <small class="text-muted">Selecione versões FortiOS/FortiGate relevantes para seu ambiente.</small>
+                    </div>
+                </div>
+            </div>
+
             <div class="form-section">
                 <h5><i class="bi bi-tags me-2"></i>Tags Personalizadas</h5>
                 <div class="row g-3">
@@ -556,6 +578,15 @@ document.addEventListener('DOMContentLoaded', function() {
     if (aiOptionsInit && includeAIEl) aiOptionsInit.style.display = includeAIEl.checked ? 'block' : 'none';
     const chartOptionsInit = document.getElementById('chart-options');
     if (chartOptionsInit && includeChartsEl) chartOptionsInit.style.display = includeChartsEl.checked ? 'block' : 'none';
+
+    // FortiGuide: mostrar/esconder seleção de versões
+    const fgToggle = document.getElementById('include_fortiguide_notes');
+    const fgContainer = document.getElementById('fortiguide-versions-container');
+    if (fgToggle) {
+        const updateFG = () => { if (fgContainer) fgContainer.style.display = fgToggle.checked ? 'block' : 'none'; };
+        fgToggle.addEventListener('change', updateFG);
+        updateFG();
+    }
 
     // Validação simples de e-mail no submit quando notificações estiverem habilitadas
     const formEl = document.getElementById('reportForm');

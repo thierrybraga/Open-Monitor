@@ -59,12 +59,14 @@
 @import 'components/forms.css'; /* Estilos para formulários */
 @import 'components/nvd-cards.css'; /* Estilos modernos para cards NVD */
 @import 'components/card-loading.css'; /* Estilos para loading de cards */
+@import 'components/table.css'; /* Tabelas reutilizáveis */
 
 /* f. Páginas Específicas - Estilos para páginas individuais */
 @import 'pages/auth.css'; /* Estilos modernos para autenticação */
 @import 'pages/dashboard.css'; /* Estilos do dashboard */
 @import 'pages/vulnerabilities.css'; /* Estilos da página de vulnerabilidades */
 @import 'pages/vulnerability-details.css'; /* Estilos dos detalhes de vulnerabilidades */
+@import 'pages/severity-details.css'; /* Estilos de severidade/detalhes adicionais */
 @import 'pages/assets.css'; /* Estilos da página de assets */
 @import 'pages/monitoring.css'; /* Estilos da página de monitoramento */
 @import 'pages/settings.css'; /* Estilos da página de configurações */
@@ -72,6 +74,13 @@
 @import 'pages/enhanced-analytics.css'; /* Estilos de analytics avançados */
 @import 'pages/chat.css'; /* Estilos da página de chat */
 @import 'pages/newsletter.css'; /* Estilos da newsletter */
+@import 'pages/report_list.css'; /* Estilos da lista de relatórios */
+@import 'pages/reports.css'; /* Estilos de visualização de relatórios */
+@import 'pages/register.css'; /* Estilos de registro */
+@import 'pages/forgot-password.css'; /* Estilos de esqueci a senha */
+@import 'pages/reset-password.css'; /* Estilos de redefinição de senha */
+@import 'pages/vendors.css'; /* Estilos da página de seleção de vendors */
+@import 'pages/vulnerabilities.chart.css'; /* Estilos de gráficos da lista de vulnerabilidades */
 
 /* g. Bibliotecas Externas - Vendor CSS */
 /* Movido para o topo para garantir prioridade de base. Removido aqui para evitar duplicação. */

@@ -68,7 +68,7 @@
   function ModernPagination(options) {
     this.options = assign({
       containerSelector: '.pagination-section',
-      tableSelector: '.vulnerabilities-table, .recent-vulnerabilities-table',
+      tableSelector: '.vuln-table, .vulnerabilities-table, .recent-vulnerabilities-table',
       loadingClass: 'pagination-loading',
       animationDuration: 300
     }, options || {});
@@ -223,12 +223,37 @@
     if (newCounter && currentCounter) {
       currentCounter.textContent = newCounter.textContent;
     }
+    // Fallback: update showingCount based on new table rows
+    var showingEl = document.getElementById('showingCount');
+    var table = document.querySelector(this.options.tableSelector);
+    if (showingEl && table) {
+      try {
+        var rows = table.querySelectorAll('tbody tr');
+        var count = 0;
+        for (var i = 0; i < rows.length; i++) {
+          // If filters will run later, count all; otherwise respect current display
+          var style = rows[i].style && rows[i].style.display;
+          count += (style === 'none') ? 0 : 1;
+        }
+        showingEl.textContent = String(count);
+      } catch (e) {
+        // silent
+      }
+    }
   };
 
   ModernPagination.prototype.reinitializeTableFeatures = function() {
     try {
       if (window.initializeTableSorting) { window.initializeTableSorting(); }
       if (window.initializeTableFiltering) { window.initializeTableFiltering(); }
+      // If details table is present, rebind its features
+      if (window.vulnTable) {
+        try {
+          if (typeof window.vulnTable.initSorting === 'function') { window.vulnTable.initSorting(); }
+          if (typeof window.vulnTable.initTooltips === 'function') { window.vulnTable.initTooltips(); }
+          if (typeof window.vulnTable.applyFilters === 'function') { window.vulnTable.applyFilters(); }
+        } catch (_e) {}
+      }
       var evt;
       try {
         evt = new CustomEvent('paginationUpdated', { detail: { timestamp: Date.now() } });

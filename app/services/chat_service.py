@@ -4,11 +4,12 @@ import logging
 import os
 import time
 from typing import Dict, List, Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from flask import current_app
 from openai import OpenAI
+import requests
 from dotenv import load_dotenv, dotenv_values
 try:
     import tiktoken  # opcional para contagem precisa de tokens
@@ -40,53 +41,62 @@ class ChatService:
         self.backoff_base = 1.5
         
     def _initialize_openai(self):
-        """Inicializa o cliente OpenAI dentro do contexto da aplicação."""
+        """Inicializa cliente de LLM conforme configuração."""
         if self.client is not None:
             return
             
         try:
-            # Preferir config do Flask; se ausente, fazer fallback para variáveis de ambiente
-            self.api_key = current_app.config.get('OPENAI_API_KEY') or os.getenv('OPENAI_API_KEY')
-            self.model = current_app.config.get('OPENAI_MODEL', 'gpt-3.5-turbo') or os.getenv('OPENAI_MODEL', 'gpt-3.5-turbo')
+            provider = (current_app.config.get('LLM_PROVIDER') or os.getenv('LLM_PROVIDER') or 'openai').lower()
+            self.provider = provider
+            self.api_key = (
+                current_app.config.get('LLM_API_KEY')
+                or current_app.config.get('OPENAI_API_KEY')
+                or os.getenv('LLM_API_KEY')
+                or os.getenv('OPENAI_API_KEY')
+            )
+            self.model = (
+                current_app.config.get('LLM_MODEL')
+                or current_app.config.get('OPENAI_MODEL')
+                or os.getenv('LLM_MODEL')
+                or os.getenv('OPENAI_MODEL')
+                or 'gpt-3.5-turbo'
+            )
             self.max_tokens = current_app.config.get('OPENAI_MAX_TOKENS', 1000)
             self.temperature = current_app.config.get('OPENAI_TEMPERATURE', 0.7)
             self.timeout = current_app.config.get('OPENAI_TIMEOUT', 30)
             self.max_retries = current_app.config.get('OPENAI_MAX_RETRIES', 2)
             self.backoff_base = current_app.config.get('OPENAI_RETRY_BACKOFF', 1.5)
+            self.base_url = current_app.config.get('LLM_BASE_URL') or os.getenv('LLM_BASE_URL')
+            self.completion_param = (current_app.config.get('LLM_COMPLETION_TOKENS_PARAM') or os.getenv('LLM_COMPLETION_TOKENS_PARAM') or '').lower()
             try:
                 logger.debug(f"OpenAI init: api_key_present={bool(self.api_key)}, model={self.model}, max_tokens={self.max_tokens}, temperature={self.temperature}")
             except Exception:
                 pass
-            # Se a chave ainda não estiver presente, tente carregar .env explicitamente
-            if not self.api_key:
-                try:
-                    repo_root = Path(__file__).resolve().parents[2]
-                    dotenv_path = repo_root / '.env'
-                    # Primeiro, tentar carregar nas variáveis de ambiente
-                    load_dotenv(dotenv_path=dotenv_path)
-                    self.api_key = os.getenv('OPENAI_API_KEY')
-                    self.model = os.getenv('OPENAI_MODEL', self.model)
-                    if not self.api_key:
-                        # Como fallback definitivo, ler o arquivo diretamente
-                        values = dotenv_values(dotenv_path)
-                        self.api_key = values.get('OPENAI_API_KEY')
-                        self.model = values.get('OPENAI_MODEL', self.model)
-                    try:
-                        logger.info(
-                            f"ChatService dotenv loaded from {dotenv_path}, OPENAI_API_KEY present={bool(self.api_key)}, model={self.model}"
-                        )
-                    except Exception:
-                        pass
-                except Exception as e:
-                    logger.warning(f"ChatService dotenv load failed: {e}")
             
+            if self.provider in ('gemini','google'):
+                self.client = None
+                self.demo_mode = not bool(self.api_key)
+                if self.demo_mode:
+                    logger.warning("LLM_API_KEY não configurada para Gemini - modo demo ativo")
+                else:
+                    logger.info("Cliente Gemini configurado para uso via REST")
+                return
+
+            if self.provider == 'lmstudio' and not self.base_url:
+                self.base_url = 'http://localhost:1234/v1'
+            if self.provider == 'lmstudio' and not self.api_key:
+                self.api_key = 'lm-studio'
+
             if not self.api_key:
                 logger.warning("OPENAI_API_KEY não configurada - modo demo ativo")
                 self.demo_mode = True
                 return
                 
-            self.client = OpenAI(api_key=self.api_key)
-            logger.info("Cliente OpenAI inicializado com sucesso")
+            if self.base_url:
+                self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
+            else:
+                self.client = OpenAI(api_key=self.api_key)
+            logger.info(f"Cliente LLM inicializado: provider={self.provider}")
             
         except Exception as e:
             logger.error(f"Erro ao inicializar cliente OpenAI: {e}")
@@ -117,18 +127,67 @@ class ChatService:
             return 0
 
     def _chat_completion_with_retries(self, messages: List[Dict[str, str]]):
-        """Executa chat.completions com retries e backoff."""
+        """Executa geração com retries e backoff conforme provider."""
         attempt = 0
         last_err = None
         while attempt < max(1, int(self.max_retries)):
             try:
-                return self.client.chat.completions.create(
-                    model=self.model,
-                    messages=messages,
-                    max_tokens=self.max_tokens,
-                    temperature=self.temperature,
-                    stream=False
-                )
+                if getattr(self, 'provider', 'openai') in ('gemini','google'):
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
+                    content = "\n".join([m.get('content','') for m in messages])
+                    payload = {"contents": [{"role": "user", "parts": [{"text": content}]}]}
+                    r = requests.post(url, json=payload, timeout=self.timeout)
+                    r.raise_for_status()
+                    data = r.json()
+                    text = ''
+                    try:
+                        text = (data.get('candidates') or [{}])[0].get('content', {}).get('parts', [{}])[0].get('text') or ''
+                    except Exception:
+                        text = ''
+                    class Choice:
+                        def __init__(self, content):
+                            self.message = type('Msg', (), {'content': content})
+                    return type('Resp', (), {'choices': [Choice(text)], 'usage': None})
+                else:
+                    kwargs: Dict[str, Any] = {
+                        "model": self.model,
+                        "messages": messages,
+                        "temperature": self.temperature,
+                        "stream": False,
+                    }
+                    def _requires_max_completion_tokens(model: Optional[str]) -> bool:
+                        m = (model or '').lower()
+                        prefixes = (
+                            'gpt-5',
+                            'gpt-4.1',
+                            'gpt-4o',
+                            'o1',
+                            'o3',
+                            'o4',
+                        )
+                        return any(m.startswith(p) for p in prefixes)
+
+                    param = getattr(self, 'completion_param', '')
+                    requires_completion = _requires_max_completion_tokens(self.model)
+                    if param == 'max_completion_tokens':
+                        kwargs["max_completion_tokens"] = self.max_tokens
+                    elif param == 'max_tokens':
+                        if requires_completion:
+                            kwargs["max_completion_tokens"] = self.max_tokens
+                        else:
+                            kwargs["max_tokens"] = self.max_tokens
+                    else:
+                        if requires_completion:
+                            kwargs["max_completion_tokens"] = self.max_tokens
+                        else:
+                            kwargs["max_tokens"] = self.max_tokens
+                    try:
+                        logger.info(
+                            f"LLM request: provider={self.provider}, model={self.model}, param={'max_completion_tokens' if 'max_completion_tokens' in kwargs else 'max_tokens'}, max={self.max_tokens}"
+                        )
+                    except Exception:
+                        pass
+                    return self.client.chat.completions.create(**kwargs)
             except Exception as e:
                 last_err = e
                 attempt += 1
@@ -230,13 +289,33 @@ Se não souber algo específico, seja honesto e sugira onde o usuário pode enco
 
             assistant_message = ''
             response = None
-            if use_streaming:
+            if use_streaming and getattr(self, 'provider', 'openai') not in ('gemini','google'):
                 # Streaming: acumula os chunks e mantém contratos
                 try:
+                    def _requires_max_completion_tokens(model: Optional[str]) -> bool:
+                        m = (model or '').lower()
+                        prefixes = (
+                            'gpt-5',
+                            'gpt-4.1',
+                            'gpt-4o',
+                            'o1',
+                            'o3',
+                            'o4',
+                        )
+                        return any(m.startswith(p) for p in prefixes)
+
+                    param = getattr(self, 'completion_param', '')
+                    requires_completion = _requires_max_completion_tokens(self.model)
+                    if param == 'max_completion_tokens':
+                        token_kwargs = {"max_completion_tokens": self.max_tokens}
+                    elif param == 'max_tokens':
+                        token_kwargs = {"max_completion_tokens": self.max_tokens} if requires_completion else {"max_tokens": self.max_tokens}
+                    else:
+                        token_kwargs = {"max_completion_tokens": self.max_tokens} if requires_completion else {"max_tokens": self.max_tokens}
                     raw_stream = self.client.chat.completions.create(
                         model=self.model,
                         messages=conversation,
-                        max_tokens=self.max_tokens,
+                        **token_kwargs,
                         temperature=self.temperature,
                         stream=True
                     )
@@ -258,6 +337,10 @@ Se não souber algo específico, seja honesto e sugira onde o usuário pode enco
                 response = self._chat_completion_with_retries(conversation)
                 assistant_message = response.choices[0].message.content
             processing_time = time.time() - start_time
+            try:
+                logger.info(f"LLM response received: {assistant_message[:160]}...")
+            except Exception:
+                pass
             
             # Calcular tokens
             total_tokens = 0
@@ -454,8 +537,8 @@ Enquanto isso, posso ajudá-lo com informações gerais sobre o Open Monitor."""
         try:
             session = ChatSession.query.get(session_id)
             if session:
-                session.last_activity = datetime.utcnow()
-                session.updated_at = datetime.utcnow()
+                session.last_activity = datetime.now(timezone.utc)
+                session.updated_at = datetime.now(timezone.utc)
                 
         except Exception as e:
             logger.error(f"Erro ao atualizar atividade da sessão: {e}")

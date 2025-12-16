@@ -1,0 +1,117 @@
+{% extends 'core/base.html' %}
+{% block title %}Política de Privacidade{% endblock %}
+{% block meta_description %}Leia nossa Política de Privacidade: como coletamos, usamos e protegemos seus dados.{% endblock %}
+{% block meta_keywords %}privacidade, proteção de dados, política, LGPD, GDPR, segurança{% endblock %}
+{% block og_title %}Política de Privacidade{% endblock %}
+{% block og_description %}Entenda como tratamos seus dados pessoais e suas escolhas.{% endblock %}
+{% block og_type %}article{% endblock %}
+
+{% block content %}
+<section class="container py-4">
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item">
+        <a href="{{ url_for('main.index') }}"><i class="bi bi-house me-1"></i> Início</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">Política de Privacidade</li>
+    </ol>
+  </nav>
+
+  <!-- Header com ações -->
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+    <div>
+      <h1 class="h3 mb-1"><i class="bi bi-shield-lock me-2"></i>Política de Privacidade</h1>
+      <p class="text-muted small">Última atualização: {{ config.get('POLICY_UPDATED_AT', '2025') }}</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('main.terms') }}"><i class="bi bi-file-text me-1"></i>Termos de Uso</a>
+      <button class="btn btn-sm btn-outline-primary" type="button" onclick="window.print()"><i class="bi bi-printer me-1"></i>Imprimir</button>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Sumário lateral -->
+    <aside class="col-12 col-lg-3">
+      <div class="card shadow-sm position-sticky" style="top: 72px;">
+        <div class="card-header py-3">
+          <h2 class="h6 mb-0"><i class="bi bi-list-check me-2"></i>Sumário</h2>
+        </div>
+        <div class="list-group list-group-flush">
+          <a href="#overview" class="list-group-item list-group-item-action">Visão geral</a>
+          <a href="#data" class="list-group-item list-group-item-action">Dados que coletamos</a>
+          <a href="#usage" class="list-group-item list-group-item-action">Como usamos seus dados</a>
+          <a href="#sharing" class="list-group-item list-group-item-action">Compartilhamento</a>
+          <a href="#legal" class="list-group-item list-group-item-action">Base legal</a>
+          <a href="#rights" class="list-group-item list-group-item-action">Seus direitos</a>
+          <a href="#retention" class="list-group-item list-group-item-action">Retenção</a>
+          <a href="#security" class="list-group-item list-group-item-action">Segurança</a>
+          <a href="#transfers" class="list-group-item list-group-item-action">Transferências internacionais</a>
+          <a href="#contact" class="list-group-item list-group-item-action">Contato</a>
+          <a href="#updates" class="list-group-item list-group-item-action">Atualizações</a>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Conteúdo -->
+    <div class="col-12 col-lg-9">
+      <article class="card shadow-sm">
+        <div class="card-body">
+          <p class="lead">Esta Política descreve como coletamos, utilizamos e protegemos suas informações quando você utiliza nosso serviço.</p>
+
+          <h3 id="overview" class="mt-4">Visão geral <a href="#overview" class="text-muted small" aria-label="Link para seção Visão geral"><i class="bi bi-link-45deg"></i></a></h3>
+          <p>Esta Política de Privacidade descreve como coletamos, utilizamos e protegemos suas informações quando você utiliza nosso serviço.</p>
+
+          <h3 id="data" class="mt-4">Dados que coletamos <a href="#data" class="text-muted small" aria-label="Link para seção Dados que coletamos"><i class="bi bi-link-45deg"></i></a></h3>
+          <ul>
+            <li>Informações de conta: nome, e-mail e credenciais.</li>
+            <li>Dados de uso: páginas acessadas, consultas realizadas e interações.</li>
+            <li>Dados técnicos: endereço IP, tipo de navegador, sistema operacional.</li>
+          </ul>
+
+          <h3 id="usage" class="mt-4">Como usamos seus dados <a href="#usage" class="text-muted small" aria-label="Link para seção Como usamos seus dados"><i class="bi bi-link-45deg"></i></a></h3>
+          <ul>
+            <li>Fornecer e melhorar o serviço.</li>
+            <li>Garantir segurança, monitoramento e prevenção de abuso.</li>
+            <li>Comunicar atualizações relevantes e suporte, quando necessário.</li>
+          </ul>
+
+          <h3 id="sharing" class="mt-4">Compartilhamento <a href="#sharing" class="text-muted small" aria-label="Link para seção Compartilhamento"><i class="bi bi-link-45deg"></i></a></h3>
+          <p>Não vendemos seus dados. Podemos compartilhar com provedores de infraestrutura, análise e segurança, estritamente para operação do serviço, conforme contratos e leis aplicáveis.</p>
+
+          <h3 id="legal" class="mt-4">Base legal <a href="#legal" class="text-muted small" aria-label="Link para seção Base legal"><i class="bi bi-link-45deg"></i></a></h3>
+          <p>O tratamento de dados é realizado com base no seu consentimento, execução de contrato e interesses legítimos, conforme legislação aplicável (como LGPD/GDPR).</p>
+
+          <h3 id="rights" class="mt-4">Seus direitos <a href="#rights" class="text-muted small" aria-label="Link para seção Seus direitos"><i class="bi bi-link-45deg"></i></a></h3>
+          <ul>
+            <li>Acessar, corrigir ou excluir seus dados.</li>
+            <li>Portabilidade e restrição de tratamento.</li>
+            <li>Revogar consentimento quando aplicável.</li>
+          </ul>
+          <p>Para exercer seus direitos, entre em contato pelo e-mail indicado nas informações de contato.</p>
+
+          <h3 id="retention" class="mt-4">Retenção <a href="#retention" class="text-muted small" aria-label="Link para seção Retenção"><i class="bi bi-link-45deg"></i></a></h3>
+          <p>Manteremos os dados somente pelo tempo necessário para cumprir finalidades legais e operacionais.</p>
+
+          <h3 id="security" class="mt-4">Segurança <a href="#security" class="text-muted small" aria-label="Link para seção Segurança"><i class="bi bi-link-45deg"></i></a></h3>
+          <p>Aplicamos controles técnicos e administrativos para proteger seus dados. Nenhum sistema é 100% seguro, mas buscamos as melhores práticas.</p>
+
+          <h3 id="transfers" class="mt-4">Transferências internacionais <a href="#transfers" class="text-muted small" aria-label="Link para seção Transferências internacionais"><i class="bi bi-link-45deg"></i></a></h3>
+          <p>Se aplicável, realizaremos transferências seguindo garantias adequadas e requisitos legais.</p>
+
+          <h3 id="contact" class="mt-4">Contato <a href="#contact" class="text-muted small" aria-label="Link para seção Contato"><i class="bi bi-link-45deg"></i></a></h3>
+          <p>Fale conosco pelo e-mail <a href="mailto:support@example.com">support@example.com</a> para dúvidas ou solicitações.</p>
+
+          <h3 id="updates" class="mt-4">Atualizações desta política <a href="#updates" class="text-muted small" aria-label="Link para seção Atualizações desta política"><i class="bi bi-link-45deg"></i></a></h3>
+          <p>Podemos atualizar esta política periodicamente. A versão vigente será sempre publicada nesta página.</p>
+
+          <div class="mt-4 d-flex justify-content-between align-items-center">
+            <a href="#" class="text-decoration-none" onclick="window.scrollTo({top:0, behavior:'smooth'}); return false;"><i class="bi bi-arrow-up-circle me-1"></i> Voltar ao topo</a>
+            <a href="{{ url_for('main.terms') }}" class="btn btn-link">Ler os Termos de Uso</a>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+{% endblock %}

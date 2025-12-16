@@ -6,6 +6,7 @@ alembic>=1.11.0
 flask-wtf>=1.1.0
 wtforms>=3.0.0
 gunicorn>=20.1.0
+psycopg2-binary>=2.9.0
 pytest>=7.0.0
 flake8>=5.0.0
 pre-commit>=2.20.0
@@ -30,3 +31,4 @@ psutil>=5.9.0
 inflection>=0.5.1
 marshmallow>=3.0.0
 cybernews==1.1.2
+colorama>=0.4.6

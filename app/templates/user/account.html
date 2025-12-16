@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block extra_css %}
-  {# Removido: CSS de página já importado via main.css #}
+  <link href="{{ url_for('static', filename='css/pages/dashboard.css') }}" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
@@ -16,13 +16,16 @@
   <header class="page-header mb-5">
     <h1 class="h3 fw-semibold mb-2">Minha Conta</h1>
     <p class="text-muted fs-6">Gerencie seu perfil, ativos e insights de segurança.</p>
+    <div class="mt-3">
+      <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#tacacsModal"><i class="bi bi-gear me-1"></i>Configurar TACACS</button>
+    </div>
   </header>
 
   <div class="row g-4">
     <!-- Main Content -->
     <div class="col-lg-9">
       <!-- Tabs -->
-      <ul class="nav nav-tabs" id="account-tabs" role="tablist">
+          <ul class="nav nav-tabs" id="accountTab" role="tablist">
             <li class="nav-item" role="presentation">
               <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile" type="button" role="tab" aria-controls="profile" aria-selected="true">Perfil</button>
             </li>
@@ -41,6 +44,11 @@
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#security" type="button" role="tab" aria-controls="security" aria-selected="false">Insights de Segurança</button>
             </li>
+            {% if current_user.is_admin %}
+            <li class="nav-item" role="presentation">
+              <a class="nav-link" id="approval-link" href="{{ url_for('auth.pending_users') }}" aria-selected="false">Aprovação de Contas</a>
+            </li>
+            {% endif %}
           </ul>
 
       <!-- Tab Content -->
@@ -323,20 +331,40 @@
       </div>
     </div>
 
-    <!-- Sidebar Actions -->
     <aside class="col-lg-3">
       <article class="card shadow-md sticky-top fade-in">
         <div class="card-header p-4">
           <h2 class="h5 fw-semibold mb-0">Quick Actions</h2>
         </div>
-        <div class="card-body p-4 d-flex flex-column gap-3">
-
-          <form action="{{ url_for('auth.logout') }}" method="post" class="d-grid">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-outline-danger w-100 ripple-effect" aria-label="Sair">
-              <i class="bi bi-box-arrow-right me-2"></i>Sair
-            </button>
-          </form>
+        <div class="card-body p-4">
+          <div class="quick-actions-section">
+            <div class="quick-actions-grid">
+              <button type="button" class="quick-action-card w-100" data-bs-toggle="modal" data-bs-target="#asset-modal">
+                <div class="quick-action-icon assets"><i class="bi bi-plus-circle"></i></div>
+                <div class="quick-action-content">
+                  <div class="quick-action-title">Adicionar Ativo</div>
+                  <p class="quick-action-description">Cadastrar novo ativo para monitoramento</p>
+                </div>
+                <div class="quick-action-arrow"><i class="bi bi-arrow-right"></i></div>
+              </button>
+              <a href="{{ url_for('main.analytics') }}" class="quick-action-card w-100">
+                <div class="quick-action-icon analytics"><i class="bi bi-graph-up"></i></div>
+                <div class="quick-action-content">
+                  <div class="quick-action-title">Abrir Analytics</div>
+                  <p class="quick-action-description">Visualizar métricas e tendências</p>
+                </div>
+                <div class="quick-action-arrow"><i class="bi bi-arrow-right"></i></div>
+              </a>
+            </div>
+          </div>
+          <div class="mt-3">
+            <form action="{{ url_for('auth.logout') }}" method="post" class="d-grid">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-danger btn-lg w-100 ripple-effect" aria-label="Sair">
+                <i class="bi bi-box-arrow-right me-2"></i>Sair
+              </button>
+            </form>
+          </div>
         </div>
       </article>
     </aside>
@@ -397,6 +425,51 @@
     </div>
   </div>
 </div>
+
+<div class="modal fade" id="tacacsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Configurar TACACS</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <form id="tacacsForm">
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="tacacsEnabled">
+            <label class="form-check-label" for="tacacsEnabled">Ativar TACACS</label>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="tacacsUsername">Usuário</label>
+            <input type="text" class="form-control" id="tacacsUsername" placeholder="Usuário TACACS">
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="tacacsSecret">Senha/Secret</label>
+            <input type="password" class="form-control" id="tacacsSecret" placeholder="Senha/Secret TACACS">
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="tacacsServer">Servidor</label>
+            <input type="text" class="form-control" id="tacacsServer" placeholder="ex.: 10.0.0.1">
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="tacacsPort">Porta</label>
+              <input type="number" class="form-control" id="tacacsPort" value="49">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="tacacsTimeout">Timeout (s)</label>
+              <input type="number" class="form-control" id="tacacsTimeout" value="5">
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="saveTacacsBtn">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -404,4 +477,5 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.12.4/dist/sweetalert2.all.min.js" defer nonce="{{ nonce }}"></script>
   <script src="{{ url_for('static', filename='js/pages/account.js') }}" defer nonce="{{ nonce }}"></script>
   <script src="{{ url_for('static', filename='js/features/newsletter.js') }}" defer nonce="{{ nonce }}"></script>
+  
 {% endblock %}

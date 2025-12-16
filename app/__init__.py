@@ -1,10 +1,9 @@
-# Open-Monitor/__init__.py
-
 """
 Pacote principal da aplicação Flask.
-Define o ponto de entrada para a criação da aplicação.
 """
 
-from .app import create_app
+def create_app(env_name=None, config_class=None):
+    from .main_startup import create_app as _create_app
+    return _create_app(env_name, config_class)
 
 __all__ = ['create_app']

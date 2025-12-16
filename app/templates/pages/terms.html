@@ -1,0 +1,100 @@
+{% extends 'core/base.html' %}
+{% block title %}Termos de Uso{% endblock %}
+{% block meta_description %}Leia os Termos de Uso: regras, responsabilidades e limitações do serviço.{% endblock %}
+{% block meta_keywords %}termos de uso, condições, responsabilidade, contrato, regras{% endblock %}
+{% block og_title %}Termos de Uso{% endblock %}
+{% block og_description %}Condições para utilização do serviço e limitações de responsabilidade.{% endblock %}
+{% block og_type %}article{% endblock %}
+
+{% block content %}
+<section class="container py-4">
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item">
+        <a href="{{ url_for('main.index') }}"><i class="bi bi-house me-1"></i> Início</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">Termos de Uso</li>
+    </ol>
+  </nav>
+
+  <!-- Header com ações -->
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+    <div>
+      <h1 class="h3 mb-1"><i class="bi bi-file-text me-2"></i>Termos de Uso</h1>
+      <p class="text-muted small">Última atualização: {{ config.get('TERMS_UPDATED_AT', '2025') }}</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('main.privacy') }}"><i class="bi bi-shield-lock me-1"></i>Privacidade</a>
+      <button class="btn btn-sm btn-outline-primary" type="button" onclick="window.print()"><i class="bi bi-printer me-1"></i>Imprimir</button>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Sumário lateral -->
+    <aside class="col-12 col-lg-3">
+      <div class="card shadow-sm position-sticky" style="top: 72px;">
+        <div class="card-header py-3">
+          <h2 class="h6 mb-0"><i class="bi bi-list-check me-2"></i>Sumário</h2>
+        </div>
+        <div class="list-group list-group-flush">
+          <a href="#acceptance" class="list-group-item list-group-item-action">Aceitação dos termos</a>
+          <a href="#permitted-use" class="list-group-item list-group-item-action">Uso permitido</a>
+          <a href="#account-security" class="list-group-item list-group-item-action">Conta e segurança</a>
+          <a href="#content-ownership" class="list-group-item list-group-item-action">Conteúdo e propriedade</a>
+          <a href="#liability" class="list-group-item list-group-item-action">Limitações de responsabilidade</a>
+          <a href="#third-parties" class="list-group-item list-group-item-action">Serviços de terceiros</a>
+          <a href="#suspension" class="list-group-item list-group-item-action">Suspensão e encerramento</a>
+          <a href="#changes" class="list-group-item list-group-item-action">Alterações</a>
+          <a href="#contact" class="list-group-item list-group-item-action">Contato</a>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Conteúdo -->
+    <div class="col-12 col-lg-9">
+      <article class="card shadow-sm">
+        <div class="card-body">
+          <p class="lead">Estes Termos definem regras, responsabilidades e limitações aplicáveis ao uso do serviço.</p>
+
+          <h3 id="acceptance" class="mt-4">Aceitação dos termos <a href="#acceptance" class="text-muted small" aria-label="Link para seção Aceitação dos termos"><i class="bi bi-link-45deg"></i></a></h3>
+          <p>Ao utilizar o serviço, você concorda com estes Termos. Caso não concorde, interrompa o uso imediatamente.</p>
+
+          <h3 id="permitted-use" class="mt-4">Uso permitido <a href="#permitted-use" class="text-muted small" aria-label="Link para seção Uso permitido"><i class="bi bi-link-45deg"></i></a></h3>
+          <ul>
+            <li>Utilização para fins legais e legítimos.</li>
+            <li>Observância das políticas de segurança e privacidade.</li>
+            <li>Respeito a direitos de propriedade intelectual de terceiros.</li>
+          </ul>
+
+          <h3 id="account-security" class="mt-4">Conta e segurança <a href="#account-security" class="text-muted small" aria-label="Link para seção Conta e segurança"><i class="bi bi-link-45deg"></i></a></h3>
+          <p>Você é responsável por manter a confidencialidade das credenciais e por atividades realizadas na sua conta.</p>
+
+          <h3 id="content-ownership" class="mt-4">Conteúdo e propriedade <a href="#content-ownership" class="text-muted small" aria-label="Link para seção Conteúdo e propriedade"><i class="bi bi-link-45deg"></i></a></h3>
+          <p>O serviço e seus componentes são protegidos por direitos autorais e outras leis. Não é permitido copiar, distribuir ou modificar, salvo autorização.</p>
+
+          <h3 id="liability" class="mt-4">Limitações de responsabilidade <a href="#liability" class="text-muted small" aria-label="Link para seção Limitações de responsabilidade"><i class="bi bi-link-45deg"></i></a></h3>
+          <p>O serviço é fornecido "como está". Na máxima extensão permitida, não nos responsabilizamos por danos indiretos, incidentais ou consequenciais decorrentes do uso.</p>
+
+          <h3 id="third-parties" class="mt-4">Serviços de terceiros <a href="#third-parties" class="text-muted small" aria-label="Link para seção Serviços de terceiros"><i class="bi bi-link-45deg"></i></a></h3>
+          <p>Podemos integrar serviços de terceiros. O uso está sujeito aos termos e políticas desses provedores.</p>
+
+          <h3 id="suspension" class="mt-4">Suspensão e encerramento <a href="#suspension" class="text-muted small" aria-label="Link para seção Suspensão e encerramento"><i class="bi bi-link-45deg"></i></a></h3>
+          <p>Podemos suspender ou encerrar o acesso em caso de violação destes Termos ou uso indevido.</p>
+
+          <h3 id="changes" class="mt-4">Alterações <a href="#changes" class="text-muted small" aria-label="Link para seção Alterações"><i class="bi bi-link-45deg"></i></a></h3>
+          <p>Podemos atualizar estes Termos a qualquer momento. Recomendamos verificar periodicamente.</p>
+
+          <h3 id="contact" class="mt-4">Contato <a href="#contact" class="text-muted small" aria-label="Link para seção Contato"><i class="bi bi-link-45deg"></i></a></h3>
+          <p>Em caso de dúvidas, fale conosco: <a href="mailto:support@example.com">support@example.com</a>.</p>
+
+          <div class="mt-4 d-flex justify-content-between align-items-center">
+            <a href="#" class="text-decoration-none" onclick="window.scrollTo({top:0, behavior:'smooth'}); return false;"><i class="bi bi-arrow-up-circle me-1"></i> Voltar ao topo</a>
+            <a href="{{ url_for('main.privacy') }}" class="btn btn-link">Ler a Política de Privacidade</a>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+{% endblock %}

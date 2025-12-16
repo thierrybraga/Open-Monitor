@@ -3,6 +3,7 @@ import sys
 import os
 import time
 import pickle
+import json
 import asyncio
 import logging
 import argparse
@@ -371,7 +372,10 @@ class NVDFetcher:
         # Obter configurações da API do dicionário config
         self.api_base = self.config.get("NVD_API_BASE", "https://services.nvd.nist.gov/rest/json/cves/2.0")
         self.api_key = self.config.get("NVD_API_KEY")
-        self.page_size = self.config.get("NVD_PAGE_SIZE", 2000)
+        try:
+            self.page_size = int(self.config.get("NVD_PAGE_SIZE", 2000))
+        except Exception:
+            self.page_size = 2000
         self.max_retries = self.config.get("NVD_MAX_RETRIES", 5)
         self.cache_dir = Path(self.config.get("NVD_CACHE_DIR", "cache"))
         self.request_timeout = self.config.get("NVD_REQUEST_TIMEOUT", 30)
@@ -381,7 +385,13 @@ class NVDFetcher:
 
         self.headers = {"User-Agent": self.user_agent}
         if self.api_key:
-             self.headers["X-API-Key"] = self.api_key
+             self.headers["apiKey"] = self.api_key
+        else:
+            try:
+                if self.page_size > 200:
+                    self.page_size = 200
+            except Exception:
+                pass
 
         # Inicializar o rate limiter avançado
         self.rate_limiter = NVDRateLimiter.create_for_nvd(has_api_key=bool(self.api_key))
@@ -426,7 +436,7 @@ class NVDFetcher:
             return False
 
 
-    async def fetch_page(self, start_index: int, last_modified_start: Optional[str], last_modified_end: Optional[str] = None) -> Optional[Dict]:
+    async def fetch_page(self, start_index: int, last_modified_start: Optional[str], last_modified_end: Optional[str] = None, window_mode: str = "lastmod") -> Optional[Dict]:
         """
         Busca uma página de vulnerabilidades da API NVD.
 
@@ -451,7 +461,8 @@ class NVDFetcher:
             cache_key_suffix = f"{safe_start}_{safe_end}"
         else:
             cache_key_suffix = "full"
-        cache_file = self.cache_dir / f"page_{start_index}_{cache_key_suffix}.pkl" # Usar self.cache_dir
+        cache_file = self.cache_dir / f"page_{start_index}_{cache_key_suffix}.pkl"
+        json_file = self.cache_dir / f"page_{start_index}_{cache_key_suffix}.json"
 
         if cache_file.exists():
             logger.debug(f"Loading page {start_index} (modified since {last_modified_start}) from cache: {cache_file}")
@@ -473,33 +484,36 @@ class NVDFetcher:
                  cache_file.unlink(missing_ok=True)
 
         # --- Monta a URL da API ---
-        url = f"{self.api_base}?startIndex={start_index}&resultsPerPage={self.page_size}" # Usar self.api_base, self.page_size
+        effective_page_size = self.page_size
+        try:
+            if not self.api_key:
+                if effective_page_size > 200:
+                    effective_page_size = 200
+        except Exception:
+            pass
+        url = f"{self.api_base}?startIndex={start_index}&resultsPerPage={effective_page_size}"
 
         # Lógica CORRETA para busca incremental (CVEs modificados DESDE a última sincronização)
         # A API NVD usa lastModifiedStart e lastModifiedEnd para intervalos.
         # Se last_modified_start é a data/hora da última sincronização, usá-lo com lastModifiedStart
         # busca CVEs modificados NESTE timestamp ou DEPOIS.
         if last_modified_start:
-            # A API NVD requer AMBOS lastModStartDate E lastModEndDate
-            # Formato correto: ISO com Z (Zulu time) - exemplo: 2025-09-20T14:35:44Z
             current_time = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-            # Converte last_modified_start para o formato correto se necessário
             if last_modified_start.endswith('+00:00'):
                 last_modified_start = last_modified_start.replace('+00:00', 'Z')
             elif not last_modified_start.endswith('Z'):
-                # Se não tem timezone, assume UTC e adiciona Z
                 if 'T' in last_modified_start and '+' not in last_modified_start:
                     last_modified_start += 'Z'
-
-            # Determinar o fim da janela
             end_param = last_modified_end or current_time
             if end_param.endswith('+00:00'):
                 end_param = end_param.replace('+00:00', 'Z')
             elif not end_param.endswith('Z'):
                 if 'T' in end_param and '+' not in end_param:
                     end_param += 'Z'
-
-            url += f"&lastModStartDate={last_modified_start}&lastModEndDate={end_param}"
+            if str(window_mode).lower() == 'pub':
+                url += f"&pubStartDate={last_modified_start}&pubEndDate={end_param}"
+            else:
+                url += f"&lastModStartDate={last_modified_start}&lastModEndDate={end_param}"
 
         if last_modified_start:
             logger.info(f"Fetching page {start_index} from NVD API (range {last_modified_start} to {last_modified_end or 'now'}). URL: {url}")
@@ -510,9 +524,9 @@ class NVDFetcher:
         for attempt in range(self.max_retries): # Usar self.max_retries
             try:
                 # Adiciona cabeçalho de API Key condicionalmente
-                headers_with_key = {**self.headers} # Copia cabeçalhos base (inclui User-Agent)
+                headers_with_key = {**self.headers}
                 if self.api_key:
-                     headers_with_key["X-API-Key"] = self.api_key # Adiciona API Key se presente
+                     headers_with_key["apiKey"] = self.api_key
 
                 async with self.session.get(url, headers=headers_with_key, timeout=self.request_timeout) as resp: # Usar headers_with_key, self.request_timeout
                     logger.debug(f"API Response Status for page {start_index}: {resp.status}")
@@ -522,9 +536,10 @@ class NVDFetcher:
                         # Salvar cache somente se a requisição foi bem-sucedida
                         try:
                             cache_file.write_bytes(pickle.dumps(data))
+                            json_file.write_text(json.dumps(data, ensure_ascii=False))
                             logger.debug(f"Successfully fetched and cached page {start_index}.")
                         except Exception as cache_err:
-                             logger.warning(f"Failed to write cache file {cache_file}: {cache_err}", exc_info=True)
+                            logger.warning(f"Failed to write cache files: {cache_err}", exc_info=True)
                         # TODO: Log da chamada de API (ApiCallLog) aqui?
                         return data
 
@@ -537,13 +552,22 @@ class NVDFetcher:
                          return None # Erro fatal
 
                     elif resp.status == 404: # Not Found
-                         logger.warning(f"API returned 404 Not Found for page {start_index}. URL may be incorrect or no data.")
-                         # Pode significar o fim dos resultados em alguns casos, mas a API geralmente retorna 200 com lista vazia.
-                         # Tratar como um erro que interrompe o processo por segurança, a menos que se saiba o contrário.
-                         return None
+                         logger.warning(f"API returned 404 Not Found for page {start_index}. Treating as empty page to continue.")
+                         try:
+                             return {"vulnerabilities": [], "totalResults": 0}
+                         except Exception:
+                             return None
 
                     elif resp.status == 429: # Rate Limit Exceeded
                         # Usar o sistema avançado de rate limiting para tratar 429
+                        should_retry = await self.rate_limiter.handle_http_error(
+                            resp.status, dict(resp.headers)
+                        )
+                        if should_retry and attempt < self.max_retries - 1:
+                            continue
+                        else:
+                            return None
+                    elif resp.status == 403:
                         should_retry = await self.rate_limiter.handle_http_error(
                             resp.status, dict(resp.headers)
                         )
@@ -1005,6 +1029,20 @@ class NVDFetcher:
         # Usar um try/finally para garantir o rollback ou commit da sessão NO SERVIÇO
         # A sessão é gerenciada pelo serviço. O fetcher não faz commit/rollback direto.
         try:
+            try:
+                if self.api_key:
+                    ok = await self.validate_key()
+                    if not ok:
+                        self.api_key = None
+                        try:
+                            if self.page_size > 200:
+                                self.page_size = 200
+                        except Exception:
+                            pass
+                        self.headers.pop('apiKey', None)
+                        self.rate_limiter = NVDRateLimiter.create_for_nvd(has_api_key=False)
+            except Exception:
+                pass
             # Preparar janelas de tempo quando incremental excede o limite da NVD
             windows: List[Dict[str, str]] = []
             if not full and last_synced_time:
@@ -1037,7 +1075,18 @@ class NVDFetcher:
 
             # Se não é incremental (full) ou não há last_sync, executar loop único
             if full or not windows:
-                windows = [{'start': None, 'end': None}]  # Sem filtros de data
+                windows = []
+                earliest = datetime(1999, 1, 1, tzinfo=timezone.utc)
+                now_dt = datetime.now(timezone.utc)
+                cursor = earliest
+                while cursor <= now_dt:
+                    window_end = min(cursor + timedelta(days=self.max_window_days), now_dt)
+                    windows.append({
+                        'start': cursor.isoformat(timespec='milliseconds').replace('+00:00', 'Z'),
+                        'end': window_end.isoformat(timespec='milliseconds').replace('+00:00', 'Z'),
+                        'mode': 'pub'
+                    })
+                    cursor = window_end + timedelta(seconds=1)
 
             # Processar cada janela separadamente com paginação própria
             for idx, win in enumerate(windows):
@@ -1045,15 +1094,29 @@ class NVDFetcher:
                 total_results_expected = None
                 win_start = win['start']
                 win_end = win['end']
+                win_mode = str(win.get('mode') or 'lastmod').lower()
                 if win_start and win_end:
                     terminal_feedback.info(
                         f"🗓️ Processando janela {idx+1}/{len(windows)}: {win_start} → {win_end}",
                         {"window_index": idx+1, "windows_total": len(windows)}
                     )
 
+                # Determinar o passo de página efetivo considerando chave e modo
+                page_step = self.page_size
+                try:
+                    if not self.api_key:
+                        if page_step > 200:
+                            page_step = 200
+                except Exception:
+                    pass
+
+                # Calcular último índice válido com base no total esperado
+                # Será atualizado após a primeira resposta
+                last_index_for_window = None
+
                 while True:
                     # Passar parâmetros de janela ao fetch_page
-                    data = await self.fetch_page(start_index, win_start, win_end)
+                    data = await self.fetch_page(start_index, win_start, win_end, win_mode)
 
                     if data is None:
                         logger.error("Failed to fetch data from NVD API. Stopping update process.")
@@ -1062,26 +1125,37 @@ class NVDFetcher:
                         break  # Sair do loop da janela atual
 
                     vulnerabilities_data_raw = data.get('vulnerabilities', [])
-                    total_results_on_api = data.get('totalResults', 0)
+                    total_results_on_api = int(data.get('totalResults', 0) or 0)
 
                     if total_results_expected is None:
                         total_results_expected = total_results_on_api
                         logger.info(f"Total results for this query range expected: {total_results_expected}")
-                        # TODO: Opcional: Usar tqdm com o total esperado
-                        # pbar = tqdm.tqdm(total=total_results_expected, desc='Processing CVEs')
+                        # Calcula último índice com base no passo de página
+                        try:
+                            if total_results_expected > 0:
+                                last_index_for_window = ((total_results_expected - 1) // page_step) * page_step
+                            else:
+                                last_index_for_window = 0
+                        except Exception:
+                            last_index_for_window = None
 
+                    # Se não vierem vulnerabilidades nesta página, verificar fim da janela
                     if not vulnerabilities_data_raw:
-                        # Se a página atual retornou vazio e não há mais resultados esperados (ou chegamos ao fim teórico)
-                        # A API geralmente retorna totalResults > current_index mesmo na última página com dados,
-                        # mas é mais seguro verificar se a lista está vazia E chegamos ou passamos o total esperado.
-                        if start_index >= total_results_expected:  # Usar total_results_expected para controle
+                        # Se já atingimos ou passamos o último índice calculado, encerrar
+                        if (last_index_for_window is not None) and (start_index >= last_index_for_window):
                             logger.info("Reached end of results for current window.")
-                            break  # Sair do loop se não houver mais dados nesta página E for o fim esperado
+                            break
                         else:
-                            # Se a página atual retornou vazio, mas ainda há resultados esperados (API inconsistência?)
+                            # Tentar avançar mesmo em caso de página vazia, evitando parada prematura
                             logger.warning(
-                                f"Page {start_index} returned no vulnerabilities, but total results suggest more data ({total_results_expected}). API issue? Stopping for safety.")
-                            break  # Parar por segurança
+                                f"Page {start_index} returned no vulnerabilities, advancing to next index for robustness.")
+                            start_index += page_step
+                            # Pequena espera para evitar hammering em inconsistências
+                            try:
+                                await asyncio.sleep(0.2)
+                            except Exception:
+                                pass
+                            continue
 
                     # OTIMIZAÇÃO DE MEMÓRIA: Processar dados em lotes menores para reduzir uso de memória
                     import gc  # Para garbage collection explícito
@@ -1157,14 +1231,16 @@ class NVDFetcher:
                     # Isso pode ser um pouco impreciso se o totalResults mudar durante a execução,
                     # mas é uma boa heurística. A condição principal de saída é quando fetch_page
                     # retorna uma lista vazia E index >= total_results_expected.
-                    if start_index + self.page_size >= total_results_expected:  # Usar self.page_size
-                        logger.info("Reached end of results for current window based on totalResults estimate.")
-                        # Verifica se realmente não há mais dados na próxima chamada
-                        # (já coberto pela lógica de 'not vulnerabilities_data' no início do loop)
-                        pass  # Continua o loop para a próxima fetch_page, que deve retornar vazio
-
                     # Avançar para o próximo índice
-                    start_index += self.page_size  # Usar self.page_size
+                    start_index += page_step
+
+                    # Se já atingimos o último índice, a próxima iteração deve encerrar pela condição de vazio
+                    if (last_index_for_window is not None) and (start_index > last_index_for_window):
+                        # Pequena espera e deixa a próxima chamada retornar vazio para encerrar
+                        try:
+                            await asyncio.sleep(0.1)
+                        except Exception:
+                            pass
 
                     # OTIMIZAÇÃO DE MEMÓRIA: Monitoramento e garbage collection periódico entre páginas
                     page_number = start_index // self.page_size
@@ -1180,9 +1256,10 @@ class NVDFetcher:
                         memory_monitor.log_memory_status(f"página {page_number}")
                         logger.debug(f"Executed garbage collection after {page_number} pages")
 
-                # Adicionar um pequeno delay entre as páginas, além do rate limit interno do fetch_page
-                # Isso pode ser útil se a API tiver limites por minuto/hora além do por segundo.
-                # await asyncio.sleep(1) # Exemplo: espera 1 segundo entre as páginas
+                try:
+                    await asyncio.sleep(1)
+                except Exception:
+                    pass
 
 
             # TODO: pbar.close() # Fechar barra de progresso
@@ -1196,7 +1273,8 @@ class NVDFetcher:
 
             if sync_completed_successfully:
                  # Atualizar a data da última sincronização usando o serviço
-                 vulnerability_service.update_last_sync_time(datetime.utcnow()) # Passar datetime.utcnow()
+                 from datetime import timezone as _tz
+                 vulnerability_service.update_last_sync_time(datetime.now(_tz.utc))
 
             else:
                 logger.warning("Sync operation did not complete successfully. Last sync time not updated via service.")

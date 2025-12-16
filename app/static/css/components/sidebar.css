@@ -14,7 +14,7 @@
   /* Layout e Posicionamento */
   --sidebar-top-offset: var(--layout-navbar-height, 60px);
   --sidebar-z-index: var(--z-index-sidebar, 1050);
-  --sidebar-overlay-z-index: var(--z-index-modal-backdrop, 1060);
+  --sidebar-overlay-z-index: var(--z-index-modal-backdrop, 1040);
   
   /* Cores - Soft Modern Theme */
   --sidebar-bg: var(--glass-bg-light);

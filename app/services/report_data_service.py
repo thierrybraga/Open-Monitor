@@ -14,12 +14,17 @@ from app.models.asset import Asset
 from app.models.vulnerability import Vulnerability
 from app.models.asset_vulnerability import AssetVulnerability
 from app.models.weakness import Weakness
-from app.models.severity_metric import SeverityMetric
+from app.models.cve_product import CVEProduct
+from app.models.product import Product
+
 from app.models.risk_assessment import RiskAssessment
 from app.models.cvss_metric import CVSSMetric
 from app.models.references import Reference
 from app.models.user import User
 from app.models.enums import severity_levels, asset_vuln_status
+from app.models.version_reference import VersionReference
+from app.models.affected_product import AffectedProduct
+from app.models.asset_product import AssetProduct
 import logging
 import json
 
@@ -151,7 +156,8 @@ class ReportDataService:
                                  start_date: Optional[datetime] = None,
                                  end_date: Optional[datetime] = None,
                                  include_cisa_kev: bool = True,
-                                 include_epss: bool = True) -> Dict[str, Any]:
+                                 include_epss: bool = True,
+                                 vendor_name: Optional[str] = None) -> Dict[str, Any]:
         """
         Compila dados de vulnerabilidades com enriquecimento CISA KEV e EPSS.
         
@@ -172,7 +178,11 @@ class ReportDataService:
                 selectinload(Vulnerability.metrics),
                 selectinload(Vulnerability.weaknesses),
                 selectinload(Vulnerability.references),
-                selectinload(Vulnerability.asset_vulnerabilities).joinedload(AssetVulnerability.asset)
+                selectinload(Vulnerability.assets).joinedload(AssetVulnerability.asset),
+                selectinload(Vulnerability.products).joinedload(CVEProduct.product).joinedload(Product.vendor),
+                selectinload(Vulnerability.vendors),
+                selectinload(Vulnerability.version_references).joinedload(VersionReference.product),
+                selectinload(Vulnerability.affected_products).joinedload(AffectedProduct.product)
             )
             
             # Aplicar filtros
@@ -189,6 +199,31 @@ class ReportDataService:
             if end_date:
                 query = query.filter(Vulnerability.published_date <= end_date)
             
+            # Filtro por vendor quando fornecido
+            if vendor_name:
+                try:
+                    from sqlalchemy import union
+                    from app.models.cve_vendor import CVEVendor
+                    from app.models.vendor import Vendor
+                    vn = (vendor_name or '').strip().lower()
+                    cves_por_vendor = (
+                        self.session
+                        .query(CVEVendor.cve_id)
+                        .join(Vendor, Vendor.id == CVEVendor.vendor_id)
+                        .filter(func.lower(Vendor.name) == vn)
+                    )
+                    cves_por_produto_vendor = (
+                        self.session
+                        .query(CVEProduct.cve_id)
+                        .join(Product, Product.id == CVEProduct.product_id)
+                        .join(Vendor, Vendor.id == Product.vendor_id)
+                        .filter(func.lower(Vendor.name) == vn)
+                    )
+                    unificados = union(cves_por_vendor, cves_por_produto_vendor).subquery()
+                    query = query.filter(Vulnerability.cve_id.in_(unificados))
+                except Exception:
+                    pass
+
             vulnerabilities = query.all()
 
             # Listas de detalhes para exibição e IA
@@ -205,8 +240,11 @@ class ReportDataService:
             # Dados enriquecidos
             cisa_kev_data = {'total': 0, 'overdue': 0, 'upcoming_due': 0, 'actions': {}}
             epss_data = {'scores': [], 'high_probability': 0, 'percentiles': []}
-            vendor_product_data = {'vendors': set(), 'products': set(), 'top_vendors': {}, 'top_products': {}}
+            vendor_product_data = {'vendors': set(), 'products': set(), 'top_vendors': {}, 'top_products': {}, 'vendor_products': {}}
             cvss_detailed = {'v2': 0, 'v3_0': 0, 'v3_1': 0, 'v4_0': 0, 'metrics_distribution': {}}
+            version_mappings: List[Dict[str, Any]] = []
+            fortios_histogram = {'counts': {}}
+            fortios_installed_histogram = {'counts': {}}
 
             # KPIs de Remediação/SLA
             remediation_kpis = {
@@ -362,6 +400,26 @@ class ReportDataService:
                             vendor_product_data['top_products'][product] = vendor_product_data['top_products'].get(product, 0) + 1
                     except (json.JSONDecodeError, TypeError):
                         pass
+
+                try:
+                    for cp in getattr(vuln, 'products', []) or []:
+                        prod = getattr(cp, 'product', None)
+                        if not prod:
+                            continue
+                        vname = getattr(getattr(prod, 'vendor', None), 'name', None)
+                        pname = getattr(prod, 'name', None)
+                        if not vname or not pname:
+                            continue
+                        vp = vendor_product_data['vendor_products'].get(vname) or {}
+                        entry = vp.get(pname) or {'count': 0, 'cves': []}
+                        entry['count'] = int(entry['count']) + 1
+                        cve_id_val = getattr(vuln, 'cve_id', None)
+                        if cve_id_val:
+                            entry['cves'].append(cve_id_val)
+                        vp[pname] = entry
+                        vendor_product_data['vendor_products'][vname] = vp
+                except Exception:
+                    pass
                 
                 # CVSS Detailed Metrics
                 for metric in vuln.metrics:
@@ -383,7 +441,7 @@ class ReportDataService:
                 # Construir detalhes para visualização
                 try:
                     affected_assets: List[Dict[str, Any]] = []
-                    for av in getattr(vuln, 'asset_vulnerabilities', []) or []:
+                    for av in getattr(vuln, 'assets', []) or []:
                         asset = getattr(av, 'asset', None)
                         if asset:
                             affected_assets.append({
@@ -410,6 +468,45 @@ class ReportDataService:
                     })
                 except Exception:
                     # Em caso de qualquer falha ao compor detalhes individuais, seguir processamento geral
+                    pass
+
+                try:
+                    for vr in getattr(vuln, 'version_references', []) or []:
+                        prod = getattr(vr, 'product', None)
+                        pname = getattr(prod, 'name', '') if prod else ''
+                        vendor = getattr(getattr(prod, 'vendor', None), 'name', '') if prod else ''
+                        entry = {
+                            'cve_id': getattr(vuln, 'cve_id', None),
+                            'vendor': vendor,
+                            'product': pname,
+                            'affected_version': getattr(vr, 'affected_version', None),
+                            'fixed_version': getattr(vr, 'fixed_version', None),
+                            'patch_available': getattr(vuln, 'patch_available', None)
+                        }
+                        version_mappings.append(entry)
+
+                        try:
+                            if pname and ('fortios' in pname.lower()) and (vuln.patch_available is False):
+                                av = str(getattr(vr, 'affected_version', '') or '').strip()
+                                if av:
+                                    fortios_histogram['counts'][av] = int(fortios_histogram['counts'].get(av, 0) or 0) + 1
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+
+                try:
+                    if vuln.patch_available is False:
+                        for av in getattr(vuln, 'assets', []) or []:
+                            asset = getattr(av, 'asset', None)
+                            if not asset:
+                                continue
+                            for ap in getattr(asset, 'asset_products', []) or []:
+                                os_name = str(getattr(ap, 'operating_system', '') or '').lower()
+                                ver = str(getattr(ap, 'installed_version', '') or '').strip()
+                                if ('fortios' in os_name) and ver:
+                                    fortios_installed_histogram['counts'][ver] = int(fortios_installed_histogram['counts'].get(ver, 0) or 0) + 1
+                except Exception:
                     pass
             
             # Calcular estatísticas CVSS
@@ -451,6 +548,9 @@ class ReportDataService:
                 'epss_data': epss_data,
                 'epss_stats': epss_stats,
                 'vendor_product_data': vendor_product_data,
+                'version_mappings': version_mappings,
+                'fortios_histogram': fortios_histogram,
+                'fortios_installed_histogram': fortios_installed_histogram,
                 'remediation_kpis': remediation_kpis,
                 # Estruturas esperadas pelos templates e serviços de IA
                 'details': details,
@@ -484,7 +584,7 @@ class ReportDataService:
             kev_vulns = self.session.query(Vulnerability).filter(
                 Vulnerability.cisa_kev_data.isnot(None)
             ).options(
-                selectinload(Vulnerability.asset_vulnerabilities).joinedload(AssetVulnerability.asset)
+                selectinload(Vulnerability.assets).joinedload(AssetVulnerability.asset)
             ).all()
             
             today = datetime.now().date()
@@ -554,7 +654,7 @@ class ReportDataService:
                     analysis['no_due_date'] += 1
                 
                 # Ativos afetados
-                for asset_vuln in vuln.asset_vulnerabilities:
+                for asset_vuln in vuln.assets:
                     affected_assets.add(asset_vuln.asset_id)
             
             analysis['affected_assets'] = len(affected_assets)
@@ -586,7 +686,7 @@ class ReportDataService:
             epss_vulns = self.session.query(Vulnerability).filter(
                 Vulnerability.epss_score.isnot(None)
             ).options(
-                selectinload(Vulnerability.asset_vulnerabilities).joinedload(AssetVulnerability.asset)
+                selectinload(Vulnerability.assets).joinedload(AssetVulnerability.asset)
             ).all()
             
             analysis = {
@@ -649,11 +749,11 @@ class ReportDataService:
                         'epss_score': score,
                         'cvss_score': vuln.cvss_score,
                         'severity': vuln.base_severity,
-                        'affected_assets': len(vuln.asset_vulnerabilities)
+                        'affected_assets': len(vuln.assets)
                     })
                     
                     # Contar ativos afetados por vulnerabilidades de alto risco
-                    for asset_vuln in vuln.asset_vulnerabilities:
+                    for asset_vuln in vuln.assets:
                         high_risk_assets.add(asset_vuln.asset_id)
                 
                 # Vulnerabilidades prioritárias (Top 10% EPSS + CISA KEV)
@@ -664,7 +764,7 @@ class ReportDataService:
                         'epss_percentile': percentile,
                         'cvss_score': vuln.cvss_score,
                         'cisa_due_date': vuln.cisa_due_date.isoformat() if vuln.cisa_due_date else None,
-                        'affected_assets': len(vuln.asset_vulnerabilities)
+                        'affected_assets': len(vuln.assets)
                     })
             
             analysis['affected_assets_high_risk'] = len(high_risk_assets)
@@ -742,7 +842,8 @@ class ReportDataService:
                 'risk_assessments': risk_assessments,
                 'risk_statistics': risk_stats,
                 'risk_by_asset': risk_by_asset,
-                'total_assessments': len(risk_assessments)
+                'total_assessments': len(risk_assessments),
+                'overall_score': (risk_stats.get('mean') if risk_stats else 0)
             }
             
         except Exception as e:
@@ -981,7 +1082,8 @@ class ReportDataService:
                            period_start: Optional[datetime] = None,
                            period_end: Optional[datetime] = None,
                            scope: Optional[str] = None,
-                           detail_level: Optional[str] = None) -> Dict[str, Any]:
+                           detail_level: Optional[str] = None,
+                           vendor_name: Optional[str] = None) -> Dict[str, Any]:
         """
         Método principal para compilação de dados de relatórios.
         Compatível com a interface esperada pelo controller.
@@ -1004,7 +1106,8 @@ class ReportDataService:
             groups=asset_groups,
             start_date=period_start,
             end_date=period_end,
-            severity_filter=None
+            severity_filter=None,
+            vendor_name=vendor_name
         )
 
     def compile_comprehensive_report_data(self,
@@ -1013,7 +1116,8 @@ class ReportDataService:
                                         groups: Optional[List[str]] = None,
                                         start_date: Optional[datetime] = None,
                                         end_date: Optional[datetime] = None,
-                                        severity_filter: Optional[List[str]] = None) -> Dict[str, Any]:
+                                        severity_filter: Optional[List[str]] = None,
+                                        vendor_name: Optional[str] = None) -> Dict[str, Any]:
         """
         Compila todos os dados necessários para um relatório abrangente.
         
@@ -1047,7 +1151,8 @@ class ReportDataService:
                 start_date=start_date,
                 end_date=end_date,
                 include_cisa_kev=True,
-                include_epss=True
+                include_epss=True,
+                vendor_name=vendor_name
             )
             
             # Compilar dados de risco
@@ -1081,6 +1186,41 @@ class ReportDataService:
             # Compilar análises enriquecidas
             cisa_kev_data = self.compile_cisa_kev_analysis()
             epss_data = self.compile_epss_analysis()
+
+            matrix_data = self.compile_asset_vulnerability_matrix(asset_ids=asset_ids)
+
+            # Montar tabela de enums agregados para consumo por prompts/HTML
+            try:
+                vp_data = vulnerability_data.get('vendor_product_data', {}) if isinstance(vulnerability_data, dict) else {}
+                sev_counts = vulnerability_data.get('by_severity', {}) if isinstance(vulnerability_data, dict) else {}
+                cwe_dist = vulnerability_data.get('cwe_distribution', {}) if isinstance(vulnerability_data, dict) else {}
+                enum_table = {
+                    'vendors_total': int(vp_data.get('vendors', 0) or 0),
+                    'products_total': int(vp_data.get('products', 0) or 0),
+                    'cves_total': int(vulnerability_data.get('total_vulnerabilities', 0) or 0) if isinstance(vulnerability_data, dict) else 0,
+                    'cwes_total': int(len(cwe_dist or {})),
+                    'severity_counts': sev_counts or {},
+                    'catalog_tag_counts': {}
+                }
+                # Contagem por catalog_tag a partir dos ativos
+                try:
+                    catalog_counts: Dict[str, int] = {}
+                    for a in (asset_data.get('assets') or []):
+                        tag = getattr(a, 'catalog_tag', None)
+                        if tag:
+                            catalog_counts[str(tag)] = int(catalog_counts.get(str(tag), 0)) + 1
+                    enum_table['catalog_tag_counts'] = catalog_counts
+                except Exception:
+                    enum_table['catalog_tag_counts'] = {}
+            except Exception:
+                enum_table = {
+                    'vendors_total': 0,
+                    'products_total': 0,
+                    'cves_total': 0,
+                    'cwes_total': 0,
+                    'severity_counts': {},
+                    'catalog_tag_counts': {}
+                }
             
             logger.info("Compilação de dados concluída com sucesso")
             
@@ -1093,6 +1233,8 @@ class ReportDataService:
                 'trends': trend_data,
                 'cisa_kev_analysis': cisa_kev_data,
                 'epss_analysis': epss_data,
+                'asset_vulnerability_matrix': matrix_data,
+                'enums_table': enum_table,
                 'compilation_timestamp': datetime.now(),
                 'filters_applied': {
                     'asset_ids': asset_ids,
@@ -1107,3 +1249,41 @@ class ReportDataService:
         except Exception as e:
             logger.error(f"Erro na compilação abrangente de dados: {e}")
             raise
+
+    def compile_asset_vulnerability_matrix(self, asset_ids: Optional[List[int]] = None) -> Dict[str, Any]:
+        try:
+            query = self.session.query(AssetVulnerability).join(Asset).join(Vulnerability)
+            if asset_ids:
+                query = query.filter(AssetVulnerability.asset_id.in_(asset_ids))
+            rows = query.all()
+            asset_map: Dict[int, Dict[str, Any]] = {}
+            for av in rows:
+                asset = getattr(av, 'asset', None)
+                vuln = getattr(av, 'vulnerability', None)
+                if not asset or not vuln:
+                    continue
+                aid = getattr(asset, 'id', None)
+                name = getattr(asset, 'name', None) or f"Ativo {aid}"
+                sev = (getattr(vuln, 'base_severity', 'LOW') or 'LOW').upper()
+                if aid not in asset_map:
+                    asset_map[aid] = {'name': name, 'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
+                if sev not in asset_map[aid]:
+                    sev = 'LOW'
+                asset_map[aid][sev] += 1
+            items = list(asset_map.values())
+            items.sort(key=lambda x: (x['CRITICAL']*100 + x['HIGH']*10 + x['MEDIUM']), reverse=True)
+            labels = [x['name'] for x in items]
+            critical = [x['CRITICAL'] for x in items]
+            high = [x['HIGH'] for x in items]
+            medium = [x['MEDIUM'] for x in items]
+            low = [x['LOW'] for x in items]
+            datasets = [
+                {'label': 'Crítico', 'data': critical, 'backgroundColor': '#dc3545', 'borderColor': '#dc3545', 'borderWidth': 1},
+                {'label': 'Alto', 'data': high, 'backgroundColor': '#fd7e14', 'borderColor': '#fd7e14', 'borderWidth': 1},
+                {'label': 'Médio', 'data': medium, 'backgroundColor': '#ffc107', 'borderColor': '#ffc107', 'borderWidth': 1},
+                {'label': 'Baixo', 'data': low, 'backgroundColor': '#28a745', 'borderColor': '#28a745', 'borderWidth': 1},
+            ]
+            return {'labels': labels, 'datasets': datasets}
+        except Exception as e:
+            logger.error(f"Erro ao compilar matriz de vulnerabilidades por ativo: {e}")
+            return {'labels': [], 'datasets': []}

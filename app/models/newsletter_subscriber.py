@@ -1,12 +1,13 @@
 # models/newsletter_subscriber.py
 
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text
 from sqlalchemy.sql import func
 from app.models.base_model import BaseModel
 
 
 class NewsletterSubscription(BaseModel):
+    __bind_key__ = 'public'
     """Model for newsletter subscriptions."""
     
     __tablename__ = 'newsletter_subscriptions'
@@ -37,7 +38,7 @@ class NewsletterSubscription(BaseModel):
     def unsubscribe(self):
         """Mark subscription as inactive."""
         self.is_active = False
-        self.unsubscribed_at = datetime.utcnow()
+        self.unsubscribed_at = datetime.now(timezone.utc)
     
     def resubscribe(self):
         """Reactivate subscription."""

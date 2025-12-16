@@ -9,6 +9,9 @@ import logging
 import json
 from datetime import datetime, timedelta, timezone
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file
+from flask.wrappers import Response
+from sqlalchemy.exc import SQLAlchemyError
+from werkzeug.exceptions import BadRequest, NotFound, InternalServerError
 from flask_login import current_user, login_required
 # from flask_login import login_required  # Removido - não requer mais login
 from sqlalchemy import and_, or_
@@ -25,6 +28,7 @@ from app.models.user import User
 from app.forms.report_form import ReportConfigForm, ReportFilterForm, ReportExportForm, QuickReportForm
 from app.services.report_data_service import ReportDataService
 from app.services.report_ai_service import ReportAIService
+from app.services.fortinet_release_notes_service import FortinetReleaseNotesService
 from app.services.pdf_export_service import PDFExportService
 from app.services.report_badge_service import ReportBadgeService
 from app.services.report_notification_service import ReportNotificationService, NotificationEvent, NotificationPriority
@@ -39,6 +43,35 @@ logger = logging.getLogger(__name__)
 
 # Blueprint para relatórios
 report_bp = Blueprint('report', __name__, url_prefix='/reports')
+
+# Exigir autenticação para todas as rotas de relatórios (UI e API)
+@report_bp.before_request
+def _require_authentication():
+    if not getattr(current_user, 'is_authenticated', False):
+        # Para UI, redireciona ao login; para API, retorna 401
+        if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
+            return jsonify({'success': False, 'error': 'Authentication required'}), 401
+        return redirect(url_for('auth.login'))
+
+@report_bp.errorhandler(BadRequest)
+def _report_bad_request(e: BadRequest) -> Response:
+    return jsonify(error=str(e)), 400
+
+@report_bp.errorhandler(NotFound)
+def _report_not_found(e: NotFound) -> Response:
+    return jsonify(error='Not Found'), 404
+
+@report_bp.errorhandler(SQLAlchemyError)
+def _report_db_error(e: SQLAlchemyError) -> Response:
+    try:
+        detail = str(getattr(e, 'orig', e))
+    except Exception:
+        detail = str(e)
+    return jsonify(error='Database error', detail=detail), 500
+
+@report_bp.errorhandler(Exception)
+def _report_unexpected(e: Exception) -> Response:
+    raise InternalServerError()
 
 # Inicializar serviços
 data_service = ReportDataService()
@@ -57,14 +90,15 @@ stats_schema = ReportStatsSchema()
 
 
 @report_bp.route('/')
+@login_required
 def list_reports():
     """Lista todos os relatórios com filtros."""
     try:
         # Formulário de filtros
         filter_form = ReportFilterForm(request.args)
         
-        # Query base - mostra todos os relatórios
-        query = Report.query
+        # Query base - lista apenas relatórios do usuário atual
+        query = Report.query.filter(Report.generated_by_id == current_user.id)
         
         # Aplicar filtros
         if filter_form.report_type.data:
@@ -257,8 +291,8 @@ def create_report():
                             if not row:
                                 continue
                             hostid = (row[0] or '').strip() if len(row) > 0 else ''
-                            alias = (row[1] or '').strip() if len(row) > 1 else ''
-                            os_val = (row[2] or '').strip() if len(row) > 2 else ''
+                            alias = 'Fortinet'
+                            os_val = 'fortios'
                             if not hostid and not alias:
                                 continue
                             csv_rows.append({'hostid': hostid, 'alias': alias, 'os': os_val})
@@ -266,9 +300,20 @@ def create_report():
                         aliases = [r['alias'] for r in csv_rows if r.get('alias')]
                         if hostids or aliases:
                             try:
-                                matches = Asset.query.filter(or_(Asset.ip_address.in_(hostids), Asset.name.in_(aliases))).all()
+                                numeric_ids = [int(h) for h in hostids if str(h).isdigit()]
+                            except Exception:
+                                numeric_ids = []
+                            matches = []
+                            try:
+                                if numeric_ids:
+                                    matches = Asset.query.filter(Asset.id.in_(numeric_ids)).all()
                             except Exception:
                                 matches = []
+                            try:
+                                if not matches:
+                                    matches = Asset.query.filter(or_(Asset.ip_address.in_(hostids), Asset.name.in_(aliases))).all()
+                            except Exception:
+                                pass
                             asset_ids_from_csv = [a.id for a in matches]
                 # Se houver ativos do CSV, ajustar escopo para customizado
                 if asset_ids_from_csv:
@@ -307,8 +352,38 @@ def create_report():
                 'export_format': form.export_format.data,
                 'notify_completion': bool(form.notify_completion.data),
                 'notification_email': form.notification_email.data,
-                'custom_tags': form.custom_tags.data or ''
+                'custom_tags': form.custom_tags.data or '',
+                'fortiguide': {
+                    'enabled': bool(getattr(form, 'include_fortiguide_notes', None) and form.include_fortiguide_notes.data),
+                    'versions': (getattr(form, 'fortiguide_versions', None) and form.fortiguide_versions.data) or []
+                },
+                'cve_only': True
             }
+
+            try:
+                if (scope_config.get('csv_hosts') or []):
+                    report_metadata['vendor_name'] = 'Fortinet'
+                    ct = set(report_metadata.get('chart_types') or [])
+                    ct.add('fortios_unpatched_histogram')
+                    ct.add('fortios_installed_histogram')
+                    report_metadata['chart_types'] = list(ct)
+            except Exception:
+                pass
+
+            # Garantir inclusão de 'technical_study' para Estudo Técnico
+            try:
+                if report_type_enum == ReportType.TECHNICAL_STUDY and report_metadata.get('include_ai_analysis'):
+                    types = set(report_metadata.get('ai_analysis_types') or [])
+                    types.add('technical_study')
+                    report_metadata['ai_analysis_types'] = list(types)
+                if report_type_enum == ReportType.TECHNICAL and report_metadata.get('include_ai_analysis'):
+                    types = set(report_metadata.get('ai_analysis_types') or [])
+                    types.add('technical_analysis')
+                    # incluir plano de remediação por padrão para técnico
+                    types.add('remediation_plan')
+                    report_metadata['ai_analysis_types'] = list(types)
+            except Exception:
+                pass
 
             # Determinar usuário gerador
             user_id = None
@@ -391,12 +466,24 @@ def create_report():
                 flash('Relatório criado, mas houve erro na geração. Tente novamente.', 'warning')
             
             if wants_json:
+                try:
+                    endpoint = 'report.view_report'
+                    if report.report_type == ReportType.TECHNICAL:
+                        endpoint = 'report.view_tech_report'
+                except Exception:
+                    endpoint = 'report.view_report'
                 return jsonify({
                     'success': True,
-                    'redirect_url': url_for('report.view_report', report_id=report.id)
+                    'redirect_url': url_for(endpoint, report_id=report.id)
                 })
             else:
-                return redirect(url_for('report.view_report', report_id=report.id))
+                try:
+                    endpoint = 'report.view_report'
+                    if report.report_type == ReportType.TECHNICAL:
+                        endpoint = 'report.view_tech_report'
+                except Exception:
+                    endpoint = 'report.view_report'
+                return redirect(url_for(endpoint, report_id=report.id))
         
         # Validação falhou: retornar JSON se for submissão via fetch/AJAX
         if wants_json:
@@ -444,13 +531,134 @@ def quick_create_report():
     try:
         form = QuickReportForm()
         
+        if request.method == 'GET':
+            auto = (request.args.get('auto') or '').strip().lower()
+            if auto in ('1', 'true', 'yes'):
+                try:
+                    days = int(request.args.get('period_days') or ('3650' if (request.args.get('vendor_name') or '').strip() else '30'))
+                except Exception:
+                    days = 30
+                period_end = datetime.now(timezone.utc)
+                period_start = period_end - timedelta(days=days)
+
+                try:
+                    report_type_enum = ReportType(request.args.get('report_type') or ReportType.TECHNICAL.value)
+                except Exception:
+                    report_type_enum = ReportType.TECHNICAL
+
+                scope_cfg = {}
+                scope_enum = ReportScope.ALL_ASSETS if (request.args.get('scope') or '').strip() == 'todos_ativos' else ReportScope.CUSTOM
+                if scope_enum == ReportScope.CUSTOM:
+                    scope_cfg['critical_only'] = True
+
+                report_metadata = {
+                    'include_charts': True,
+                    'chart_types': ['cvss_distribution', 'top_assets_risk', 'vulnerability_trend'],
+                    'include_ai_analysis': True,
+                    'ai_analysis_types': ['executive_summary'],
+                    'auto_export': True,
+                    'export_format': 'html'
+                }
+
+                vendor_name_q = (request.args.get('vendor_name') or '').strip()
+                if vendor_name_q:
+                    report_metadata['vendor_name'] = vendor_name_q
+
+                try:
+                    if report_type_enum == ReportType.KPI_KRI:
+                        report_metadata['chart_types'] = ['kpi_timeline', 'vulnerability_trend']
+                    elif report_type_enum == ReportType.EXECUTIVE:
+                        report_metadata['chart_types'] = ['cvss_distribution', 'top_assets_risk']
+                    elif report_type_enum == ReportType.TECHNICAL:
+                        ct = ['cvss_distribution', 'asset_vulnerability_heatmap', 'vulnerability_trend', 'top_assets_risk']
+                        if report_metadata.get('vendor_name'):
+                            ct.append('vendor_product_cve_counts')
+                        report_metadata['chart_types'] = ct
+                except Exception:
+                    pass
+
+                ai_defaults_map = {
+                    ReportType.EXECUTIVE: ['executive_summary', 'business_impact'],
+                    ReportType.TECHNICAL: ['executive_summary', 'technical_analysis', 'remediation_plan', 'cisa_kev_analysis', 'epss_analysis'],
+                    ReportType.TECHNICAL_STUDY: ['technical_study', 'technical_analysis', 'vendor_product_analysis', 'cisa_kev_analysis', 'epss_analysis'],
+                    ReportType.PENTEST: ['technical_analysis', 'remediation_plan'],
+                    ReportType.BIA: ['executive_summary', 'business_impact', 'remediation_plan'],
+                    ReportType.KPI_KRI: ['executive_summary']
+                }
+                ai_types_default = ai_defaults_map.get(report_type_enum, ['executive_summary'])
+                if report_metadata.get('vendor_name') and 'vendor_product_analysis' not in ai_types_default:
+                    ai_types_default = ai_types_default + ['vendor_product_analysis']
+                report_metadata['ai_analysis_types'] = ai_types_default
+
+                user_id = None
+                try:
+                    if current_user and getattr(current_user, 'is_authenticated', False):
+                        user_id = current_user.id
+                    else:
+                        fu = User.query.filter_by(is_active=True).order_by(User.id.asc()).first()
+                        if fu:
+                            user_id = fu.id
+                except Exception:
+                    user_id = None
+
+                if not user_id:
+                    err = 'Nenhum usuário ativo encontrado. Faça login para criar relatório.'
+                    if wants_json:
+                        return jsonify({'success': False, 'message': err}), 401
+                    else:
+                        flash(err, 'error')
+                        return redirect(url_for('auth.login'))
+
+                report = Report(
+                    title=f"Relatório Rápido - {report_type_enum.value}",
+                    description=f"Relatório gerado automaticamente para os últimos {days} dias",
+                    report_type=report_type_enum,
+                    scope=scope_enum,
+                    detail_level=DetailLevel.SUMMARY,
+                    period_start=period_start,
+                    period_end=period_end,
+                    scope_config=scope_cfg,
+                    status=ReportStatus.PENDING,
+                    generated_by_id=user_id,
+                    export_format='html',
+                    ai_analysis_types=ai_types_default,
+                    report_metadata=report_metadata
+                )
+
+                db.session.add(report)
+                db.session.commit()
+
+                try:
+                    audit_log('create', 'report', str(report.id), {
+                        'title': report.title,
+                        'type': report.report_type.value,
+                        'quick_create': True
+                    })
+                except Exception:
+                    pass
+
+                try:
+                    _generate_report_async(report.id)
+                    flash('Relatório rápido criado e geração iniciada!', 'success')
+                except Exception as e:
+                    logger.error(f"Erro ao gerar relatório rápido {report.id}: {e}")
+                    report.status = ReportStatus.FAILED
+                    report.error_message = str(e)
+                    db.session.commit()
+                    flash('Erro na geração do relatório rápido.', 'error')
+
+                if wants_json:
+                    return jsonify({'success': True, 'redirect_url': url_for('report.view_report', report_id=report.id)})
+                else:
+                    return redirect(url_for('report.view_report', report_id=report.id))
+
         if form.validate_on_submit():
             # Período a partir de período em dias
             try:
                 days = int(form.period_days.data or '30')
             except Exception:
                 days = 30
-            period_end = datetime.utcnow()
+            period_end = datetime.now(timezone.utc)
             period_start = period_end - timedelta(days=days)
 
             # Enums e configs rápidas
@@ -493,18 +701,29 @@ def quick_create_report():
                             if not row:
                                 continue
                             hostid = (row[0] or '').strip() if len(row) > 0 else ''
-                            alias = (row[1] or '').strip() if len(row) > 1 else ''
-                            os_val = (row[2] or '').strip() if len(row) > 2 else ''
+                            alias = 'Fortinet'
+                            os_val = 'fortios'
                             if not hostid and not alias:
                                 continue
                             rows.append({'hostid': hostid, 'alias': alias, 'os': os_val})
                         hostids = [r['hostid'] for r in rows if r.get('hostid')]
                         aliases = [r['alias'] for r in rows if r.get('alias')]
                         if hostids or aliases:
+                            matches = []
                             try:
-                                matches = Asset.query.filter(or_(Asset.ip_address.in_(hostids), Asset.name.in_(aliases))).all()
+                                numeric_ids = [int(h) for h in hostids if str(h).isdigit()]
+                            except Exception:
+                                numeric_ids = []
+                            try:
+                                if numeric_ids:
+                                    matches = Asset.query.filter(Asset.id.in_(numeric_ids)).all()
                             except Exception:
                                 matches = []
+                            try:
+                                if not matches:
+                                    matches = Asset.query.filter(or_(Asset.ip_address.in_(hostids), Asset.name.in_(aliases))).all()
+                            except Exception:
+                                pass
                             asset_ids_from_csv = [a.id for a in matches]
                             scope_cfg['csv_hosts'] = rows
                 # Se houver ativos do CSV, ajustar escopo para customizado e definir asset_ids
@@ -528,15 +747,45 @@ def quick_create_report():
                 # Defaults will be overwritten below based on report_type
                 'ai_analysis_types': ['executive_summary'],
                 'auto_export': True,
-                'export_format': 'html'
+                'export_format': 'html',
+                'cve_only': True
             }
+
+            try:
+                vendor_name = (request.form.get('vendor_name') or '').strip()
+                if vendor_name:
+                    report_metadata['vendor_name'] = vendor_name
+            except Exception:
+                pass
+
+            # FortiGuide rápido (quando habilitado)
+            try:
+                include_fg = bool(getattr(form, 'include_fortiguide_notes', None) and form.include_fortiguide_notes.data)
+                selected_version = getattr(form, 'fortiguide_version', None) and (form.fortiguide_version.data or None)
+                report_metadata['fortiguide'] = {
+                    'enabled': include_fg,
+                    'versions': [selected_version] if (include_fg and selected_version) else []
+                }
+            except Exception:
+                # Em caso de erro no formulário, desabilita
+                report_metadata['fortiguide'] = {'enabled': False, 'versions': []}
+
+            try:
+                if (scope_cfg.get('csv_hosts') or []):
+                    report_metadata['vendor_name'] = 'Fortinet'
+                    cts = set(report_metadata.get('chart_types') or [])
+                    cts.add('fortios_unpatched_histogram')
+                    cts.add('fortios_installed_histogram')
+                    report_metadata['chart_types'] = list(cts)
+            except Exception:
+                pass
 
             # Criar relatório rápido
             # Definir tipos padrão de análise de IA por tipo de relatório
             ai_defaults_map = {
                 ReportType.EXECUTIVE: ['executive_summary', 'business_impact'],
-                ReportType.TECHNICAL: ['executive_summary', 'technical_analysis', 'cisa_kev_analysis', 'epss_analysis'],
-                ReportType.TECHNICAL_STUDY: ['technical_analysis', 'vendor_product_analysis', 'cisa_kev_analysis', 'epss_analysis'],
+                ReportType.TECHNICAL: ['executive_summary', 'technical_analysis', 'remediation_plan', 'cisa_kev_analysis', 'epss_analysis'],
+                ReportType.TECHNICAL_STUDY: ['technical_study', 'technical_analysis', 'vendor_product_analysis', 'cisa_kev_analysis', 'epss_analysis'],
                 ReportType.PENTEST: ['technical_analysis', 'remediation_plan'],
                 ReportType.BIA: ['executive_summary', 'business_impact', 'remediation_plan'],
                 ReportType.KPI_KRI: ['executive_summary']
@@ -550,6 +799,11 @@ def quick_create_report():
                     report_metadata['chart_types'] = ['kpi_timeline', 'vulnerability_trend']
                 elif report_type_enum == ReportType.EXECUTIVE:
                     report_metadata['chart_types'] = ['cvss_distribution', 'top_assets_risk']
+                elif report_type_enum == ReportType.TECHNICAL:
+                    chart_types = ['cvss_distribution', 'asset_vulnerability_heatmap', 'vulnerability_trend', 'top_assets_risk']
+                    if report_metadata.get('vendor_name'):
+                        chart_types.append('vendor_product_cve_counts')
+                    report_metadata['chart_types'] = chart_types
                 else:
                     report_metadata['chart_types'] = report_metadata['chart_types']
             except Exception:
@@ -657,11 +911,13 @@ def quick_create_report():
 
 
 @report_bp.route('/<int:report_id>')
+@login_required
 def view_report(report_id):
     """Visualiza um relatório específico."""
     try:
-        report = Report.query.filter_by(
-            id=report_id
+        report = Report.query.filter(
+            Report.id == report_id,
+            Report.generated_by_id == current_user.id
         ).first_or_404()
         
         # Verificar se o relatório está completo
@@ -678,12 +934,40 @@ def view_report(report_id):
         return redirect(url_for('report.list_reports'))
 
 
+@report_bp.route('/tech_report/<int:report_id>')
+@login_required
+def view_tech_report(report_id):
+    try:
+        report = Report.query.filter(
+            Report.id == report_id,
+            Report.generated_by_id == current_user.id
+        ).first_or_404()
+
+        if report.status == ReportStatus.PENDING:
+            flash('Relatório ainda está sendo gerado. Aguarde...', 'info')
+        elif report.status == ReportStatus.FAILED:
+            flash(f'Erro na geração do relatório: {report.error_message}', 'error')
+
+        if hasattr(report.report_type, 'value') and report.report_type.value != 'tecnico':
+            flash('Este não é um relatório técnico.', 'warning')
+            return redirect(url_for('report.view_report', report_id=report.id))
+
+        return render_template('reports/report_technical.html', report=report)
+
+    except Exception as e:
+        logger.error(f"Erro ao visualizar relatório técnico {report_id}: {e}")
+        flash('Erro ao carregar relatório técnico.', 'error')
+        return redirect(url_for('report.list_reports'))
+
+
 @report_bp.route('/<int:report_id>/regenerate', methods=['POST'])
+@login_required
 def regenerate_report(report_id):
     """Regenera um relatório existente."""
     try:
-        report = Report.query.filter_by(
-            id=report_id
+        report = Report.query.filter(
+            Report.id == report_id,
+            Report.generated_by_id == current_user.id
         ).first_or_404()
         
         # Resetar status e limpar dados anteriores
@@ -721,11 +1005,13 @@ def regenerate_report(report_id):
 
 
 @report_bp.route('/<int:report_id>/delete', methods=['POST'])
+@login_required
 def delete_report(report_id):
     """Deleta um relatório."""
     try:
-        report = Report.query.filter_by(
-            id=report_id
+        report = Report.query.filter(
+            Report.id == report_id,
+            Report.generated_by_id == current_user.id
         ).first_or_404()
         
         # Log da exclusão
@@ -746,11 +1032,13 @@ def delete_report(report_id):
 
 
 @report_bp.route('/<int:report_id>/export/<format>')
+@login_required
 def export_report(report_id, format):
     """Exporta um relatório em formato específico."""
     try:
-        report = Report.query.filter_by(
-            id=report_id
+        report = Report.query.filter(
+            Report.id == report_id,
+            Report.generated_by_id == current_user.id
         ).first_or_404()
         
         if report.status != ReportStatus.COMPLETED:
@@ -776,7 +1064,8 @@ def export_report(report_id, format):
                     file_path,
                     as_attachment=True,
                     download_name=f"relatorio_{report.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
-                    mimetype='application/pdf'
+                    mimetype='application/pdf',
+                    conditional=False
                 )
             except Exception as e:
                 logger.error(f"Erro ao exportar PDF do relatório {report.id}: {e}")
@@ -793,7 +1082,8 @@ def export_report(report_id, format):
                     file_path,
                     as_attachment=True,
                     download_name=f"relatorio_{report.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx",
-                    mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                    mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    conditional=False
                 )
             except Exception as e:
                 logger.error(f"Erro ao exportar DOCX do relatório {report.id}: {e}")
@@ -815,7 +1105,7 @@ def export_report(report_id, format):
 def api_list_reports():
     """API para listar relatórios."""
     try:
-        reports = Report.query.all()  # Mostra todos os relatórios
+        reports = Report.query.filter(Report.generated_by_id == current_user.id).all()
         return jsonify(reports_schema.dump(reports))
     except Exception as e:
         logger.error(f"Erro na API de listagem: {e}")
@@ -826,8 +1116,9 @@ def api_list_reports():
 def api_get_report(report_id):
     """API para obter um relatório específico."""
     try:
-        report = Report.query.filter_by(
-            id=report_id
+        report = Report.query.filter(
+            Report.id == report_id,
+            Report.generated_by_id == current_user.id
         ).first_or_404()
         return jsonify(report_schema.dump(report))
     except Exception as e:
@@ -839,8 +1130,9 @@ def api_get_report(report_id):
 def api_report_status(report_id):
     """API para verificar status de um relatório."""
     try:
-        report = Report.query.filter_by(
-            id=report_id
+        report = Report.query.filter(
+            Report.id == report_id,
+            Report.generated_by_id == current_user.id
         ).first_or_404()
         
         error_msg = None
@@ -1047,6 +1339,8 @@ def _generate_report_async(report_id):
         if not report_data:
             # Compilar dados se não estiver em cache
             logger.info(f"Compilando dados para relatório {report_id}")
+            meta = report.report_metadata or {}
+            vendor_name = meta.get('vendor_name')
             report_data = data_service.compile_report_data(
                 asset_ids=report.asset_ids,
                 asset_tags=report.asset_tags,
@@ -1054,7 +1348,8 @@ def _generate_report_async(report_id):
                 period_start=report.period_start,
                 period_end=report.period_end,
                 scope=report.scope,
-                detail_level=report.detail_level
+                detail_level=report.detail_level,
+                vendor_name=vendor_name
             )
             
             # Armazenar no cache
@@ -1077,6 +1372,39 @@ def _generate_report_async(report_id):
             logger.info(f"Gerando dados de gráficos para relatório {report_id}")
             chart_data = _generate_chart_data(report, report_data)
         
+        # Detectar cenário de fallback: nenhum ativo e IA não integrada
+        try:
+            total_assets = int((report_data.get('assets', {}) or {}).get('total_assets', 0) or 0)
+        except Exception:
+            total_assets = 0
+        fallback_reason = None
+        try:
+            # Inicializa cliente para verificar modo demo
+            ai_service._initialize_openai()
+            if total_assets == 0 and getattr(ai_service, 'demo_mode', False):
+                fallback_reason = 'Nenhum ativo associado e IA não configurada'
+                logger.warning(f"Fallback de relatório {report_id}: {fallback_reason}")
+                # Forçar gráficos padrão
+                try:
+                    meta = report.report_metadata or {}
+                    chart_types = meta.get('chart_types') or []
+                    if not chart_types:
+                        meta['chart_types'] = ['cvss_distribution', 'vulnerability_trend', 'top_assets_risk']
+                    if not meta.get('include_charts'):
+                        meta['include_charts'] = True
+                    report.report_metadata = meta
+                except Exception:
+                    pass
+                # Incluir seções de IA em modo demo (prompts estruturados)
+                try:
+                    if not report.ai_analysis_types:
+                        report.ai_analysis_types = ['executive_summary', 'technical_analysis', 'remediation_plan']
+                    ai_analysis = _generate_ai_analysis(report, report_data)
+                except Exception as _fallback_ai_err:
+                    logger.warning(f"Falha ao gerar prompts padrão: {_fallback_ai_err}")
+        except Exception:
+            pass
+
         # Compor conteúdo final conforme estrutura esperada pelo template
         try:
             composed_content = _compose_display_content(
@@ -1094,9 +1422,13 @@ def _generate_report_async(report_id):
         report.content = composed_content
         report.ai_analysis = ai_analysis
         report.charts_data = chart_data
-        report.status = ReportStatus.COMPLETED
-        report.generated_at = datetime.utcnow()
+        report.status = ReportStatus.COMPLETED if not fallback_reason else ReportStatus.FAILED
+        report.generated_at = datetime.now(timezone.utc)
         
+        if fallback_reason:
+            meta = report.report_metadata or {}
+            meta['error_message'] = fallback_reason
+            report.report_metadata = meta
         db.session.commit()
         
         # Enviar notificação de conclusão (respeitando preferências)
@@ -1122,10 +1454,10 @@ def _generate_report_async(report_id):
                 'title': report.title,
                 'type': report.report_type.value,
                 'url': report_url,
-                'created_at': report.created_at or datetime.utcnow(),
+                'created_at': report.created_at or datetime.now(timezone.utc),
                 'created_by': (getattr(user, 'username', None) or getattr(user, 'email', None) or 'Sistema'),
                 'scope': report.scope.value,
-                'completed_at': report.generated_at or datetime.utcnow(),
+                'completed_at': report.generated_at or datetime.now(timezone.utc),
                 'processing_time': processing_time,
                 'total_vulnerabilities': report_data.get('vulnerabilities', {}).get('total_vulnerabilities', 0),
                 'critical_vulnerabilities': critical_count,
@@ -1167,7 +1499,7 @@ def _generate_report_async(report_id):
                 meta['auto_export_result'] = {
                     'format': export_format,
                     'filepath': filepath,
-                    'exported_at': datetime.utcnow().isoformat()
+                    'exported_at': datetime.now(timezone.utc).isoformat()
                 }
                 report.report_metadata = meta
                 db.session.commit()
@@ -1196,11 +1528,11 @@ def _generate_report_async(report_id):
                     'title': report.title,
                     'type': report.report_type.value,
                     'url': report_url,
-                    'created_at': report.created_at or datetime.utcnow(),
+                    'created_at': report.created_at or datetime.now(timezone.utc),
                     'created_by': (getattr(user, 'username', None) or getattr(user, 'email', None) or 'Sistema'),
                     'scope': report.scope.value,
                     'completed_at': report.generated_at,
-                    'failed_at': datetime.utcnow(),
+                    'failed_at': datetime.now(timezone.utc),
                     'processing_time': 'N/A',
                     'total_vulnerabilities': report_data.get('vulnerabilities', {}).get('total_vulnerabilities', 0) if 'vulnerabilities' in (report_data or {}) else 0,
                     'risk_score': report_data.get('risks', {}).get('overall_score', 0) if 'risks' in (report_data or {}) else 0,
@@ -1316,9 +1648,9 @@ def _generate_ai_analysis(report, report_data):
         return {
             'type': analysis_type,
             'markdown': val if isinstance(val, str) else json.dumps(val, ensure_ascii=False, default=str),
-            'created_at': datetime.utcnow().isoformat(),
+            'created_at': datetime.now(timezone.utc).isoformat(),
             'model': 'unknown',
-            'request_id': f'ctrl_{analysis_type}_{int(datetime.utcnow().timestamp())}'
+            'request_id': f'ctrl_{analysis_type}_{int(datetime.now(timezone.utc).timestamp())}'
         }
     
     try:
@@ -1328,6 +1660,49 @@ def _generate_ai_analysis(report, report_data):
                     report_data, report.report_type.value
                 )
                 ai_analysis['executive_summary'] = _normalize_ai_output(val, 'executive_summary')
+            elif analysis_type == 'technical_study':
+                # Estudo Técnico: enriquecer technical_details com notas FortiGate quando habilitado
+                try:
+                    enriched_report_data = dict(report_data or {})
+                    technical_details = dict(enriched_report_data.get('technical_analysis', {}))
+
+                    meta = report.report_metadata or {}
+                    fg_meta = meta.get('fortiguide', {})
+                    include_fg = bool(fg_meta.get('enabled'))
+                    versions = fg_meta.get('versions') or []
+
+                    if include_fg and versions:
+                        try:
+                            fg_service = FortinetReleaseNotesService()
+                            fg_notes = fg_service.get_fortigate_release_notes_multi_versions(versions=versions, limit=100)
+                            # Formatar notas em texto resumido para o prompt
+                            formatted = []
+                            items = fg_notes.get('items', fg_notes) if isinstance(fg_notes, dict) else fg_notes
+                            if isinstance(items, list):
+                                for it in items:
+                                    ver = it.get('version') or it.get('release') or 'N/A'
+                                    title = it.get('title') or it.get('summary') or it.get('description') or ''
+                                    date = it.get('date') or it.get('released_at') or ''
+                                    formatted.append(f"Versão {ver} ({date}): {title}")
+                            technical_details['FortiGate Release Notes'] = "\n".join(formatted) if formatted else 'Sem notas disponíveis.'
+                        except Exception as fg_err:
+                            logger.warning(f"Falha ao obter notas FortiGate: {fg_err}")
+
+                    enriched_report_data['technical_analysis'] = technical_details
+
+                    # Extrair configurações de ativos como base (se disponível)
+                    asset_configurations = enriched_report_data.get('assets', {}).get('asset_details', [])
+                    security_architecture = None
+
+                    val = ai_service.generate_technical_study(
+                        enriched_report_data, asset_configurations, security_architecture
+                    )
+                    ai_analysis['technical_study'] = _normalize_ai_output(val, 'technical_study')
+                except Exception as te_err:
+                    logger.error(f"Erro ao gerar estudo técnico: {te_err}")
+                    ai_analysis['technical_study'] = _normalize_ai_output(
+                        {'error': f'Falha ao gerar Estudo Técnico: {str(te_err)}'}, 'technical_study'
+                    )
             elif analysis_type == 'business_impact':
                 # Obter atributos de ativos e mapeamentos CVE
                 asset_attributes = _get_asset_attributes(report_data.get('assets', {}))
@@ -1387,6 +1762,8 @@ def _generate_chart_data(report, report_data):
     try:
         vulnerabilities = report_data.get('vulnerabilities', {})
         timeline = report_data.get('timeline', {})
+        meta = report.report_metadata or {}
+        vendor_name = meta.get('vendor_name')
         
         for chart_type in report.chart_types:
             # Verificar cache para cada tipo de gráfico
@@ -1413,6 +1790,44 @@ def _generate_chart_data(report, report_data):
                 generated = _generate_kpi_timeline_data(timeline)
             elif chart_type == 'security_maturity':
                 generated = _generate_security_maturity_data(report_data)
+            elif chart_type == 'vendor_product_cve_counts':
+                if not vendor_name:
+                    vp = vulnerabilities.get('vendor_product_data', {}) or {}
+                    tv = vp.get('top_vendors', {}) or {}
+                    vendor_name = next(iter(tv.keys()), None)
+                generated = _generate_vendor_product_cve_chart(vulnerabilities, vendor_name)
+            elif chart_type == 'fortios_unpatched_histogram':
+                hist = (vulnerabilities.get('fortios_histogram') or {}) if isinstance(vulnerabilities, dict) else {}
+                labels = list((hist.get('counts') or {}).keys())
+                counts = [int((hist.get('counts') or {}).get(v, 0) or 0) for v in labels]
+                generated = {
+                    'type': 'bar',
+                    'data': {
+                        'labels': labels,
+                        'datasets': [{
+                            'label': 'CVEs sem patch por versão FortiOS',
+                            'data': counts,
+                            'backgroundColor': '#198754'
+                        }]
+                    },
+                    'title': 'FortiOS vs CVEs sem patch'
+                }
+            elif chart_type == 'fortios_installed_histogram':
+                hist = (vulnerabilities.get('fortios_installed_histogram') or {}) if isinstance(vulnerabilities, dict) else {}
+                labels = list((hist.get('counts') or {}).keys())
+                counts = [int((hist.get('counts') or {}).get(v, 0) or 0) for v in labels]
+                generated = {
+                    'type': 'bar',
+                    'data': {
+                        'labels': labels,
+                        'datasets': [{
+                            'label': 'CVEs sem patch por versão instalada FortiOS',
+                            'data': counts,
+                            'backgroundColor': '#0d6efd'
+                        }]
+                    },
+                    'title': 'FortiOS Instalado vs CVEs sem patch'
+                }
 
             if generated is not None:
                 chart_data[chart_type] = generated
@@ -1478,18 +1893,31 @@ def _get_cve_details(vulnerabilities_data):
 
 
 def _generate_cvss_distribution_data(vulnerabilities):
-    """Gera dados para gráfico de distribuição CVSS."""
+    by_sev = vulnerabilities.get('by_severity', {}) or {}
+    critical = by_sev.get('CRITICAL') or by_sev.get('Critical') or 0
+    high = by_sev.get('HIGH') or by_sev.get('High') or 0
+    medium = by_sev.get('MEDIUM') or by_sev.get('Medium') or 0
+    low = by_sev.get('LOW') or by_sev.get('Low') or 0
+    labels = ['Crítico', 'Alto', 'Médio', 'Baixo']
+    dataset = {
+        'label': 'Vulnerabilidades por Severidade',
+        'data': [critical, high, medium, low],
+        'backgroundColor': ['#dc3545', '#fd7e14', '#ffc107', '#28a745'],
+        'borderColor': ['#dc3545', '#fd7e14', '#ffc107', '#28a745'],
+        'borderWidth': 1
+    }
     return {
-        'type': 'histogram',
-        'data': vulnerabilities.get('cvss_detailed', {}),
-        'title': 'Distribuição de Scores CVSS'
+        'type': 'doughnut',
+        'data': {
+            'labels': labels,
+            'datasets': [dataset]
+        },
+        'title': 'Distribuição de Severidade CVSS'
     }
 
 
 def _generate_top_assets_risk_data(report_data):
-    """Gera dados para gráfico de top ativos por risco."""
     raw = report_data.get('top_assets_by_risk', []) or []
-    # Converter itens para forma serializável (remover objetos ORM)
     safe_items = []
     for item in raw:
         try:
@@ -1502,10 +1930,9 @@ def _generate_top_assets_risk_data(report_data):
                 'avg_risk': float(item.get('avg_risk', 0) or 0),
             })
         except Exception:
-            # Caso inesperado, manter números se existirem
             safe_items.append({
                 'asset_id': None,
-                'asset_name': None,
+                'asset_name': item.get('asset_name'),
                 'total_risk': float(item.get('total_risk', 0) or 0),
                 'risk_count': int(item.get('risk_count', 0) or 0),
                 'avg_risk': float(item.get('avg_risk', 0) or 0),
@@ -1518,11 +1945,11 @@ def _generate_top_assets_risk_data(report_data):
 
 
 def _generate_vulnerability_trends_data(report_data):
-    """Gera dados para gráfico de tendências de vulnerabilidades."""
     trends = report_data.get('trends', {})
+    trend_data = trends.get('trend_data', [])
     return {
         'type': 'line',
-        'data': trends.get('trend_data', []),
+        'data': trend_data,
         'title': 'Tendência de Vulnerabilidades'
     }
 
@@ -1537,10 +1964,10 @@ def _generate_risk_matrix_data(report_data):
 
 
 def _generate_heatmap_data(report_data):
-    """Gera dados para heatmap de ativos x vulnerabilidades."""
+    data_obj = report_data.get('asset_vulnerability_matrix') or {}
     return {
-        'type': 'heatmap',
-        'data': report_data.get('asset_vulnerability_matrix', []),
+        'type': 'bar',
+        'data': data_obj,
         'title': 'Heatmap Ativos x Vulnerabilidades'
     }
 
@@ -1560,6 +1987,26 @@ def _generate_security_maturity_data(report_data):
         'type': 'radar',
         'data': report_data.get('security_maturity', {}),
         'title': 'Maturidade de Segurança por Domínio'
+    }
+
+
+def _generate_vendor_product_cve_chart(vulnerabilities, vendor_name):
+    vp = vulnerabilities.get('vendor_product_data', {}) or {}
+    mapping = (vp.get('vendor_products') or {}).get(vendor_name) or {}
+    labels = list(mapping.keys())
+    counts = [int((mapping[p] or {}).get('count', 0) or 0) for p in labels]
+    dataset = {
+        'label': f'CVEs por Produto - {vendor_name}' if vendor_name else 'CVEs por Produto',
+        'data': counts,
+        'backgroundColor': '#0d6efd'
+    }
+    return {
+        'type': 'bar',
+        'data': {
+            'labels': labels,
+            'datasets': [dataset]
+        },
+        'title': f'CVE por Produto - {vendor_name}' if vendor_name else 'CVE por Produto'
     }
 
 
@@ -1646,10 +2093,71 @@ def _compose_display_content(base_content, ai_analysis, chart_data, report_data,
         for sev_key, count in (by_sev or {}).items():
             v_summary[str(sev_key).lower()] = count
         if v_summary or vulns.get('details'):
+            dets = vulns.get('details', []) or []
+            try:
+                enriched = []
+                for d in dets:
+                    cveid = d.get('cve_id')
+                    url = url_for('vulnerability_ui.generate_risk_report', cve_id=cveid) if cveid else None
+                    obj = dict(d)
+                    if url:
+                        obj['risk_report_url'] = url
+                    enriched.append(obj)
+                dets = enriched
+            except Exception:
+                pass
+            try:
+                meta = report.report_metadata or {}
+                if bool(meta.get('cve_only')):
+                    dets = [{'cve_id': d.get('cve_id')} for d in dets if d.get('cve_id')]
+            except Exception:
+                pass
             content['vulnerabilities'] = {
                 'summary': v_summary,
-                'details': vulns.get('details', [])
+                'details': dets
             }
+
+        # Análise de CVSS
+        cvss_stats = vulns.get('cvss_stats') or {}
+        cvss_versions = vulns.get('cvss_detailed') or {}
+        if cvss_stats or cvss_versions:
+            content['cvss_analysis'] = {
+                'stats': {
+                    'mean': cvss_stats.get('mean', 0),
+                    'min': cvss_stats.get('min', 0),
+                    'max': cvss_stats.get('max', 0),
+                    'count': cvss_stats.get('count', 0)
+                },
+                'versions': {
+                    'v2': cvss_versions.get('v2', 0),
+                    'v3_0': cvss_versions.get('v3_0', 0),
+                    'v3_1': cvss_versions.get('v3_1', 0),
+                    'v4_0': cvss_versions.get('v4_0', 0)
+                },
+                'ranges': [
+                    {'range': k, 'count': v} for k, v in (cvss_versions.get('metrics_distribution', {}) or {}).items()
+                ]
+            }
+
+        # Sumário técnico e métricas para página técnica
+        try:
+            content['technical_summary'] = {
+                'total_vulnerabilities': total_vulns,
+                'affected_assets': assets.get('assets_with_vulnerabilities', 0),
+                'avg_cvss': cvss_stats.get('mean', 0),
+                'exploitable': int((vulns.get('cisa_kev_data', {}) or {}).get('total_kev_vulnerabilities', 0))
+            }
+
+            content['metrics'] = {
+                'critical_vulns': v_summary.get('critical', 0),
+                'high_vulns': v_summary.get('high', 0),
+                'medium_vulns': v_summary.get('medium', 0),
+                'low_vulns': v_summary.get('low', 0),
+                'patched': int((vulns.get('patch_coverage', {}) or {}).get('patched', 0)),
+                'false_positives': int((vulns.get('false_positives', 0) or 0))
+            }
+        except Exception as _tech_sum_err:
+            logger.warning(f"Falha ao compor technical_summary/metrics: {_tech_sum_err}")
 
         # BIA
         if (ai_analysis or {}).get('business_impact'):
@@ -1698,6 +2206,14 @@ def _compose_display_content(base_content, ai_analysis, chart_data, report_data,
         # Apenas definir se houver algo para mostrar
         if charts_list:
             content['charts'] = charts_list
+
+        # Incluir tabela de enums agregados para exibição
+        try:
+            enums_table = (report_data or {}).get('enums_table')
+            if isinstance(enums_table, dict) and enums_table:
+                content['enums_table'] = enums_table
+        except Exception:
+            pass
 
         return content
     except Exception as e:

@@ -18,17 +18,21 @@
     const elAssetsWithoutVendor = document.getElementById("assets-without-vendor-count");
     const elAssetsWithoutOwner = document.getElementById("assets-without-owner-count");
     if (!elCritical && !elAssets && !elRules && !elAssetsWithVulns && !elAssetsWithCritical && !elAssetsWithoutVendor && !elAssetsWithoutOwner) return;
-    fetch("/api/insights/overview")
+    fetch("/api/insights/overview", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Falha ao carregar overview"))))
       .then((json) => {
         const data = json && json.data ? json.data : {};
-        if (elCritical && data.critical_count != null) elCritical.textContent = data.critical_count;
-        if (elAssets && data.assets_count != null) elAssets.textContent = data.assets_count;
-        if (elRules && data.monitoring_rules_count != null) elRules.textContent = data.monitoring_rules_count;
-        if (elAssetsWithVulns && data.assets_with_vulns_count != null) elAssetsWithVulns.textContent = data.assets_with_vulns_count;
-        if (elAssetsWithCritical && data.assets_with_critical_count != null) elAssetsWithCritical.textContent = data.assets_with_critical_count;
-        if (elAssetsWithoutVendor && data.assets_without_vendor_count != null) elAssetsWithoutVendor.textContent = data.assets_without_vendor_count;
-        if (elAssetsWithoutOwner && data.assets_without_owner_count != null) elAssetsWithoutOwner.textContent = data.assets_without_owner_count;
+        const num = (v) => {
+          const n = parseInt(v, 10);
+          return Number.isFinite(n) ? n : 0;
+        };
+        if (elCritical) elCritical.textContent = num(data.critical_count);
+        if (elAssets) elAssets.textContent = num(data.assets_count);
+        if (elRules) elRules.textContent = num(data.monitoring_rules_count);
+        if (elAssetsWithVulns) elAssetsWithVulns.textContent = num(data.assets_with_vulns_count);
+        if (elAssetsWithCritical) elAssetsWithCritical.textContent = num(data.assets_with_critical_count);
+        if (elAssetsWithoutVendor) elAssetsWithoutVendor.textContent = num(data.assets_without_vendor_count);
+        if (elAssetsWithoutOwner) elAssetsWithoutOwner.textContent = num(data.assets_without_owner_count);
       })
       .catch((err) => {
         console.warn("[Insights] Erro overview:", err);
@@ -43,7 +47,7 @@
       const severityEmpty = document.getElementById("severity-chart-empty");
 
       if (trendCanvas) {
-        fetch("/api/analytics/timeseries/cve_history")
+        fetch("/api/insights/timeseries/asset_vulns", { credentials: "include" })
           .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Falha ao carregar timeseries"))))
           .then((json) => {
             const points = Array.isArray(json.data) ? json.data : [];
@@ -90,7 +94,7 @@
       }
 
       if (severityCanvas) {
-        fetch("/api/analytics/severity-distribution")
+        fetch("/api/insights/severity-distribution", { credentials: "include" })
           .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Falha ao carregar distribuição de severidade"))))
           .then((json) => {
             const data = json && json.data ? json.data : { labels: [], data: [] };

@@ -8,7 +8,7 @@ import asyncio
 import logging
 import random
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass, field
 from enum import Enum
@@ -59,7 +59,7 @@ class RetryAttempt:
     attempt_number: int
     delay: float
     exception: Optional[Exception] = None
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     duration: Optional[float] = None
     
 @dataclass
@@ -279,7 +279,7 @@ class RetryService:
         Returns:
             Resultado da função
         """
-        stats = RetryStats(start_time=datetime.utcnow())
+        stats = RetryStats(start_time=datetime.now(timezone.utc))
         
         for attempt in range(1, (config or self.configs.get(category or ErrorCategory.UNKNOWN, RetryConfig())).max_attempts + 1):
             try:
@@ -290,7 +290,7 @@ class RetryService:
                 
                 duration = time.time() - start_time
                 stats.successful_attempts += 1
-                stats.end_time = datetime.utcnow()
+                stats.end_time = datetime.now(timezone.utc)
                 
                 # Registrar tentativa bem-sucedida
                 retry_attempt = RetryAttempt(
@@ -321,7 +321,7 @@ class RetryService:
                 # Verificar se deve tentar novamente
                 status_code = getattr(e, 'status', None) or getattr(e, 'status_code', None)
                 if not self.should_retry(e, attempt, retry_config, status_code):
-                    stats.end_time = datetime.utcnow()
+                    stats.end_time = datetime.now(timezone.utc)
                     
                     # Registrar tentativa final falhada
                     retry_attempt = RetryAttempt(
@@ -359,7 +359,7 @@ class RetryService:
                     time.sleep(delay)
         
         # Se chegou aqui, todas as tentativas falharam
-        stats.end_time = datetime.utcnow()
+        stats.end_time = datetime.now(timezone.utc)
         func_name = getattr(func, '__name__', str(func))
         self.stats[func_name] = stats
         
@@ -382,7 +382,7 @@ class RetryService:
         Returns:
             Resultado da função
         """
-        stats = RetryStats(start_time=datetime.utcnow())
+        stats = RetryStats(start_time=datetime.now(timezone.utc))
         
         for attempt in range(1, (config or self.configs.get(category or ErrorCategory.UNKNOWN, RetryConfig())).max_attempts + 1):
             try:
@@ -396,7 +396,7 @@ class RetryService:
                 
                 duration = time.time() - start_time
                 stats.successful_attempts += 1
-                stats.end_time = datetime.utcnow()
+                stats.end_time = datetime.now(timezone.utc)
                 
                 # Registrar tentativa bem-sucedida
                 retry_attempt = RetryAttempt(
@@ -427,7 +427,7 @@ class RetryService:
                 # Verificar se deve tentar novamente
                 status_code = getattr(e, 'status', None) or getattr(e, 'status_code', None)
                 if not self.should_retry(e, attempt, retry_config, status_code):
-                    stats.end_time = datetime.utcnow()
+                    stats.end_time = datetime.now(timezone.utc)
                     
                     # Registrar tentativa final falhada
                     retry_attempt = RetryAttempt(
@@ -465,7 +465,7 @@ class RetryService:
                     await asyncio.sleep(delay)
         
         # Se chegou aqui, todas as tentativas falharam
-        stats.end_time = datetime.utcnow()
+        stats.end_time = datetime.now(timezone.utc)
         func_name = getattr(func, '__name__', str(func))
         self.stats[func_name] = stats
         

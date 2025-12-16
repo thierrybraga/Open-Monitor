@@ -1,6 +1,6 @@
 # models/chat_message.py
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, ForeignKey, Enum
 from sqlalchemy.orm import relationship, Mapped, mapped_column
@@ -52,8 +52,8 @@ class ChatMessage(BaseModel):
     message_metadata: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
     # Colunas de auditoria (explícitas para garantir que sejam reconhecidas)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
     
     # Relacionamentos
     session: Mapped["ChatSession"] = relationship("ChatSession", back_populates="messages")
@@ -83,14 +83,14 @@ class ChatMessage(BaseModel):
     def mark_as_edited(self):
         """Marca a mensagem como editada."""
         self.is_edited = True
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
     
     def soft_delete(self):
         """Marca a mensagem como deletada (soft delete)."""
         self.is_deleted = True
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
     
     def restore(self):
         """Restaura uma mensagem deletada."""
         self.is_deleted = False
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)

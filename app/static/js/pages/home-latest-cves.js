@@ -49,6 +49,16 @@
   }
 
   function buildVendorParam(prefix = '?') {
+    // Respeitar escopo global: não propagar vendor_ids quando vendor_scope=all
+    try {
+      const params = new URLSearchParams(window.location.search || '');
+      const scopeUrl = String(params.get('vendor_scope') || '').trim().toLowerCase();
+      if (scopeUrl === 'all') return `${prefix}vendor_scope=all`;
+      try {
+        const scopeSaved = String(localStorage.getItem('vendorSelection.scope') || '').trim().toLowerCase();
+        if (scopeSaved === 'all') return `${prefix}vendor_scope=all`;
+      } catch (_) { /* ignore */ }
+    } catch (_) { /* ignore */ }
     const urlVendorIds = getVendorIdsFromUrl();
     const effectiveIds = (urlVendorIds && urlVendorIds.length)
       ? urlVendorIds
@@ -90,6 +100,24 @@
 
   function appendVendorToUrl(href) {
     try {
+      // Respeitar escopo global
+      try {
+        const params = new URLSearchParams(window.location.search || '');
+        const scopeUrl = String(params.get('vendor_scope') || '').trim().toLowerCase();
+        if (scopeUrl === 'all') {
+          const u0 = new URL(href, window.location.origin);
+          u0.searchParams.set('vendor_scope', 'all');
+          u0.searchParams.delete('vendor_ids');
+          return u0.toString();
+        }
+        const scopeSaved = String(localStorage.getItem('vendorSelection.scope') || '').trim().toLowerCase();
+        if (scopeSaved === 'all') {
+          const u1 = new URL(href, window.location.origin);
+          u1.searchParams.set('vendor_scope', 'all');
+          u1.searchParams.delete('vendor_ids');
+          return u1.toString();
+        }
+      } catch (_) { /* ignore */ }
       const ids = getVendorIdsFromUrl();
       const eff = ids.length ? ids : getVendorIdsFromLocalStorage();
       if (!eff.length) return href;
@@ -107,9 +135,12 @@
     apiUrl.searchParams.set('page', '1');
     apiUrl.searchParams.set('per_page', '10');
     if (vendorParam) {
-      // vendorParam começa com '?vendor_ids=...'
-      const ids = vendorParam.replace('?vendor_ids=', '');
-      apiUrl.searchParams.set('vendor_ids', ids);
+      if (vendorParam.includes('vendor_scope=all')) {
+        apiUrl.searchParams.set('vendor_scope', 'all');
+      } else if (vendorParam.includes('vendor_ids=')) {
+        const ids = vendorParam.replace('?vendor_ids=', '');
+        apiUrl.searchParams.set('vendor_ids', ids);
+      }
     }
 
     async function fetchOnce(urlObj) {

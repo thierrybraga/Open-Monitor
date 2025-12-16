@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
 import random
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -179,23 +180,29 @@ class NVDRateLimiter(AdvancedRateLimiter):
             has_api_key: Se True, usa limites para usuários com API key
         """
         if has_api_key:
-            # Com API key: 50 requests por 30 segundos
+            req = int(os.getenv('NVD_RL_KEY_REQUESTS', '50'))
+            win = int(os.getenv('NVD_RL_KEY_WINDOW', '30'))
+            bfactor = float(os.getenv('NVD_RL_KEY_BACKOFF', '1.8'))
+            mback = float(os.getenv('NVD_RL_KEY_MAX_BACKOFF', '180'))
             config = RateLimitConfig(
-                requests=50,
-                window_seconds=30,
+                requests=req,
+                window_seconds=win,
                 burst_allowance=5,
-                backoff_factor=1.5,
-                max_backoff=120.0,  # 2 minutos máximo
+                backoff_factor=bfactor,
+                max_backoff=mback,
                 jitter=True
             )
         else:
-            # Sem API key: 5 requests por 30 segundos (mais conservador)
+            req = int(os.getenv('NVD_RL_PUBLIC_REQUESTS', '5'))
+            win = int(os.getenv('NVD_RL_PUBLIC_WINDOW', '30'))
+            bfactor = float(os.getenv('NVD_RL_PUBLIC_BACKOFF', '2.5'))
+            mback = float(os.getenv('NVD_RL_PUBLIC_MAX_BACKOFF', '600'))
             config = RateLimitConfig(
-                requests=5,
-                window_seconds=30,
+                requests=req,
+                window_seconds=win,
                 burst_allowance=1,
-                backoff_factor=2.0,
-                max_backoff=300.0,  # 5 minutos máximo
+                backoff_factor=bfactor,
+                max_backoff=mback,
                 jitter=True
             )
         
@@ -242,6 +249,14 @@ class NVDRateLimiter(AdvancedRateLimiter):
             wait_time = min(30 * (2 ** self.consecutive_rate_limits), 180)
             logger.warning(
                 f"[{self.api_name}] Serviço indisponível (503). Aguardando {wait_time}s"
+            )
+            await asyncio.sleep(wait_time)
+            self.consecutive_rate_limits += 1
+            return True
+        elif status_code == 403:
+            wait_time = min(20 * (2 ** self.consecutive_rate_limits), 180)
+            logger.warning(
+                f"[{self.api_name}] Acesso limitado (403). Aguardando {wait_time}s"
             )
             await asyncio.sleep(wait_time)
             self.consecutive_rate_limits += 1

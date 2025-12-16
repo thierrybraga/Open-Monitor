@@ -85,6 +85,22 @@ class RateLimiterConfig:
     
     # Rate limit headers
     INCLUDE_HEADERS = os.getenv('RATE_LIMIT_INCLUDE_HEADERS', 'true').lower() == 'true'
+
+    @classmethod
+    def to_dict(cls) -> Dict[str, Any]:
+        return {
+            'DEFAULT_REQUESTS_PER_WINDOW': cls.DEFAULT_REQUESTS_PER_WINDOW,
+            'DEFAULT_WINDOW_SIZE': cls.DEFAULT_WINDOW_SIZE,
+            'API_RATE_LIMITS': dict(cls.API_RATE_LIMITS),
+            'RATE_LIMIT_STRATEGY': cls.RATE_LIMIT_STRATEGY,
+            'WHITELISTED_IPS': list(cls.WHITELISTED_IPS),
+            'SKIP_ROUTES': list(cls.SKIP_ROUTES),
+            'ADMIN_ROUTES': list(cls.ADMIN_ROUTES),
+            'RATE_LIMITING_ENABLED': cls.RATE_LIMITING_ENABLED,
+            'REDIS_URL': cls.REDIS_URL,
+            'USE_REDIS': cls.USE_REDIS,
+            'INCLUDE_HEADERS': cls.INCLUDE_HEADERS,
+        }
     
     @classmethod
     def get_rate_limit_for_endpoint(cls, endpoint: str) -> Dict[str, int]:

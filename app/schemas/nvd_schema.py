@@ -18,5 +18,4 @@ class ApiCallLogSchema(Schema):
     status_code = fields.Int(required=True)
     response_time = fields.Float(required=True)
     timestamp = fields.DateTime(dump_only=True)
-    sync_id = fields.Str(load_only=True)
-    metadata = fields.Nested(SyncMetadataSchema, dump_only=True)
+    # Campos de relacionamento com SyncMetadata não existem no modelo atual

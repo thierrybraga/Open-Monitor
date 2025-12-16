@@ -72,7 +72,11 @@
              aria-label="Entrar"
              title="Entrar"
              {% endif %}>
+            {% if current_user.is_authenticated %}
             <i class="bi bi-person-circle text-muted" aria-hidden="true"></i>
+            {% else %}
+            <i class="bi bi-person text-muted" aria-hidden="true"></i>
+            {% endif %}
             <span class="username d-none d-md-inline ms-1">
               {% if current_user.is_authenticated %}
                 {{ current_user.first_name or current_user.username }}

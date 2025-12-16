@@ -4,7 +4,7 @@ Responsável por limpar sessões antigas automaticamente
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional
 from sqlalchemy import and_, desc
 from app.models.chat_session import ChatSession
@@ -42,16 +42,18 @@ class SessionCleanupService:
             self.logger.info(f"Iniciando limpeza de sessões - days_old: {days_old}, keep_recent: {keep_recent}")
             
             # Data limite para considerar sessões antigas
-            cutoff_date = datetime.utcnow() - timedelta(days=days_old)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_old)
             
             # Construir query base
-            query = ChatSession.query.filter(ChatSession.is_active == True)
+            query = ChatSession.query.filter(ChatSession.is_active.is_(True))
             
             if user_id:
                 query = query.filter(ChatSession.user_id == user_id)
             
             # Buscar todas as sessões ativas
-            all_sessions = query.order_by(desc(ChatSession.last_activity)).all()
+            all_sessions = (
+                query.order_by(desc(ChatSession.last_activity)).all()
+            )
             
             # Separar sessões por usuário para manter as mais recentes de cada um
             sessions_by_user = {}
@@ -97,15 +99,25 @@ class SessionCleanupService:
                 session_ids = [s.id for s in sessions_to_delete]
                 
                 # Soft delete das sessões
-                ChatSession.query.filter(ChatSession.id.in_(session_ids)).update(
-                    {'is_active': False, 'updated_at': datetime.utcnow()},
-                    synchronize_session=False
+                ChatSession.query.filter(
+                    ChatSession.id.in_(session_ids)
+                ).update(
+                    {
+                        'is_active': False,
+                        'updated_at': datetime.now(timezone.utc),
+                    },
+                    synchronize_session=False,
                 )
                 
                 # Soft delete das mensagens relacionadas
-                ChatMessage.query.filter(ChatMessage.session_id.in_(session_ids)).update(
-                    {'is_active': False, 'updated_at': datetime.utcnow()},
-                    synchronize_session=False
+                ChatMessage.query.filter(
+                    ChatMessage.session_id.in_(session_ids)
+                ).update(
+                    {
+                        'is_deleted': True,
+                        'updated_at': datetime.now(timezone.utc),
+                    },
+                    synchronize_session=False,
                 )
                 
                 db.session.commit()
@@ -141,27 +153,38 @@ class SessionCleanupService:
             Dict com estatísticas
         """
         try:
-            query = ChatSession.query.filter(ChatSession.is_active == True)
+            query = ChatSession.query.filter(ChatSession.is_active.is_(True))
             
             if user_id:
                 query = query.filter(ChatSession.user_id == user_id)
             
             # Contar sessões por idade
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             
             stats = {
                 'total_active': query.count(),
-                'last_7_days': query.filter(ChatSession.last_activity >= now - timedelta(days=7)).count(),
-                'last_30_days': query.filter(ChatSession.last_activity >= now - timedelta(days=30)).count(),
-                'last_90_days': query.filter(ChatSession.last_activity >= now - timedelta(days=90)).count(),
-                'older_than_90_days': query.filter(ChatSession.last_activity < now - timedelta(days=90)).count()
+                'last_7_days': query.filter(
+                    ChatSession.last_activity >= now - timedelta(days=7)
+                ).count(),
+                'last_30_days': query.filter(
+                    ChatSession.last_activity >= now - timedelta(days=30)
+                ).count(),
+                'last_90_days': query.filter(
+                    ChatSession.last_activity >= now - timedelta(days=90)
+                ).count(),
+                'older_than_90_days': query.filter(
+                    ChatSession.last_activity < now - timedelta(days=90)
+                ).count(),
             }
             
             # Adicionar estatísticas por usuário se não filtrado
             if not user_id:
-                stats['unique_users'] = db.session.query(ChatSession.user_id).filter(
-                    ChatSession.is_active == True
-                ).distinct().count()
+                stats['unique_users'] = (
+                    db.session.query(ChatSession.user_id)
+                    .filter(ChatSession.is_active.is_(True))
+                    .distinct()
+                    .count()
+                )
             
             return {
                 'success': True,
@@ -215,13 +238,13 @@ class SessionCleanupService:
             Dict com resultado da limpeza
         """
         try:
-            cutoff_date = datetime.utcnow() - timedelta(days=days_inactive)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_inactive)
             
             # Buscar sessões inativas há muito tempo
             inactive_sessions = ChatSession.query.filter(
                 and_(
-                    ChatSession.is_active == True,
-                    ChatSession.last_activity < cutoff_date
+                    ChatSession.is_active.is_(True),
+                    ChatSession.last_activity < cutoff_date,
                 )
             ).all()
             
@@ -229,14 +252,24 @@ class SessionCleanupService:
                 session_ids = [s.id for s in inactive_sessions]
                 
                 # Soft delete
-                ChatSession.query.filter(ChatSession.id.in_(session_ids)).update(
-                    {'is_active': False, 'updated_at': datetime.utcnow()},
-                    synchronize_session=False
+                ChatSession.query.filter(
+                    ChatSession.id.in_(session_ids)
+                ).update(
+                    {
+                        'is_active': False,
+                        'updated_at': datetime.now(timezone.utc),
+                    },
+                    synchronize_session=False,
                 )
                 
-                ChatMessage.query.filter(ChatMessage.session_id.in_(session_ids)).update(
-                    {'is_active': False, 'updated_at': datetime.utcnow()},
-                    synchronize_session=False
+                ChatMessage.query.filter(
+                    ChatMessage.session_id.in_(session_ids)
+                ).update(
+                    {
+                        'is_deleted': True,
+                        'updated_at': datetime.now(timezone.utc),
+                    },
+                    synchronize_session=False,
                 )
                 
                 db.session.commit()

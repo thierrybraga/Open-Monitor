@@ -33,6 +33,47 @@
     };
   };
 
+  function normalizeSyncProgressPayload(payload) {
+    var live = payload && payload.live ? payload.live : {};
+    var total = typeof live.total === 'number' ? live.total : (typeof payload.total_estimate === 'number' ? payload.total_estimate : null);
+    var current = typeof live.current === 'number' ? live.current : null;
+    var percentage = null;
+    if (typeof payload.percentage === 'number') { percentage = payload.percentage; }
+    else if (typeof current === 'number' && typeof total === 'number' && total > 0) {
+      try { percentage = Math.min(100, Math.max(0, (current / total) * 100)); } catch(_) { percentage = null; }
+    }
+    var status = live && typeof live.status === 'string' ? String(live.status).toLowerCase() : null;
+    var saving_count = typeof live.saving_count === 'number' ? live.saving_count : null;
+    var saving_percentage = (typeof live.saving_percentage === 'number') ? live.saving_percentage : null;
+    if (saving_count && saving_count > 0) { status = 'saving'; }
+    if ((!status || status === 'idle') && typeof total === 'number' && typeof current === 'number' && total > 0 && current > 0 && current < total) { status = 'processing'; }
+    return {
+      status: status,
+      current: current,
+      total: total,
+      percentage: percentage,
+      last_cve_id: live && typeof live.last_cve_id === 'string' ? live.last_cve_id : null,
+      saving_count: saving_count,
+      saving_percentage: saving_percentage,
+      synced_count: typeof payload.synced_count === 'number' ? payload.synced_count : null
+    };
+  }
+
+  function computeSyncPollingInterval(status) {
+    var s = status ? String(status).toLowerCase() : '';
+    return (s === 'processing' || s === 'saving') ? 10000 : 600000;
+  }
+
+  function getSyncProgress() {
+    return fetchWithRetry('/api/v1/sync/progress', {}, 2, 300)
+      .then(function(r){ return r.json(); })
+      .then(function(json){ return normalizeSyncProgressPayload(json || {}); });
+  }
+
+  window.getSyncProgress = getSyncProgress;
+  window.computeSyncPollingInterval = computeSyncPollingInterval;
+  window.normalizeSyncProgressPayload = normalizeSyncProgressPayload;
+
   // Throttle
   Utils.throttle = function(func, limit) {
     var inThrottle = false;
@@ -217,6 +258,14 @@
         return Promise.reject(new Error('fetch indisponível no navegador'));
       }
 
+      // Otimização: permitir que requisições GET terminem durante transições
+      try {
+        if (typeof options.keepalive === 'undefined') {
+          var method = options.method ? String(options.method).toUpperCase() : 'GET';
+          if (method === 'GET') { options.keepalive = true; }
+        }
+      } catch(_) {}
+
       return window.fetch(url, options).then(function(response) {
         if (!response) {
           if (attempt < retries) {
@@ -233,7 +282,13 @@
 
         return response;
       }).catch(function(err) {
-        // Erros de rede/abort/timeouts: tenta novamente até o limite
+        // Tratar AbortError explicitamente: não realizar retry
+        var msg = String(err && (err.message || err)).toLowerCase();
+        var isAbort = (err && err.name === 'AbortError') || msg.indexOf('abort') !== -1;
+        if (isAbort) {
+          throw err; // Propaga para o chamador lidar silenciosamente
+        }
+        // Erros de rede/timeout: tenta novamente até o limite
         if (attempt < retries) {
           attempt += 1;
           return delay(backoffMs * attempt).then(exec);
